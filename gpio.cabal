@@ -1,0 +1,41 @@
+Name:                   gpio
+Version:                0.0.0
+Cabal-Version:          >= 1.10
+Build-Type:             Simple
+Author:                 Drew Hess <src@drewhess.com>
+Maintainer:             Drew Hess <src@drewhess.com>
+Homepage:               https://github.com/dhess/gpio
+Bug-Reports:            https://github.com/dhess/gpio/issues/
+Stability:              experimental
+License:                BSD3
+License-File:           LICENSE
+Copyright:              Copyright (c) 2015, Drew Hess
+Tested-With:            GHC == 7.10.2
+Synopsis:               Control GPIO pins
+Description:
+  @gpio@ provides a DSL for controlling GPIO pins. Currently only
+  Linux is supported (via the @sysfs@ filesystem).
+
+Extra-Source-Files:     README.md
+
+Library
+  Default-Language:     Haskell2010
+  HS-Source-Dirs:       src
+  GHC-Options:          -Wall
+  Exposed-Modules:      System.GPIO
+  Build-Depends:        base >= 4 && < 5
+
+Test-Suite spec
+  Type:                 exitcode-stdio-1.0
+  Default-Language:     Haskell2010
+  Hs-Source-Dirs:       src
+                      , test
+  Ghc-Options:          -Wall
+  Main-Is:              Spec.hs
+  Build-Depends:        base
+                      , hspec
+  Other-modules:        System.GPIO
+
+Source-Repository head
+  Type:                 git
+  Location:             git://github.com/dhess/gpio.git
