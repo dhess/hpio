@@ -23,7 +23,16 @@ Library
   HS-Source-Dirs:       src
   GHC-Options:          -Wall
   Exposed-Modules:      System.GPIO
+                      , System.GPIO.Mock
+                      , System.GPIO.Free
+                      , System.GPIO.Linux.Sysfs
+  Other-Extensions:     DeriveGeneric
+                      , FlexibleContexts
+                      , GADTs
+                      , TemplateHaskell
   Build-Depends:        base >= 4 && < 5
+                      , free
+                      , mtl
 
 Test-Suite spec
   Type:                 exitcode-stdio-1.0
@@ -31,10 +40,18 @@ Test-Suite spec
   Hs-Source-Dirs:       src
                       , test
   Ghc-Options:          -Wall
-  Main-Is:              Spec.hs
+  Main-Is:              Main.hs
+  Other-Extensions:     DeriveGeneric
+                      , FlexibleContexts
+                      , GADTs
+                      , TemplateHaskell
   Build-Depends:        base
+                      , free
                       , hspec
+                      , mtl
   Other-modules:        System.GPIO
+                      , System.GPIO.Free
+                      , System.GPIO.Linux.Sysfs
 
 Source-Repository head
   Type:                 git
