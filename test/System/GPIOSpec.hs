@@ -8,7 +8,7 @@ import System.GPIO.Mock
 
 import Test.Hspec
 
-testAllocDealloc :: GpioM ()
+testAllocDealloc :: (Monad m) => GpioT m ()
 testAllocDealloc =
   do allocPin (Pin 1)
      deallocPin (Pin 1)

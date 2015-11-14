@@ -6,13 +6,15 @@
 module System.GPIO.Free
        ( GpioF(..)
        , GpioM
+       , GpioT
        , Pin(..)
        , allocPin
        , deallocPin
        ) where
 
-import Control.Monad.Free (Free, MonadFree, liftF)
+import Control.Monad.Trans.Free (FreeT, MonadFree, liftF)
 import Control.Monad.Free.TH (makeFreeCon)
+import Data.Functor.Identity (Identity)
 import GHC.Generics
 
 data Pin = Pin Int deriving (Eq, Show, Generic)
@@ -25,7 +27,9 @@ instance Functor GpioF where
   fmap f (AllocPin p x) = AllocPin p (f x)
   fmap f (DeallocPin p x) = DeallocPin p (f x)
 
-type GpioM = Free GpioF
+type GpioT = FreeT GpioF
+
+type GpioM = GpioT Identity
 
 makeFreeCon 'AllocPin
 makeFreeCon 'DeallocPin

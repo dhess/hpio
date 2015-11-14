@@ -1,15 +1,18 @@
+{-# LANGUAGE FlexibleContexts #-}
+
 module System.GPIO.Mock
        ( runMock
+       , runMockT
        ) where
 
-import Control.Monad.Free (iterM)
-import Control.Monad.Writer (Writer, tell)
+import Control.Monad.Trans.Free (iterT)
+import Control.Monad.Writer (MonadWriter, Writer, tell)
 import System.GPIO.Free
 
-runMock :: GpioM a -> Writer [String] a
-runMock = iterM run
+runMockT :: (MonadWriter [String] m) => GpioT m a -> m a
+runMockT = iterT run
   where
-    run :: GpioF (Writer [String] a) -> Writer [String] a
+    run :: (MonadWriter [String] m) => GpioF (m a) -> m a
 
     run (AllocPin p next) =
       do tell $ ["Alloc " ++ show p]
@@ -18,3 +21,6 @@ runMock = iterM run
     run (DeallocPin p next) =
       do tell $ ["Dealloc " ++ show p]
          next
+
+runMock :: GpioT (Writer [String]) a -> Writer [String] a
+runMock = runMockT
