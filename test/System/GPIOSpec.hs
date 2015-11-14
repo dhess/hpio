@@ -10,12 +10,12 @@ import Test.Hspec
 
 testAllocDealloc :: (Monad m) => GpioT m ()
 testAllocDealloc =
-  do allocPin (Pin 1)
-     deallocPin (Pin 1)
+  do Just descriptor <- open (Pin 1)
+     close descriptor
 
 spec :: Spec
 spec =
   do describe "runMock" $
        do it "produces the right result" $
-            do let expectedResult = ["Alloc Pin 1", "Dealloc Pin 1"]
+            do let expectedResult = ["Open Pin 1", "Close PinDescriptor (Pin 1)"]
                execWriter (runMock testAllocDealloc) `shouldBe` expectedResult

@@ -8,8 +8,9 @@ module System.GPIO.Free
        , GpioM
        , GpioT
        , Pin(..)
-       , allocPin
-       , deallocPin
+       , PinDescriptor(..)
+       , open
+       , close
        ) where
 
 import Control.Monad.Trans.Free (FreeT, MonadFree, liftF)
@@ -19,17 +20,19 @@ import GHC.Generics
 
 data Pin = Pin Int deriving (Eq, Show, Generic)
 
+data PinDescriptor = PinDescriptor Pin deriving (Show, Generic)
+
 data GpioF next where
-  AllocPin :: Pin -> next -> GpioF next
-  DeallocPin :: Pin -> next -> GpioF next
+  Open :: Pin -> (Maybe PinDescriptor -> next) -> GpioF next
+  Close :: PinDescriptor -> next -> GpioF next
 
 instance Functor GpioF where
-  fmap f (AllocPin p x) = AllocPin p (f x)
-  fmap f (DeallocPin p x) = DeallocPin p (f x)
+  fmap f (Open p g) = Open p (f . g)
+  fmap f (Close d x) = Close d (f x)
 
 type GpioT = FreeT GpioF
 
 type GpioM = GpioT Identity
 
-makeFreeCon 'AllocPin
-makeFreeCon 'DeallocPin
+makeFreeCon 'Open
+makeFreeCon 'Close
