@@ -27,7 +27,7 @@ import Control.Monad.Free.TH (makeFreeCon)
 import Data.Functor.Identity (Identity)
 import GHC.Generics
 
-data Pin = Pin Int deriving (Eq, Show, Generic)
+data Pin = Pin Int deriving (Eq, Ord, Show, Generic)
 
 data PinDescriptor = PinDescriptor Pin deriving (Show, Generic)
 
