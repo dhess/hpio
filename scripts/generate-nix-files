@@ -1,0 +1,3 @@
+#!/bin/sh -e
+cabal2nix --shell ./. > shell.nix
+cabal2nix ./. > default.nix
