@@ -30,8 +30,8 @@ runMockT = iterT run
          next (Just $ PinDescriptor p)
 
     run (Close d next) =
-     do tell $ [T.intercalate " " ["Close", tshow d]]
-        next
+      do tell $ [T.intercalate " " ["Close", tshow d]]
+         next
 
 runMock :: GpioT Mock a -> (a, [Text])
 runMock action = evalRWS (runMockT action) () ()
