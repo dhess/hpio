@@ -5,23 +5,22 @@ module System.GPIO.Mock
        , runMockT
        ) where
 
+import Control.Monad.RWS (MonadRWS, RWS, evalRWS, tell)
 import Control.Monad.Trans.Free (iterT)
-import Control.Monad.Writer (MonadWriter, Writer, tell)
 import System.GPIO.Free
 
-
-runMockT :: (MonadWriter [String] m) => GpioT m a -> m a
+runMockT :: (MonadRWS () [String] () m) => GpioT m a -> m a
 runMockT = iterT run
   where
-    run :: (MonadWriter [String] m) => GpioF (m a) -> m a
+    run :: (MonadRWS () [String] () m) => GpioF (m a) -> m a
 
     run (Open p next) =
       do tell $ ["Open " ++ show p]
          next (Just $ PinDescriptor p)
 
     run (Close d next) =
-      do tell $ ["Close " ++ show d]
-         next
+     do tell $ ["Close " ++ show d]
+        next
 
-runMock :: GpioT (Writer [String]) a -> Writer [String] a
-runMock = runMockT
+runMock :: GpioT (RWS () [String] ()) a -> (a, [String])
+runMock action = evalRWS (runMockT action) () ()

@@ -2,7 +2,6 @@
 
 module System.GPIOSpec (spec) where
 
-import Control.Monad.Writer
 import System.GPIO.Free
 import System.GPIO.Mock
 
@@ -17,5 +16,5 @@ spec :: Spec
 spec =
   do describe "runMock" $
        do it "produces the right result" $
-            do let expectedResult = ["Open Pin 1", "Close PinDescriptor (Pin 1)"]
-               execWriter (runMock testAllocDealloc) `shouldBe` expectedResult
+            do let expectedResult = ((), ["Open Pin 1", "Close PinDescriptor (Pin 1)"])
+               runMock testAllocDealloc `shouldBe` expectedResult
