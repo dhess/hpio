@@ -35,6 +35,7 @@ Library
                       , exceptions
                       , free
                       , mtl
+                      , text
                       , transformers
 
 Test-Suite spec
@@ -54,6 +55,7 @@ Test-Suite spec
                       , free
                       , hspec
                       , mtl
+                      , text
                       , transformers
   Other-modules:        System.GPIO
                       , System.GPIO.Free

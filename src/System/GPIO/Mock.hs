@@ -1,5 +1,6 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module System.GPIO.Mock
        ( runMock
@@ -8,11 +9,16 @@ module System.GPIO.Mock
 
 import Control.Monad.RWS (MonadRWS, RWS, evalRWS, tell)
 import Control.Monad.Trans.Free (iterT)
+import Data.Text (Text)
+import qualified Data.Text as T (intercalate, pack)
 import System.GPIO.Free
 
-type MonadMock = MonadRWS () [String] ()
+type MonadMock = MonadRWS () [Text] ()
 
-type Mock = RWS () [String] ()
+type Mock = RWS () [Text] ()
+
+tshow :: (Show a) => a -> Text
+tshow = T.pack . show
 
 runMockT :: (MonadMock m) => GpioT m a -> m a
 runMockT = iterT run
@@ -20,12 +26,12 @@ runMockT = iterT run
     run :: (MonadMock m) => GpioF (m a) -> m a
 
     run (Open p next) =
-      do tell $ ["Open " ++ show p]
+      do tell $ [T.intercalate " " ["Open", tshow p]]
          next (Just $ PinDescriptor p)
 
     run (Close d next) =
-     do tell $ ["Close " ++ show d]
+     do tell $ [T.intercalate " " ["Close", tshow d]]
         next
 
-runMock :: GpioT Mock a -> (a, [String])
+runMock :: GpioT Mock a -> (a, [Text])
 runMock action = evalRWS (runMockT action) () ()
