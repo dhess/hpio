@@ -1,3 +1,4 @@
+{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 
 module System.GPIO.Mock
@@ -9,10 +10,14 @@ import Control.Monad.RWS (MonadRWS, RWS, evalRWS, tell)
 import Control.Monad.Trans.Free (iterT)
 import System.GPIO.Free
 
-runMockT :: (MonadRWS () [String] () m) => GpioT m a -> m a
+type MonadMock = MonadRWS () [String] ()
+
+type Mock = RWS () [String] ()
+
+runMockT :: (MonadMock m) => GpioT m a -> m a
 runMockT = iterT run
   where
-    run :: (MonadRWS () [String] () m) => GpioF (m a) -> m a
+    run :: (MonadMock m) => GpioF (m a) -> m a
 
     run (Open p next) =
       do tell $ ["Open " ++ show p]
@@ -22,5 +27,5 @@ runMockT = iterT run
      do tell $ ["Close " ++ show d]
         next
 
-runMock :: GpioT (RWS () [String] ()) a -> (a, [String])
+runMock :: GpioT Mock a -> (a, [String])
 runMock action = evalRWS (runMockT action) () ()
