@@ -4,11 +4,13 @@
 
 module System.GPIO.Mock
        ( Env(..)
+       , World(..)
+       , emptyWorld
        , runMock
        , runMockT
        ) where
 
-import Control.Monad.RWS (MonadRWS, RWS, asks, evalRWS, tell)
+import Control.Monad.RWS (MonadRWS, RWS, asks, get, gets, put, runRWS, tell)
 import Control.Monad.Trans.Free (iterT)
 import Data.Set (Set)
 import qualified Data.Set as Set
@@ -18,9 +20,14 @@ import System.GPIO.Free
 
 data Env = Env { pins :: Set Pin } deriving (Show)
 
-type MonadMock = MonadRWS Env [Text] ()
+data World = World { descriptors :: Set PinDescriptor } deriving (Show, Eq)
 
-type Mock = RWS Env [Text] ()
+emptyWorld :: World
+emptyWorld = World $ Set.empty
+
+type MonadMock = MonadRWS Env [Text] World
+
+type Mock = RWS Env [Text] World
 
 tshow :: (Show a) => a -> Text
 tshow = T.pack . show
@@ -35,17 +42,31 @@ runMockT = iterT run
          if valid
             then
               do tell $ [T.intercalate " " ["Open", tshow p]]
-                 next (Just $ PinDescriptor p)
+                 world <- get
+                 let d = PinDescriptor p
+                 put (World $ Set.insert d (descriptors world))
+                 next (Just d)
             else
               do tell $ [T.intercalate " " ["Open failed:", tshow p, "does not exist"]]
                  next Nothing
 
     run (Close d next) =
-      do tell $ [T.intercalate " " ["Close", tshow d]]
-         next
+      do valid <- validDescriptor d
+         if valid
+            then
+              do world <- get
+                 put (World $ Set.delete d (descriptors world))
+                 tell $ [T.intercalate " " ["Close", tshow d]]
+                 next
+            else
+              do tell $ [T.intercalate " " ["Close failed:", tshow d, "is not a valid descriptor (double close?)"]]
+                 undefined -- Need an error here.
+                 next
 
     pinExists :: (MonadMock m) => Pin -> m Bool
     pinExists p = asks pins >>= return . (Set.member p)
 
-runMock :: Env -> GpioT Mock a -> (a, [Text])
-runMock env action = evalRWS (runMockT action) env ()
+    validDescriptor d = gets descriptors >>= return . (Set.member d)
+
+runMock :: Env -> GpioT Mock a -> (a, World, [Text])
+runMock env action = runRWS (runMockT action) env emptyWorld

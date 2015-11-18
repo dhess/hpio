@@ -20,5 +20,5 @@ spec :: Spec
 spec =
   do describe "runMock" $
        do it "produces the right result" $
-            do let expectedResult = ((), ["Open Pin 1", "Close PinDescriptor (Pin 1)"])
+            do let expectedResult = ((), emptyWorld, ["Open Pin 1", "Close PinDescriptor (Pin 1)"])
                runMock (Env $ Set.fromList [Pin 1, Pin 2]) testAllocDealloc `shouldBe` expectedResult

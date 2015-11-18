@@ -29,7 +29,7 @@ import GHC.Generics
 
 data Pin = Pin Int deriving (Eq, Ord, Show, Generic)
 
-data PinDescriptor = PinDescriptor Pin deriving (Show, Generic)
+data PinDescriptor = PinDescriptor Pin deriving (Eq, Ord, Show, Generic)
 
 data Direction = In | Out deriving (Eq, Show, Generic)
 
