@@ -66,6 +66,7 @@ runMockT = iterT run
     pinExists :: (MonadMock m) => Pin -> m Bool
     pinExists p = asks pins >>= return . (Set.member p)
 
+    validDescriptor :: (MonadMock m) => PinDescriptor -> m Bool
     validDescriptor d = gets descriptors >>= return . (Set.member d)
 
 runMock :: Env -> GpioT Mock a -> (a, World, [Text])
