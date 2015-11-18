@@ -41,13 +41,13 @@ runMockT = iterT run
       do valid <- pinExists p
          if valid
             then
-              do tell $ [T.intercalate " " ["Open", tshow p]]
+              do say ["Open", tshow p]
                  world <- get
                  let d = PinDescriptor p
                  put (World $ Set.insert d (descriptors world))
                  next (Just d)
             else
-              do tell $ [T.intercalate " " ["Open failed:", tshow p, "does not exist"]]
+              do say ["Open failed:", tshow p, "does not exist"]
                  next Nothing
 
     run (Close d next) =
@@ -56,10 +56,10 @@ runMockT = iterT run
             then
               do world <- get
                  put (World $ Set.delete d (descriptors world))
-                 tell $ [T.intercalate " " ["Close", tshow d]]
+                 say ["Close", tshow d]
                  next
             else
-              do tell $ [T.intercalate " " ["Close failed:", tshow d, "is not a valid descriptor (double close?)"]]
+              do say ["Close failed:", tshow d, "is not a valid descriptor (double close?)"]
                  undefined -- Need an error here.
                  next
 
@@ -68,6 +68,9 @@ runMockT = iterT run
 
     validDescriptor :: (MonadMock m) => PinDescriptor -> m Bool
     validDescriptor d = gets descriptors >>= return . (Set.member d)
+
+    say :: (MonadMock m) => [Text] -> m ()
+    say t = tell $ [T.intercalate " " t]
 
 runMock :: Env -> GpioT Mock a -> (a, World, [Text])
 runMock env action = runRWS (runMockT action) env emptyWorld
