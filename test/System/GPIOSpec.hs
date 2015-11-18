@@ -3,6 +3,7 @@
 module System.GPIOSpec (spec) where
 
 import Control.Monad (liftM)
+import qualified Data.Set as Set
 import System.GPIO.Free
 import System.GPIO.Mock
 
@@ -20,4 +21,4 @@ spec =
   do describe "runMock" $
        do it "produces the right result" $
             do let expectedResult = ((), ["Open Pin 1", "Close PinDescriptor (Pin 1)"])
-               runMock testAllocDealloc `shouldBe` expectedResult
+               runMock (Env $ Set.fromList [Pin 1, Pin 2]) testAllocDealloc `shouldBe` expectedResult

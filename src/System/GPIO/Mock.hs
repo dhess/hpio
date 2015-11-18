@@ -3,7 +3,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module System.GPIO.Mock
-       ( runMock
+       ( Env(..)
+       , runMock
        , runMockT
        ) where
 
@@ -32,10 +33,12 @@ runMockT = iterT run
     run (Open p next) =
       do valid <- pinExists p
          if valid
-            then do tell $ [T.intercalate " " ["Open", tshow p]]
-                    next (Just $ PinDescriptor p)
-            else do tell $ [T.intercalate " " ["Open failed:", tshow p, "does not exist"]]
-                    next Nothing
+            then
+              do tell $ [T.intercalate " " ["Open", tshow p]]
+                 next (Just $ PinDescriptor p)
+            else
+              do tell $ [T.intercalate " " ["Open failed:", tshow p, "does not exist"]]
+                 next Nothing
 
     run (Close d next) =
       do tell $ [T.intercalate " " ["Close", tshow d]]
@@ -44,5 +47,5 @@ runMockT = iterT run
     pinExists :: (MonadMock m) => Pin -> m Bool
     pinExists p = asks pins >>= return . (Set.member p)
 
-runMock :: GpioT Mock a -> (a, [Text])
-runMock action = evalRWS (runMockT action) (Env $ Set.fromList [Pin 0, Pin 2]) ()
+runMock :: Env -> GpioT Mock a -> (a, [Text])
+runMock env action = evalRWS (runMockT action) env ()
