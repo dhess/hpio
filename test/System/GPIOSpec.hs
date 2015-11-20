@@ -2,7 +2,6 @@
 
 module System.GPIOSpec (spec) where
 
-import Control.Monad (liftM)
 import qualified Data.Set as Set
 import System.GPIO.Free
 import System.GPIO.Mock
@@ -13,7 +12,7 @@ testAllocDealloc :: (Monad m) => GpioT m ()
 testAllocDealloc =
   do descriptor <- open (Pin 1)
      case descriptor of
-       (Just d) -> close d
+       (Right d) -> close d
        _ -> return ()
 
 spec :: Spec

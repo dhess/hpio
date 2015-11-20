@@ -36,13 +36,13 @@ data Direction = In | Out deriving (Eq, Show, Generic)
 data State = Low | High deriving (Eq, Enum, Ord, Show, Generic)
 
 data GpioF next where
-  Open :: Pin -> (Maybe PinDescriptor -> next) -> GpioF next
+  Open :: Pin -> (Either String PinDescriptor -> next) -> GpioF next
   Close :: PinDescriptor -> next -> GpioF next
   HasDirection :: PinDescriptor -> (Bool -> next) -> GpioF next
-  GetDirection :: PinDescriptor -> (Maybe Direction -> next) -> GpioF next
-  SetDirection :: PinDescriptor -> v -> (Maybe Direction -> next) -> GpioF next
+  GetDirection :: PinDescriptor -> (Either String Direction -> next) -> GpioF next
+  SetDirection :: PinDescriptor -> v -> (Either String Direction -> next) -> GpioF next
   Read :: PinDescriptor -> (State -> next) -> GpioF next
-  Write :: PinDescriptor -> State -> (Maybe State -> next) -> GpioF next
+  Write :: PinDescriptor -> State -> (Either String State -> next) -> GpioF next
 
 instance Functor GpioF where
   fmap f (Open p g) = Open p (f . g)

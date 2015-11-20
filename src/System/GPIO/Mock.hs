@@ -45,10 +45,9 @@ runMockT = iterT run
                  world <- get
                  let d = PinDescriptor p
                  put (World $ Set.insert d (descriptors world))
-                 next (Just d)
+                 next (Right d)
             else
-              do say ["Open failed:", tshow p, "does not exist"]
-                 next Nothing
+              do next (Left $ "Open failed: " ++ show p ++ " does not exist")
 
     run (Close d next) =
       do valid <- validDescriptor d
@@ -59,9 +58,7 @@ runMockT = iterT run
                  say ["Close", tshow d]
                  next
             else
-              do say ["Close failed:", tshow d, "is not a valid descriptor (double close?)"]
-                 undefined -- Need an error here.
-                 next
+              do next -- double-close is OK, just like hClose
 
     pinExists :: (MonadMock m) => Pin -> m Bool
     pinExists p = asks pins >>= return . (Set.member p)
