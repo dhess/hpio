@@ -11,7 +11,7 @@ module System.GPIO.Free
        , Direction(..)
        , Pin(..)
        , PinDescriptor(..)
-       , State(..)
+       , Value(..)
        , open
        , close
        , hasDirection
@@ -33,16 +33,16 @@ data PinDescriptor = PinDescriptor Pin deriving (Eq, Ord, Show, Generic)
 
 data Direction = In | Out deriving (Eq, Show, Generic)
 
-data State = Low | High deriving (Eq, Enum, Ord, Show, Generic)
+data Value = Low | High deriving (Eq, Enum, Ord, Show, Generic)
 
 data GpioF next where
   Open :: Pin -> (Either String PinDescriptor -> next) -> GpioF next
   Close :: PinDescriptor -> next -> GpioF next
   HasDirection :: PinDescriptor -> (Bool -> next) -> GpioF next
   GetDirection :: PinDescriptor -> (Either String Direction -> next) -> GpioF next
-  SetDirection :: PinDescriptor -> v -> (Either String Direction -> next) -> GpioF next
-  Read :: PinDescriptor -> (State -> next) -> GpioF next
-  Write :: PinDescriptor -> State -> (Either String State -> next) -> GpioF next
+  SetDirection :: PinDescriptor -> Direction -> (Either String () -> next) -> GpioF next
+  Read :: PinDescriptor -> (Either String Value -> next) -> GpioF next
+  Write :: PinDescriptor -> Value -> (Either String () -> next) -> GpioF next
 
 instance Functor GpioF where
   fmap f (Open p g) = Open p (f . g)
