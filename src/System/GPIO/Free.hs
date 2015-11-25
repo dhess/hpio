@@ -17,11 +17,10 @@ module System.GPIO.Free
        , hasDirection
        , getDirection
        , setDirection
-       , read
-       , write
+       , readPin
+       , writePin
        ) where
 
-import Prelude hiding (read)
 import Control.Monad.Trans.Free (FreeT, MonadFree, liftF)
 import Control.Monad.Free.TH (makeFreeCon)
 import Data.Functor.Identity (Identity)
@@ -41,8 +40,8 @@ data GpioF next where
   HasDirection :: PinDescriptor -> (Bool -> next) -> GpioF next
   GetDirection :: PinDescriptor -> (Either String Direction -> next) -> GpioF next
   SetDirection :: PinDescriptor -> Direction -> (Either String () -> next) -> GpioF next
-  Read :: PinDescriptor -> (Either String Value -> next) -> GpioF next
-  Write :: PinDescriptor -> Value -> (Either String () -> next) -> GpioF next
+  ReadPin :: PinDescriptor -> (Either String Value -> next) -> GpioF next
+  WritePin :: PinDescriptor -> Value -> (Either String () -> next) -> GpioF next
 
 instance Functor GpioF where
   fmap f (Open p g) = Open p (f . g)
@@ -50,8 +49,8 @@ instance Functor GpioF where
   fmap f (HasDirection pd g) = HasDirection pd (f . g)
   fmap f (GetDirection pd g) = GetDirection pd (f . g)
   fmap f (SetDirection pd v g) = SetDirection pd v (f . g)
-  fmap f (Read pd g) = Read pd (f . g)
-  fmap f (Write pd s g) = Write pd s (f . g)
+  fmap f (ReadPin pd g) = ReadPin pd (f . g)
+  fmap f (WritePin pd s g) = WritePin pd s (f . g)
 
 type GpioT = FreeT GpioF
 
@@ -62,5 +61,5 @@ makeFreeCon 'Close
 makeFreeCon 'HasDirection
 makeFreeCon 'GetDirection
 makeFreeCon 'SetDirection
-makeFreeCon 'Read
-makeFreeCon 'Write
+makeFreeCon 'ReadPin
+makeFreeCon 'WritePin

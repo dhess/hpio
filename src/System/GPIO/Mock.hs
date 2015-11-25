@@ -85,9 +85,9 @@ runMockT = iterT run
                 put (World $ Map.insert d (s { direction = v }) states)
                 next $ Right ()
 
-    run (Read d next) = next =<< pinValue d
+    run (ReadPin d next) = next =<< pinValue d
 
-    run (Write d v next) =
+    run (WritePin d v next) =
       do eitherState <- pinState d
          case eitherState of
            Left e -> next $ Left e
