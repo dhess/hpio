@@ -34,16 +34,16 @@ data Direction = In | Out deriving (Eq, Show, Generic)
 
 data Value = Low | High deriving (Eq, Enum, Ord, Show, Generic)
 
-data GpioF next where
-  Open :: Pin -> (Either String PinDescriptor -> next) -> GpioF next
-  Close :: PinDescriptor -> next -> GpioF next
-  HasDirection :: PinDescriptor -> (Bool -> next) -> GpioF next
-  GetDirection :: PinDescriptor -> (Direction -> next) -> GpioF next
-  SetDirection :: PinDescriptor -> Direction -> next -> GpioF next
-  ReadPin :: PinDescriptor -> (Value -> next) -> GpioF next
-  WritePin :: PinDescriptor -> Value -> next -> GpioF next
+data GpioF e next where
+  Open :: Pin -> (Either e PinDescriptor -> next) -> GpioF e next
+  Close :: PinDescriptor -> next -> GpioF e next
+  HasDirection :: PinDescriptor -> (Bool -> next) -> GpioF e next
+  GetDirection :: PinDescriptor -> (Direction -> next) -> GpioF e next
+  SetDirection :: PinDescriptor -> Direction -> next -> GpioF e next
+  ReadPin :: PinDescriptor -> (Value -> next) -> GpioF e next
+  WritePin :: PinDescriptor -> Value -> next -> GpioF e next
 
-instance Functor GpioF where
+instance Functor (GpioF e) where
   fmap f (Open p g) = Open p (f . g)
   fmap f (Close pd x) = Close pd (f x)
   fmap f (HasDirection pd g) = HasDirection pd (f . g)
@@ -52,9 +52,9 @@ instance Functor GpioF where
   fmap f (ReadPin pd g) = ReadPin pd (f . g)
   fmap f (WritePin pd v x) = WritePin pd v (f x)
 
-type GpioT = FreeT GpioF
+type GpioT e = FreeT (GpioF e)
 
-type GpioM = GpioT Identity
+type GpioM = (GpioT String) Identity
 
 makeFreeCon 'Open
 makeFreeCon 'Close

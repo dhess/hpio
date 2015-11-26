@@ -45,10 +45,10 @@ type Mock = RWS Env [Text] World
 tshow :: (Show a) => a -> Text
 tshow = T.pack . show
 
-runMockT :: (MonadError String m, MonadMock m) => GpioT m a -> m a
+runMockT :: (MonadError String m, MonadMock m) => (GpioT String) m a -> m a
 runMockT = iterT run
   where
-    run :: (MonadError String m, MonadMock m) => GpioF (m a) -> m a
+    run :: (MonadError String m, MonadMock m) => (GpioF String) (m a) -> m a
 
     run (Open p next) =
       do valid <- pinExists p
@@ -131,5 +131,5 @@ pinDirection = pinF direction
 
 -- | Run a GpioT program in a pure environment mimicking IO;
 -- exceptions are manifested as 'Either' 'String' 'a'.
-runMock :: Env -> GpioT (ExceptT String Mock) a -> (Either String a, World, [Text])
+runMock :: Env -> (GpioT String) (ExceptT String Mock) a -> (Either String a, World, [Text])
 runMock env action = runRWS (runExceptT $ runMockT action) env emptyWorld

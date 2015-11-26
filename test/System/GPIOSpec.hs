@@ -10,7 +10,7 @@ import System.GPIO.Mock
 
 import Test.Hspec
 
-testOpenClose :: (MonadError String m) => GpioT m ()
+testOpenClose :: (MonadError String m) => (GpioT String) m ()
 testOpenClose =
   do descriptor <- open (Pin 1)
      case descriptor of
