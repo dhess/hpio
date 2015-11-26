@@ -11,6 +11,7 @@ module System.GPIO.Mock
        ) where
 
 import Control.Error.Util (note)
+import Control.Monad.Except
 import Control.Monad.RWS (MonadRWS, RWS, asks, get, gets, put, runRWS, tell)
 import Control.Monad.Trans.Free (iterT)
 import Data.Map.Strict (Map)
@@ -44,60 +45,66 @@ type Mock = RWS Env [Text] World
 tshow :: (Show a) => a -> Text
 tshow = T.pack . show
 
-runMockT :: (MonadMock m) => GpioT m a -> m a
+runMockT :: (MonadError String m, MonadMock m) => GpioT m a -> m a
 runMockT = iterT run
   where
-    run :: (MonadMock m) => GpioF (m a) -> m a
+    run :: (MonadError String m, MonadMock m) => GpioF (m a) -> m a
 
     run (Open p next) =
       do valid <- pinExists p
-         if valid
-            then
-              do say ["Open", tshow p]
-                 world <- get
-                 let d = PinDescriptor p
-                 put (World $ Map.insert d initialState (pinStates world))
-                 next (Right d)
-            else
-              do next (Left $ "Open failed: " ++ show p ++ " does not exist")
+         case valid of
+           False -> next (Left $ "Open failed: " ++ show p ++ " does not exist")
+           True ->
+             do say ["Open", tshow p]
+                world <- get
+                let d = PinDescriptor p
+                put (World $ Map.insert d initialState (pinStates world))
+                next (Right d)
 
     run (Close d next) =
       do valid <- validDescriptor d
-         if valid
-            then
-              do world <- get
-                 put (World $ Map.delete d (pinStates world))
-                 say ["Close", tshow d]
-                 next
-            else
-              do next -- double-close is OK, just like hClose
+         case valid of
+           False -> next -- double-close is OK
+           True ->
+             do world <- get
+                put (World $ Map.delete d (pinStates world))
+                say ["Close", tshow d]
+                next
 
     run (HasDirection _ next) = next True
 
-    run (GetDirection d next) = next =<< pinDirection d
+    run (GetDirection d next) =
+      do eitherDirection <- pinDirection d
+         case eitherDirection of
+           Left e -> throwError e
+           Right d -> next d
 
     run (SetDirection d v next) =
       do eitherState <- pinState d
          case eitherState of
-           Left e -> next $ Left e
+           Left e -> throwError e
            Right s ->
              do states <- gets pinStates
                 put (World $ Map.insert d (s { direction = v }) states)
-                next $ Right ()
+                next
 
-    run (ReadPin d next) = next =<< pinValue d
+    run (ReadPin d next) =
+      do eitherValue <- pinValue d
+         case eitherValue of
+           Left e -> throwError e
+           Right v -> next v
 
     run (WritePin d v next) =
       do eitherState <- pinState d
          case eitherState of
-           Left e -> next $ Left e
+           Left e -> throwError e
            Right s ->
              case direction s of
-               In -> next $ Left (show d ++ " is configured for input")
+               In -> throwError (show d ++ " is configured for input")
                Out ->
                  do states <- gets pinStates
                     put (World $ Map.insert d (s { value = v }) states)
-                    next $ Right ()
+                    next
 
 pinExists :: (MonadMock m) => Pin -> m Bool
 pinExists p = asks pins >>= return . (Set.member p)
@@ -122,5 +129,7 @@ pinValue = pinF value
 pinDirection :: (MonadMock m) => PinDescriptor -> m (Either String Direction)
 pinDirection = pinF direction
 
-runMock :: Env -> GpioT Mock a -> (a, World, [Text])
-runMock env action = runRWS (runMockT action) env emptyWorld
+-- | Run a GpioT program in a pure environment mimicking IO;
+-- exceptions are manifested as 'Either' 'String' 'a'.
+runMock :: Env -> GpioT (ExceptT String Mock) a -> (Either String a, World, [Text])
+runMock env action = runRWS (runExceptT $ runMockT action) env emptyWorld

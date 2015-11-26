@@ -38,19 +38,19 @@ data GpioF next where
   Open :: Pin -> (Either String PinDescriptor -> next) -> GpioF next
   Close :: PinDescriptor -> next -> GpioF next
   HasDirection :: PinDescriptor -> (Bool -> next) -> GpioF next
-  GetDirection :: PinDescriptor -> (Either String Direction -> next) -> GpioF next
-  SetDirection :: PinDescriptor -> Direction -> (Either String () -> next) -> GpioF next
-  ReadPin :: PinDescriptor -> (Either String Value -> next) -> GpioF next
-  WritePin :: PinDescriptor -> Value -> (Either String () -> next) -> GpioF next
+  GetDirection :: PinDescriptor -> (Direction -> next) -> GpioF next
+  SetDirection :: PinDescriptor -> Direction -> next -> GpioF next
+  ReadPin :: PinDescriptor -> (Value -> next) -> GpioF next
+  WritePin :: PinDescriptor -> Value -> next -> GpioF next
 
 instance Functor GpioF where
   fmap f (Open p g) = Open p (f . g)
   fmap f (Close pd x) = Close pd (f x)
   fmap f (HasDirection pd g) = HasDirection pd (f . g)
   fmap f (GetDirection pd g) = GetDirection pd (f . g)
-  fmap f (SetDirection pd v g) = SetDirection pd v (f . g)
+  fmap f (SetDirection pd d x) = SetDirection pd d (f x)
   fmap f (ReadPin pd g) = ReadPin pd (f . g)
-  fmap f (WritePin pd s g) = WritePin pd s (f . g)
+  fmap f (WritePin pd v x) = WritePin pd v (f x)
 
 type GpioT = FreeT GpioF
 
