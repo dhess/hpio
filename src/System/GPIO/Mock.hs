@@ -77,7 +77,7 @@ runMockT = iterT run
       do eitherDirection <- pinDirection d
          case eitherDirection of
            Left e -> throwError e
-           Right d -> next d
+           Right dir -> next dir
 
     run (SetDirection d v next) =
       do eitherState <- pinState d
