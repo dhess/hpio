@@ -86,6 +86,7 @@ runMockT = iterT run
            Right s ->
              do states <- gets pinStates
                 put (World $ Map.insert d (s { direction = v }) states)
+                say ["Set direction:", tshow d, tshow v ]
                 next
 
     run (ReadPin d next) =
@@ -104,6 +105,7 @@ runMockT = iterT run
                Out ->
                  do states <- gets pinStates
                     put (World $ Map.insert d (s { value = v }) states)
+                    say ["Write:", tshow d, tshow v]
                     next
 
 pinExists :: (MonadMock m) => Pin -> m Bool
