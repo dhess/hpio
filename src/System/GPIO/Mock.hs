@@ -3,7 +3,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module System.GPIO.Mock
-       ( Env(..)
+       ( AvailablePins
        , World(..)
        , emptyWorld
        , runMock
@@ -12,7 +12,7 @@ module System.GPIO.Mock
 
 import Control.Error.Util (note)
 import Control.Monad.Except
-import Control.Monad.RWS (MonadRWS, RWS, asks, get, gets, put, runRWS, tell)
+import Control.Monad.RWS (MonadRWS, RWS, ask, get, gets, put, runRWS, tell)
 import Control.Monad.Trans.Free (iterT)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
@@ -22,7 +22,7 @@ import Data.Text (Text)
 import qualified Data.Text as T (intercalate, pack)
 import System.GPIO.Free (GpioF(..), GpioT, Direction(..), Pin(..), PinDescriptor(..), Value(..))
 
-data Env = Env { pins :: Set Pin } deriving (Show)
+type AvailablePins = Set Pin
 
 data PinState = PinState { direction :: !Direction, value :: !Value } deriving (Show, Eq)
 
@@ -38,9 +38,9 @@ emptyWorld = World $ Map.empty
 initialState :: PinState
 initialState = PinState In Low
 
-type MonadMock = MonadRWS Env [Text] World
+type MonadMock = MonadRWS AvailablePins [Text] World
 
-type Mock = RWS Env [Text] World
+type Mock = RWS AvailablePins [Text] World
 
 tshow :: (Show a) => a -> Text
 tshow = T.pack . show
@@ -109,7 +109,7 @@ runMockT = iterT run
                     next
 
 pinExists :: (MonadMock m) => Pin -> m Bool
-pinExists p = asks pins >>= return . (Set.member p)
+pinExists p = ask >>= return . (Set.member p)
 
 validDescriptor :: (MonadMock m) => PinDescriptor -> m Bool
 validDescriptor d = gets pinStates >>= return . (Map.member d)
@@ -133,5 +133,5 @@ pinDirection = pinF direction
 
 -- | Run a GpioT program in a pure environment mimicking IO;
 -- exceptions are manifested as 'Either' 'String' 'a'.
-runMock :: Env -> (GpioT String) (ExceptT String Mock) a -> (Either String a, World, [Text])
-runMock env action = runRWS (runExceptT $ runMockT action) env emptyWorld
+runMock :: AvailablePins -> (GpioT String) (ExceptT String Mock) a -> (Either String a, World, [Text])
+runMock pins action = runRWS (runExceptT $ runMockT action) pins emptyWorld

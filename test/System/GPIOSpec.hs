@@ -23,8 +23,8 @@ spec =
 
        do it "succeeds when the pin is available" $
             do let expectedResult = (Right (), emptyWorld, ["Open Pin 1", "Close PinDescriptor (Pin 1)"])
-               runMock (Env $ Set.fromList [Pin 1]) testOpenClose `shouldBe` expectedResult
+               runMock (Set.fromList [Pin 1]) testOpenClose `shouldBe` expectedResult
 
           it "fails when the pin is unavailable" $
             do let expectedResult = (Left "Open failed: Pin 1 does not exist", emptyWorld, [])
-               runMock (Env $ Set.fromList [Pin 2]) testOpenClose `shouldBe` expectedResult
+               runMock (Set.fromList [Pin 2]) testOpenClose `shouldBe` expectedResult
