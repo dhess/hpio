@@ -18,16 +18,18 @@ testOpenClose =
        Left e -> throwError e
        Right d -> close d
 
-testGetSetDirection :: (MonadError String m) => (GpioT String) m Direction
-testGetSetDirection =
+toggleDirection :: Direction -> Direction
+toggleDirection In = Out
+toggleDirection Out = In
+
+testGetSetDirection :: (MonadError String m) => (Direction -> Direction) -> (GpioT String) m Direction
+testGetSetDirection f =
   do descriptor <- open (Pin 1)
      case descriptor of
        Left e -> throwError e
        Right d ->
          do dir1 <- getDirection d
-            case dir1 of
-              In -> setDirection d Out
-              Out -> setDirection d In
+            setDirection d (f dir1)
             dir2 <- getDirection d
             close d
             return dir2
@@ -44,8 +46,12 @@ spec =
             do let expectedResult = (Left "Open failed: Pin 1 does not exist", Map.empty, [])
                runMock (Set.fromList [Pin 2]) testOpenClose `shouldBe` expectedResult
 
-     describe "getDirection and setDirection" $
+     describe "setDirection" $
 
-       do it "gets and sets pin input/output direction" $
+       do it "toggles pin direction" $
             let expectedResult = (Right Out, Map.empty, ["Open Pin 1", "Set direction: PinDescriptor (Pin 1) Out", "Close PinDescriptor (Pin 1)"])
-            in runMock (Set.fromList [Pin 1]) testGetSetDirection `shouldBe` expectedResult
+            in runMock (Set.fromList [Pin 1]) (testGetSetDirection toggleDirection) `shouldBe` expectedResult
+
+          it "is idempotent" $
+            let expectedResult = (Right In, Map.empty, ["Open Pin 1", "Set direction: PinDescriptor (Pin 1) In", "Close PinDescriptor (Pin 1)"])
+            in runMock (Set.fromList [Pin 1]) (testGetSetDirection id) `shouldBe` expectedResult
