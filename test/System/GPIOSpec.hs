@@ -61,6 +61,15 @@ testWritePinFailsOnInputPin =
             _ <- writePin d High
             close d
 
+invalidDescriptor :: (MonadError String m) => (PinDescriptor -> (GpioT String) m a) -> (GpioT String) m a
+invalidDescriptor action =
+  do descriptor <- open (Pin 1)
+     case descriptor of
+       Left e -> throwError e
+       Right d ->
+         do close d
+            action d
+
 spec :: Spec
 spec =
   do describe "open and close" $
@@ -96,3 +105,21 @@ spec =
             -- Note that this test will leave Pin 1 in the "open" state.
             let expectedResult = (Left "PinDescriptor (Pin 1) is configured for input", Map.fromList [(PinDescriptor (Pin 1),PinState {direction = In, value = Low})], ["Open Pin 1", "Set direction: PinDescriptor (Pin 1) In"])
             in runMock (Set.fromList [Pin 1]) testWritePinFailsOnInputPin `shouldBe` expectedResult
+
+     describe "invalid descriptors throw exceptions" $
+       let expectedResult = (Left "Pin descriptor PinDescriptor (Pin 1) is invalid", Map.empty, ["Open Pin 1", "Close PinDescriptor (Pin 1)"])
+       in
+         do it "in hasDirection" $
+              runMock (Set.fromList [Pin 1]) (invalidDescriptor hasDirection) `shouldBe` expectedResult
+
+            it "in getDirection" $
+              runMock (Set.fromList [Pin 1]) (invalidDescriptor getDirection) `shouldBe` expectedResult
+
+            it "in setDirection" $
+              runMock (Set.fromList [Pin 1]) (invalidDescriptor (\d -> setDirection d Out)) `shouldBe` expectedResult
+
+            it "in readPin" $
+              runMock (Set.fromList [Pin 1]) (invalidDescriptor readPin) `shouldBe` expectedResult
+
+            it "in writePin" $
+              runMock (Set.fromList [Pin 1]) (invalidDescriptor (\d -> writePin d High)) `shouldBe` expectedResult
