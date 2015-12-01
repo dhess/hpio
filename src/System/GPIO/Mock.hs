@@ -6,6 +6,8 @@ module System.GPIO.Mock
        ( AvailablePins
        , PinState(..)
        , PinStateMap
+       , evalMock
+       , execMock
        , runMock
        , runMockT
        ) where
@@ -141,3 +143,17 @@ pinDirection = pinF direction
 -- exceptions are manifested as 'Either' 'String' 'a'.
 runMock :: AvailablePins -> (GpioT String) (ExceptT String Mock) a -> (Either String a, PinStateMap, [Text])
 runMock pins action = runRWS (runExceptT $ runMockT action) pins Map.empty
+
+-- | Evaluate a GpioT program in the 'Mock' monad and return the final
+-- value and output, discarding the final state.
+evalMock :: AvailablePins -> (GpioT String) (ExceptT String Mock) a -> (Either String a, [Text])
+evalMock pins action =
+  let (a, _, w) = runMock pins action
+  in (a, w)
+
+-- | Evaluate a GpioT program in the 'Mock' monad and return the final
+-- state and output, discarding the final value.
+execMock :: AvailablePins -> (GpioT String) (ExceptT String Mock) a -> (PinStateMap, [Text])
+execMock pins action =
+  let (_, s, w) = runMock pins action
+  in (s, w)
