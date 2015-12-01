@@ -34,6 +34,7 @@ Library
                       , containers
                       , errors
                       , exceptions
+                      , filepath
                       , free
                       , mtl
                       , text
@@ -54,6 +55,7 @@ Test-Suite spec
                       , containers
                       , errors
                       , exceptions
+                      , filepath
                       , free
                       , hspec
                       , mtl
