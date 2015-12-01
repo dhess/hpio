@@ -25,19 +25,19 @@ testOpenClose =
        Left e -> throwError e
        Right d -> close d
 
-toggleDirection :: Direction -> Direction
+toggleDirection :: PinDirection -> PinDirection
 toggleDirection In = Out
 toggleDirection Out = In
 
-testGetSetDirection :: (MonadError String m) => (Direction -> Direction) -> (GpioT String) m Direction
-testGetSetDirection f =
+testSetDirection :: (MonadError String m) => (PinDirection -> PinDirection) -> (GpioT String) m PinDirection
+testSetDirection f =
   do descriptor <- open (Pin 1)
      case descriptor of
        Left e -> throwError e
        Right d ->
-         do dir1 <- getDirection d
+         do (Just dir1) <- direction d
             setDirection d (f dir1)
-            dir2 <- getDirection d
+            (Just dir2) <- direction d
             close d
             return dir2
 
@@ -93,11 +93,11 @@ spec =
 
        do it "toggles pin direction" $
             let expectedResult = (Right Out, Map.empty, ["Open Pin 1", "Set direction: PinDescriptor (Pin 1) Out", "Close PinDescriptor (Pin 1)"])
-            in runMock (Set.fromList [Pin 1]) (testGetSetDirection toggleDirection) `shouldBe` expectedResult
+            in runMock (Set.fromList [Pin 1]) (testSetDirection toggleDirection) `shouldBe` expectedResult
 
           it "is idempotent" $
             let expectedResult = (Right In, Map.empty, ["Open Pin 1", "Set direction: PinDescriptor (Pin 1) In", "Close PinDescriptor (Pin 1)"])
-            in runMock (Set.fromList [Pin 1]) (testGetSetDirection id) `shouldBe` expectedResult
+            in runMock (Set.fromList [Pin 1]) (testSetDirection id) `shouldBe` expectedResult
 
      describe "writePin" $
        do it "toggles pin value" $
@@ -110,23 +110,22 @@ spec =
 
           it "fails when the pin direction is In" $
             -- Note that this test will leave Pin 1 in the "open" state.
-            let expectedResult = (Left "PinDescriptor (Pin 1) is configured for input", Map.fromList [(PinDescriptor (Pin 1),PinState {direction = In, value = Low})], ["Open Pin 1", "Set direction: PinDescriptor (Pin 1) In"])
+            let expectedResult = (Left "PinDescriptor (Pin 1) is configured for input", Map.fromList [(PinDescriptor (Pin 1),PinState {dir = In, value = Low})], ["Open Pin 1", "Set direction: PinDescriptor (Pin 1) In"])
             in runMock (Set.fromList [Pin 1]) testWritePinFailsOnInputPin `shouldBe` expectedResult
 
      describe "invalid descriptors throw exceptions" $
-       let expectedResult = (Left "Pin descriptor PinDescriptor (Pin 1) is invalid", Map.empty, ["Open Pin 1", "Close PinDescriptor (Pin 1)"])
-       in
-         do it "in hasDirection" $
-              runMock (Set.fromList [Pin 1]) (invalidDescriptor hasDirection) `shouldBe` expectedResult
+       do it "in direction" $
+            let expectedResult = (Left "Pin descriptor PinDescriptor (Pin 1) is invalid", Map.empty, ["Open Pin 1", "Close PinDescriptor (Pin 1)"])
+            in
+              runMock (Set.fromList [Pin 1]) (invalidDescriptor direction) `shouldBe` expectedResult
 
-            it "in getDirection" $
-              runMock (Set.fromList [Pin 1]) (invalidDescriptor getDirection) `shouldBe` expectedResult
+          let expectedResult = (Left "Pin descriptor PinDescriptor (Pin 1) is invalid", Map.empty, ["Open Pin 1", "Close PinDescriptor (Pin 1)"])
 
-            it "in setDirection" $
-              runMock (Set.fromList [Pin 1]) (invalidDescriptor (\d -> setDirection d Out)) `shouldBe` expectedResult
+          it "in setDirection" $
+            runMock (Set.fromList [Pin 1]) (invalidDescriptor (\d -> setDirection d Out)) `shouldBe` expectedResult
 
-            it "in readPin" $
-              runMock (Set.fromList [Pin 1]) (invalidDescriptor readPin) `shouldBe` expectedResult
+          it "in readPin" $
+            runMock (Set.fromList [Pin 1]) (invalidDescriptor readPin) `shouldBe` expectedResult
 
-            it "in writePin" $
-              runMock (Set.fromList [Pin 1]) (invalidDescriptor (\d -> writePin d High)) `shouldBe` expectedResult
+          it "in writePin" $
+            runMock (Set.fromList [Pin 1]) (invalidDescriptor (\d -> writePin d High)) `shouldBe` expectedResult

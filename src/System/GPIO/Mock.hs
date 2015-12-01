@@ -22,11 +22,11 @@ import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.Text (Text)
 import qualified Data.Text as T (intercalate, pack)
-import System.GPIO.Free (GpioF(..), GpioT, Direction(..), Pin(..), PinDescriptor(..), Value(..))
+import System.GPIO.Free (GpioF(..), GpioT, Pin(..), PinDescriptor(..), PinDirection(..), Value(..))
 
 type AvailablePins = Set Pin
 
-data PinState = PinState { direction :: !Direction, value :: !Value } deriving (Show, Eq)
+data PinState = PinState { dir :: !PinDirection, value :: !Value } deriving (Show, Eq)
 
 type PinStateMap = Map PinDescriptor PinState
 
@@ -66,16 +66,12 @@ runMockT = iterT run
                 say ["Close", tshow d]
                 next
 
-    run (HasDirection d next) =
-      do void $ checkDescriptor d
-         next True
-
-    run (GetDirection d next) =
+    run (Direction d next) =
       do void $ checkDescriptor d
          eitherDirection <- pinDirection d
          case eitherDirection of
            Left e -> throwError e
-           Right dir -> next dir
+           Right dir' -> next (Just dir')
 
     run (SetDirection d v next) =
       do void $ checkDescriptor d
@@ -84,7 +80,7 @@ runMockT = iterT run
            Left e -> throwError e
            Right s ->
              do states <- get
-                put (Map.insert d (s { direction = v }) states)
+                put (Map.insert d (s { dir = v }) states)
                 say ["Set direction:", tshow d, tshow v ]
                 next
 
@@ -101,7 +97,7 @@ runMockT = iterT run
          case eitherState of
            Left e -> throwError e
            Right s ->
-             case direction s of
+             case dir s of
                In -> throwError (show d ++ " is configured for input")
                Out ->
                  do states <- get
@@ -136,8 +132,8 @@ pinState = pinF id
 pinValue :: (MonadMock m) => PinDescriptor -> m (Either String Value)
 pinValue = pinF value
 
-pinDirection :: (MonadMock m) => PinDescriptor -> m (Either String Direction)
-pinDirection = pinF direction
+pinDirection :: (MonadMock m) => PinDescriptor -> m (Either String PinDirection)
+pinDirection = pinF dir
 
 -- | Run a GpioT program in a pure environment mimicking IO;
 -- exceptions are manifested as 'Either' 'String' 'a'.

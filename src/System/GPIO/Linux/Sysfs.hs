@@ -7,7 +7,7 @@ module System.GPIO.Linux.Sysfs
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Trans.Free (iterT)
 import System.FilePath
-import System.GPIO.Free (GpioF(..), GpioT, Direction(..), Pin(..), PinDescriptor(..), Value(..))
+import System.GPIO.Free (GpioF(..), GpioT, PinDirection(..), Pin(..), PinDescriptor(..), Value(..))
 import System.IO
 
 sysfsPath :: FilePath
@@ -39,10 +39,7 @@ runSysfsT = iterT run
     run (Close d next) =
       do undefined
 
-    run (HasDirection d next) =
-      do undefined
-
-    run (GetDirection d next) =
+    run (Direction d next) =
       do undefined
 
     run (SetDirection d v next) =
