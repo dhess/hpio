@@ -4,6 +4,7 @@
 
 module System.GPIO.Mock
        ( AvailablePins
+       , PinState(..)
        , PinStateMap
        , runMock
        , runMockT
