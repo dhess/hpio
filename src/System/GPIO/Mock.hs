@@ -64,16 +64,20 @@ runMockT = iterT run
                 say ["Close", tshow d]
                 next
 
-    run (HasDirection _ next) = next True
+    run (HasDirection d next) =
+      do void $ checkDescriptor d
+         next True
 
     run (GetDirection d next) =
-      do eitherDirection <- pinDirection d
+      do void $ checkDescriptor d
+         eitherDirection <- pinDirection d
          case eitherDirection of
            Left e -> throwError e
            Right dir -> next dir
 
     run (SetDirection d v next) =
-      do eitherState <- pinState d
+      do void $ checkDescriptor d
+         eitherState <- pinState d
          case eitherState of
            Left e -> throwError e
            Right s ->
@@ -83,13 +87,15 @@ runMockT = iterT run
                 next
 
     run (ReadPin d next) =
-      do eitherValue <- pinValue d
+      do void $ checkDescriptor d
+         eitherValue <- pinValue d
          case eitherValue of
            Left e -> throwError e
            Right v -> next v
 
     run (WritePin d v next) =
-      do eitherState <- pinState d
+      do void $ checkDescriptor d
+         eitherState <- pinState d
          case eitherState of
            Left e -> throwError e
            Right s ->
@@ -106,6 +112,13 @@ pinExists p = ask >>= return . (Set.member p)
 
 validDescriptor :: (MonadMock m) => PinDescriptor -> m Bool
 validDescriptor d = get >>= return . (Map.member d)
+
+checkDescriptor :: (MonadError String m, MonadMock m) => PinDescriptor -> m Bool
+checkDescriptor d =
+  do valid <- validDescriptor d
+     when (not valid) $
+       throwError $ "Pin descriptor " ++ show d ++ " is invalid"
+     return valid
 
 say :: (MonadMock m) => [Text] -> m ()
 say t = tell $ [T.intercalate " " t]
