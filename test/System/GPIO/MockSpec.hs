@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module System.GPIOSpec (spec) where
+module System.GPIO.MockSpec (spec) where
 
 import Control.Monad.Except
 import qualified Data.Map as Map
@@ -10,6 +10,13 @@ import System.GPIO.Free
 import System.GPIO.Mock
 
 import Test.Hspec
+
+-- To some extent, these tests only test the implementation of the
+-- Mock interpreter, which isn't particularly valuable on its own.
+-- However, it does allow us to test that we're able to express the
+-- kinds of GpioT programs we want, in a pure environment (and when
+-- the platform we're developing on doesn't actually have GPIO
+-- functionality).
 
 testOpenClose :: (MonadError String m) => (GpioT String) m ()
 testOpenClose =
