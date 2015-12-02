@@ -7,8 +7,8 @@ module System.GPIO.Mock
        , MockHandle(..)
        , MockF
        , MockT
-       , PinState(..)
-       , PinStateMap
+       , MockState(..)
+       , MockStateMap
        , evalMock
        , execMock
        , runMock
@@ -29,18 +29,18 @@ import System.GPIO.Free (GpioF(..), GpioT, Pin(..), PinDirection(..), Value(..))
 
 type AvailablePins = Set Pin
 
-data PinState = PinState { dir :: !PinDirection, value :: !Value } deriving (Show, Eq)
+data MockState = MockState { dir :: !PinDirection, value :: !Value } deriving (Show, Eq)
 
 data MockHandle = MockHandle Pin deriving (Show, Eq, Ord)
 
-type PinStateMap = Map MockHandle PinState
+type MockStateMap = Map MockHandle MockState
 
-initialState :: PinState
-initialState = PinState In Low
+initialState :: MockState
+initialState = MockState In Low
 
-type MonadMock = MonadRWS AvailablePins [Text] PinStateMap
+type MonadMock = MonadRWS AvailablePins [Text] MockStateMap
 
-type Mock = RWS AvailablePins [Text] PinStateMap
+type Mock = RWS AvailablePins [Text] MockStateMap
 
 type MockT = GpioT String MockHandle
 
@@ -81,7 +81,7 @@ runMockT = iterT run
 
     run (SetDirection h v next) =
       do void $ checkHandle h
-         eitherState <- pinState h
+         eitherState <- mockState h
          case eitherState of
            Left e -> throwError e
            Right s ->
@@ -99,7 +99,7 @@ runMockT = iterT run
 
     run (WritePin h v next) =
       do void $ checkHandle h
-         eitherState <- pinState h
+         eitherState <- mockState h
          case eitherState of
            Left e -> throwError e
            Right s ->
@@ -127,13 +127,13 @@ checkHandle h =
 say :: (MonadMock m) => [Text] -> m ()
 say t = tell $ [T.intercalate " " t]
 
-pinF :: (MonadMock m) => (PinState -> a) -> MockHandle -> m (Either String a)
+pinF :: (MonadMock m) => (MockState -> a) -> MockHandle -> m (Either String a)
 pinF f h =
   do states <- get
      return $ fmap f (note (show h ++ " is not a valid pin handle") (Map.lookup h states))
 
-pinState :: (MonadMock m) => MockHandle -> m (Either String PinState)
-pinState = pinF id
+mockState :: (MonadMock m) => MockHandle -> m (Either String MockState)
+mockState = pinF id
 
 pinValue :: (MonadMock m) => MockHandle -> m (Either String Value)
 pinValue = pinF value
@@ -143,7 +143,7 @@ pinDirection = pinF dir
 
 -- | Run a GpioT program in a pure environment mimicking IO;
 -- exceptions are manifested as 'Either' 'String' 'a'.
-runMock :: AvailablePins -> MockT (ExceptT String Mock) a -> (Either String a, PinStateMap, [Text])
+runMock :: AvailablePins -> MockT (ExceptT String Mock) a -> (Either String a, MockStateMap, [Text])
 runMock pins action = runRWS (runExceptT $ runMockT action) pins Map.empty
 
 -- | Evaluate a GpioT program in the 'Mock' monad and return the final
@@ -155,7 +155,7 @@ evalMock pins action =
 
 -- | Evaluate a GpioT program in the 'Mock' monad and return the final
 -- state and output, discarding the final value.
-execMock :: AvailablePins -> MockT (ExceptT String Mock) a -> (PinStateMap, [Text])
+execMock :: AvailablePins -> MockT (ExceptT String Mock) a -> (MockStateMap, [Text])
 execMock pins action =
   let (_, s, w) = runMock pins action
   in (s, w)
