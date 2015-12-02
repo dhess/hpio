@@ -5,6 +5,8 @@
 module System.GPIO.Mock
        ( AvailablePins
        , MockHandle(..)
+       , MockF
+       , MockT
        , PinState(..)
        , PinStateMap
        , evalMock
@@ -40,13 +42,14 @@ type MonadMock = MonadRWS AvailablePins [Text] PinStateMap
 
 type Mock = RWS AvailablePins [Text] PinStateMap
 
-tshow :: (Show a) => a -> Text
-tshow = T.pack . show
+type MockT = GpioT String MockHandle
 
-runMockT :: (MonadError String m, MonadMock m) => (GpioT String MockHandle) m a -> m a
+type MockF = GpioF String MockHandle
+
+runMockT :: (MonadError String m, MonadMock m) => MockT m a -> m a
 runMockT = iterT run
   where
-    run :: (MonadError String m, MonadMock m) => (GpioF String MockHandle) (m a) -> m a
+    run :: (MonadError String m, MonadMock m) => MockF (m a) -> m a
 
     run (Open p next) =
       do valid <- pinExists p
@@ -140,19 +143,22 @@ pinDirection = pinF dir
 
 -- | Run a GpioT program in a pure environment mimicking IO;
 -- exceptions are manifested as 'Either' 'String' 'a'.
-runMock :: AvailablePins -> (GpioT String MockHandle) (ExceptT String Mock) a -> (Either String a, PinStateMap, [Text])
+runMock :: AvailablePins -> MockT (ExceptT String Mock) a -> (Either String a, PinStateMap, [Text])
 runMock pins action = runRWS (runExceptT $ runMockT action) pins Map.empty
 
 -- | Evaluate a GpioT program in the 'Mock' monad and return the final
 -- value and output, discarding the final state.
-evalMock :: AvailablePins -> (GpioT String MockHandle) (ExceptT String Mock) a -> (Either String a, [Text])
+evalMock :: AvailablePins -> MockT (ExceptT String Mock) a -> (Either String a, [Text])
 evalMock pins action =
   let (a, _, w) = runMock pins action
   in (a, w)
 
 -- | Evaluate a GpioT program in the 'Mock' monad and return the final
 -- state and output, discarding the final value.
-execMock :: AvailablePins -> (GpioT String MockHandle) (ExceptT String Mock) a -> (PinStateMap, [Text])
+execMock :: AvailablePins -> MockT (ExceptT String Mock) a -> (PinStateMap, [Text])
 execMock pins action =
   let (_, s, w) = runMock pins action
   in (s, w)
+
+tshow :: (Show a) => a -> Text
+tshow = T.pack . show
