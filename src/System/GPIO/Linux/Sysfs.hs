@@ -7,7 +7,7 @@ module System.GPIO.Linux.Sysfs
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Trans.Free (iterT)
 import System.FilePath
-import System.GPIO.Free (GpioF(..), GpioT, PinDirection(..), Pin(..), PinDescriptor(..), Value(..))
+import System.GPIO.Free (GpioF(..), GpioT, PinDirection(..), Pin(..), Value(..))
 import System.IO
 
 sysfsPath :: FilePath
@@ -28,10 +28,12 @@ directionFile p = pinPath p </> "direction"
 valueFile :: Pin -> FilePath
 valueFile p = pinPath p </> "direction"
 
-runSysfsT :: (MonadIO m) => (GpioT String) m a -> m a
+data PinHandle = PinHandle Pin deriving (Eq, Ord, Show)
+
+runSysfsT :: (MonadIO m) => (GpioT String PinHandle) m a -> m a
 runSysfsT = iterT run
   where
-    run :: (MonadIO m) => (GpioF String) (m a) -> m a
+    run :: (MonadIO m) => (GpioF String PinHandle) (m a) -> m a
 
     run (Open (Pin n) next) =
       do undefined
