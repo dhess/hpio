@@ -28,7 +28,7 @@ directionFile :: Pin -> FilePath
 directionFile p = pinPath p </> "direction"
 
 valueFile :: Pin -> FilePath
-valueFile p = pinPath p </> "direction"
+valueFile p = pinPath p </> "value"
 
 data PinHandle = PinHandle Pin deriving (Eq, Ord, Show)
 
