@@ -1,7 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module System.GPIO.Linux.Sysfs
-       ( runSysfsT
+       ( SysfsF
+       , SysfsT
+       , runSysfsT
        ) where
 
 import Control.Monad.IO.Class (MonadIO)
@@ -30,10 +32,14 @@ valueFile p = pinPath p </> "direction"
 
 data PinHandle = PinHandle Pin deriving (Eq, Ord, Show)
 
-runSysfsT :: (MonadIO m) => (GpioT String PinHandle) m a -> m a
+type SysfsT = GpioT String PinHandle
+
+type SysfsF = GpioF String PinHandle
+
+runSysfsT :: (MonadIO m) => SysfsT m a -> m a
 runSysfsT = iterT run
   where
-    run :: (MonadIO m) => (GpioF String PinHandle) (m a) -> m a
+    run :: (MonadIO m) => SysfsF (m a) -> m a
 
     run (Open (Pin n) next) =
       do undefined
