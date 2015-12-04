@@ -1,15 +1,17 @@
-{ mkDerivation, base, containers, errors, exceptions, free, hspec
-, mtl, stdenv, text, transformers
+{ mkDerivation, base, containers, directory, errors, exceptions
+, filepath, free, hspec, mtl, stdenv, strict, text, transformers
 }:
 mkDerivation {
   pname = "gpio";
   version = "0.0.0";
   src = ./.;
   libraryHaskellDepends = [
-    base containers errors exceptions free mtl text transformers
+    base containers directory errors exceptions filepath free mtl
+    strict text transformers
   ];
   testHaskellDepends = [
-    base containers errors exceptions free hspec mtl text transformers
+    base containers directory errors exceptions filepath free hspec mtl
+    strict text transformers
   ];
   homepage = "https://github.com/dhess/gpio";
   description = "Control GPIO pins";

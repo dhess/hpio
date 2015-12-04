@@ -32,11 +32,13 @@ Library
                       , TemplateHaskell
   Build-Depends:        base >= 4 && < 5
                       , containers
+                      , directory
                       , errors
                       , exceptions
                       , filepath
                       , free
                       , mtl
+                      , strict
                       , text
                       , transformers
 
@@ -53,12 +55,14 @@ Test-Suite spec
                       , TemplateHaskell
   Build-Depends:        base
                       , containers
+                      , directory
                       , errors
                       , exceptions
                       , filepath
                       , free
                       , hspec
                       , mtl
+                      , strict
                       , text
                       , transformers
   Other-modules:        System.GPIO
