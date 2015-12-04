@@ -1,7 +1,9 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module System.GPIO.Linux.Sysfs
-       ( SysfsF
+       ( PinDescriptor(..)
+       , SysfsF
        , SysfsT
        , runSysfsT
        ) where
@@ -30,11 +32,11 @@ directionFile p = pinPath p </> "direction"
 valueFile :: Pin -> FilePath
 valueFile p = pinPath p </> "value"
 
-data PinHandle = PinHandle Pin deriving (Eq, Ord, Show)
+newtype PinDescriptor = PinDescriptor { pin :: Pin } deriving (Show, Eq, Ord)
 
-type SysfsT = GpioT String PinHandle
+type SysfsT = GpioT String PinDescriptor
 
-type SysfsF = GpioF String PinHandle
+type SysfsF = GpioF String PinDescriptor
 
 runSysfsT :: (MonadIO m) => SysfsT m a -> m a
 runSysfsT = iterT run
