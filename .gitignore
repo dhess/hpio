@@ -1,7 +1,9 @@
 dist
 cabal-dev
 *.o
+*_o
 *.hi
+*_hi
 *.chi
 *.chs.h
 .virthualenv

@@ -5,7 +5,9 @@ module System.GPIO.Linux.Sysfs
        ( PinDescriptor(..)
        , SysfsF
        , SysfsT
+       , Sysfs
        , runSysfsT
+       , runSysfs
        ) where
 
 import Prelude hiding (readFile, writeFile)
@@ -107,6 +109,11 @@ runSysfsT = iterT run
       do let p = pin d
          void $ writeFile (valueFile p) (toSysfsValue v)
          next
+
+type Sysfs a = SysfsT IO a
+
+runSysfs :: Sysfs a -> IO a
+runSysfs = runSysfsT
 
 toSysfsValue :: Value -> String
 toSysfsValue Low = "0"
