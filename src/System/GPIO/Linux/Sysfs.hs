@@ -68,7 +68,7 @@ runSysfsT = iterT run
          case hasSysfs of
            False -> next (Left "sysfs GPIO is not present")
            True ->
-             do exported <- liftIO $ doesFileExist (pinPath p)
+             do exported <- liftIO $ doesDirectoryExist (pinPath p)
                 case exported of
                   True -> next (Right $ PinDescriptor p)
                   False ->
