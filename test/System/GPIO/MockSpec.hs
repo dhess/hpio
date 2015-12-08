@@ -79,7 +79,13 @@ invalidHandle action =
 
 spec :: Spec
 spec =
-  do describe "open and close" $
+  do describe "availablePins" $
+       it "returns the list of available pins" $
+         let pinList = [Pin 1, Pin 8]
+             expectedResult = (Right pinList, Map.empty, [])
+         in runMock (Set.fromList pinList) availablePins `shouldBe` expectedResult
+
+     describe "open and close" $
 
        do it "succeeds when the pin is available" $
             do let expectedResult = (Right (), Map.empty, ["Open Pin 1", "Close MockHandle (Pin 1)"])

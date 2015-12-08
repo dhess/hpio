@@ -3,7 +3,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module System.GPIO.Mock
-       ( AvailablePins
+       ( MockPins
        , MockHandle(..)
        , MockF
        , MockT
@@ -27,7 +27,7 @@ import Data.Text (Text)
 import qualified Data.Text as T (intercalate, pack)
 import System.GPIO.Free (GpioF(..), GpioT, Pin(..), PinDirection(..), Value(..))
 
-type AvailablePins = Set Pin
+type MockPins = Set Pin
 
 data MockState = MockState { dir :: !PinDirection, value :: !Value } deriving (Show, Eq)
 
@@ -38,9 +38,9 @@ type MockStateMap = Map MockHandle MockState
 initialState :: MockState
 initialState = MockState In Low
 
-type MonadMock = MonadRWS AvailablePins [Text] MockStateMap
+type MonadMock = MonadRWS MockPins [Text] MockStateMap
 
-type Mock = RWS AvailablePins [Text] MockStateMap
+type Mock = RWS MockPins [Text] MockStateMap
 
 type MockT = GpioT String MockHandle
 
@@ -50,6 +50,8 @@ runMockT :: (MonadError String m, MonadMock m) => MockT m a -> m a
 runMockT = iterT run
   where
     run :: (MonadError String m, MonadMock m) => MockF (m a) -> m a
+
+    run (AvailablePins next) = ask >>= next . Set.toList
 
     run (Open p next) =
       do valid <- pinExists p
@@ -143,19 +145,19 @@ pinDirection = pinF dir
 
 -- | Run a GpioT program in a pure environment mimicking IO;
 -- exceptions are manifested as 'Either' 'String' 'a'.
-runMock :: AvailablePins -> MockT (ExceptT String Mock) a -> (Either String a, MockStateMap, [Text])
+runMock :: MockPins -> MockT (ExceptT String Mock) a -> (Either String a, MockStateMap, [Text])
 runMock pins action = runRWS (runExceptT $ runMockT action) pins Map.empty
 
 -- | Evaluate a GpioT program in the 'Mock' monad and return the final
 -- value and output, discarding the final state.
-evalMock :: AvailablePins -> MockT (ExceptT String Mock) a -> (Either String a, [Text])
+evalMock :: MockPins -> MockT (ExceptT String Mock) a -> (Either String a, [Text])
 evalMock pins action =
   let (a, _, w) = runMock pins action
   in (a, w)
 
 -- | Evaluate a GpioT program in the 'Mock' monad and return the final
 -- state and output, discarding the final value.
-execMock :: AvailablePins -> MockT (ExceptT String Mock) a -> (MockStateMap, [Text])
+execMock :: MockPins -> MockT (ExceptT String Mock) a -> (MockStateMap, [Text])
 execMock pins action =
   let (_, s, w) = runMock pins action
   in (s, w)

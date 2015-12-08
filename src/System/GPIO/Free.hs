@@ -11,6 +11,7 @@ module System.GPIO.Free
        , Pin(..)
        , PinDirection(..)
        , Value(..)
+       , availablePins
        , open
        , close
        , direction
@@ -31,6 +32,7 @@ data PinDirection = In | Out deriving (Eq, Show, Generic)
 data Value = Low | High deriving (Eq, Enum, Ord, Show, Generic)
 
 data GpioF e h next where
+  AvailablePins :: ([Pin] -> next) -> GpioF e h next
   Open :: Pin -> (Either e h -> next) -> GpioF e h next
   Close :: h -> next -> GpioF e h next
   Direction :: h -> (Maybe PinDirection -> next) -> GpioF e h next
@@ -39,6 +41,7 @@ data GpioF e h next where
   WritePin :: h -> Value -> next -> GpioF e h next
 
 instance Functor (GpioF e h) where
+  fmap f (AvailablePins g) = AvailablePins (f . g)
   fmap f (Open p g) = Open p (f . g)
   fmap f (Close h x) = Close h (f x)
   fmap f (Direction h g) = Direction h (f . g)
@@ -50,6 +53,7 @@ type GpioT e h = FreeT (GpioF e h)
 
 type GpioM h = (GpioT String h) Identity
 
+makeFreeCon 'AvailablePins
 makeFreeCon 'Open
 makeFreeCon 'Close
 makeFreeCon 'Direction
