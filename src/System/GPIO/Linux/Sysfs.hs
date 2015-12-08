@@ -19,7 +19,7 @@ import Prelude hiding (readFile, writeFile)
 import Control.Error.Util (hushT)
 import Control.Error.Script (scriptIO)
 import Control.Monad (filterM, void)
-import Control.Monad.Except (MonadError)
+import Control.Monad.Except (MonadError, throwError)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Trans.Free (iterT)
 import Control.Monad.Trans.Maybe (MaybeT(..), runMaybeT)
@@ -96,7 +96,7 @@ runSysfsT = iterT run
                 case dir of
                   "in\n"  -> next $ Just In
                   "out\n" -> next $ Just Out
-                  _     -> next Nothing -- XXX: should be an exception
+                  _     -> throwError $ "Unexpected direction value for " ++ show p
 
     run (SetDirection d dir next) =
       do let p = pin d
@@ -109,7 +109,7 @@ runSysfsT = iterT run
          case value of
            "0\n" -> next Low
            "1\n" -> next High
-           _   -> next High -- XXX: should be an exception
+           _   -> throwError $ "Unexpected pin value for " ++ show p
 
     run (WritePin d v next) =
       do let p = pin d
