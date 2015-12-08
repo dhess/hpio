@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -5,15 +6,14 @@ module System.GPIO.Linux.Sysfs
        ( PinDescriptor(..)
        , SysfsF
        , SysfsT
-       , Sysfs
        , runSysfsT
-       , runSysfs
        ) where
 
 import Prelude hiding (readFile, writeFile)
 import Control.Error.Util (hushT)
 import Control.Error.Script (scriptIO)
 import Control.Monad (filterM, void)
+import Control.Monad.Except (MonadError)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Trans.Free (iterT)
 import Control.Monad.Trans.Maybe (MaybeT(..), runMaybeT)
@@ -50,10 +50,10 @@ type SysfsT = GpioT String PinDescriptor
 
 type SysfsF = GpioF String PinDescriptor
 
-runSysfsT :: (MonadIO m) => SysfsT m a -> m a
+runSysfsT :: (MonadError String m, MonadIO m) => SysfsT m a -> m a
 runSysfsT = iterT run
   where
-    run :: (MonadIO m) => SysfsF (m a) -> m a
+    run :: (MonadError String m, MonadIO m) => SysfsF (m a) -> m a
 
     run (Pins next) =
       do hasSysfs <- liftIO $ doesDirectoryExist sysfsPath
@@ -109,11 +109,6 @@ runSysfsT = iterT run
       do let p = pin d
          void $ writeFile (valueFile p) (toSysfsValue v)
          next
-
-type Sysfs a = SysfsT IO a
-
-runSysfs :: Sysfs a -> IO a
-runSysfs = runSysfsT
 
 toSysfsValue :: Value -> String
 toSysfsValue Low = "0"
