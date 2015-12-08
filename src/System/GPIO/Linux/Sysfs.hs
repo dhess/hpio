@@ -18,7 +18,7 @@ import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Trans.Free (iterT)
 import Control.Monad.Trans.Maybe (MaybeT(..), runMaybeT)
 import Data.Char (toLower)
-import Data.List (isPrefixOf)
+import Data.List (isPrefixOf, sort)
 import Data.Maybe (catMaybes)
 import System.Directory (doesDirectoryExist, doesFileExist, getDirectoryContents)
 import System.FilePath
@@ -145,7 +145,7 @@ allPins =
      sysfsDirectories <- filterM (liftIO . doesDirectoryExist) sysfsContents
      let chipDirs = filter (\f -> isPrefixOf "gpiochip" $ takeFileName f) sysfsDirectories
      maybePins <- mapM (runMaybeT . pinRange) chipDirs
-     return $ concat (catMaybes maybePins)
+     return $ sort $ concat $ catMaybes maybePins
 
 pinRange :: (MonadIO m) => FilePath -> MaybeT m [Pin]
 pinRange chipDir =
