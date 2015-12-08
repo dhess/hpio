@@ -140,7 +140,8 @@ chipNgpio chipDir = readFromFile (chipDir </> "ngpio")
 
 allPins :: (MonadIO m) => m [Pin]
 allPins =
-  do sysfsContents <- liftIO $ getDirectoryContents sysfsPath
+  do sysfsEntries <- liftIO $ getDirectoryContents sysfsPath
+     let sysfsContents = fmap (sysfsPath </>) sysfsEntries
      sysfsDirectories <- filterM (liftIO . doesDirectoryExist) sysfsContents
      let chipDirs = filter (\f -> isPrefixOf "gpiochip" $ takeFileName f) sysfsDirectories
      maybePins <- mapM (runMaybeT . pinRange) chipDirs
