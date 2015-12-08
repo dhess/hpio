@@ -79,11 +79,11 @@ invalidHandle action =
 
 spec :: Spec
 spec =
-  do describe "availablePins" $
+  do describe "pins" $
        it "returns the list of available pins" $
          let pinList = [Pin 1, Pin 8]
              expectedResult = (Right pinList, Map.empty, [])
-         in runMock (Set.fromList pinList) availablePins `shouldBe` expectedResult
+         in runMock (Set.fromList pinList) pins `shouldBe` expectedResult
 
      describe "open and close" $
 

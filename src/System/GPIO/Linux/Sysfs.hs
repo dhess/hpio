@@ -53,7 +53,7 @@ runSysfsT = iterT run
   where
     run :: (MonadIO m) => SysfsF (m a) -> m a
 
-    run (AvailablePins next) =
+    run (Pins next) =
       do hasSysfs <- liftIO $ doesDirectoryExist sysfsPath
          case hasSysfs of
            False -> next []

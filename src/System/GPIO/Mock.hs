@@ -51,7 +51,7 @@ runMockT = iterT run
   where
     run :: (MonadError String m, MonadMock m) => MockF (m a) -> m a
 
-    run (AvailablePins next) = ask >>= next . Set.toList
+    run (Pins next) = ask >>= next . Set.toList
 
     run (Open p next) =
       do valid <- pinExists p
