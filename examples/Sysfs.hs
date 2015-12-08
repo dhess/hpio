@@ -37,7 +37,7 @@ example =
                      Just dir ->
                        do output $ "Pin direction is " ++ show dir
                           when (dir == In) $
-                            do output "Setting pin direction to 'out'"
+                            do output $ "Setting pin direction to " ++ show Out
                                void $ setDirection h Out
                           let newValue = toggleValue val
                           output $ "Setting pin value to " ++ show newValue
