@@ -7,6 +7,12 @@ module System.GPIO.Linux.Sysfs
        , SysfsF
        , SysfsT
        , runSysfsT
+       , sysfsPath
+       , exportFileName
+       , unexportFileName
+       , pinDirName
+       , pinDirectionFileName
+       , pinValueFileName
        ) where
 
 import Prelude hiding (readFile, writeFile)
@@ -29,20 +35,20 @@ import qualified System.IO.Strict as IOS (readFile)
 sysfsPath :: FilePath
 sysfsPath = "/sys/class/gpio"
 
-exportFile :: FilePath
-exportFile = sysfsPath </> "export"
+exportFileName :: FilePath
+exportFileName = sysfsPath </> "export"
 
-unexportFile :: FilePath
-unexportFile = sysfsPath </> "unexport"
+unexportFileName :: FilePath
+unexportFileName = sysfsPath </> "unexport"
 
-pinPath :: Pin -> FilePath
-pinPath (Pin n) = sysfsPath </> ("gpio" ++ show n)
+pinDirName :: Pin -> FilePath
+pinDirName (Pin n) = sysfsPath </> ("gpio" ++ show n)
 
-directionFile :: Pin -> FilePath
-directionFile p = pinPath p </> "direction"
+pinDirectionFileName :: Pin -> FilePath
+pinDirectionFileName p = pinDirName p </> "direction"
 
-valueFile :: Pin -> FilePath
-valueFile p = pinPath p </> "value"
+pinValueFileName :: Pin -> FilePath
+pinValueFileName p = pinDirName p </> "value"
 
 newtype PinDescriptor = PinDescriptor { pin :: Pin } deriving (Show, Eq, Ord)
 
@@ -68,25 +74,25 @@ runSysfsT = iterT run
          case hasSysfs of
            False -> next (Left "sysfs GPIO is not present")
            True ->
-             do exported <- liftIO $ doesDirectoryExist (pinPath p)
+             do exported <- liftIO $ doesDirectoryExist (pinDirName p)
                 case exported of
                   True -> next (Right $ PinDescriptor p)
                   False ->
-                    do void $ writeFile exportFile (show n)
+                    do void $ writeFile exportFileName (show n)
                        next (Right $ PinDescriptor p)
 
     run (Close d next) =
       do let (Pin n) = pin d
-         void $ writeFile unexportFile (show n)
+         void $ writeFile unexportFileName (show n)
          next
 
     run (Direction d next) =
       do let p = pin d
-         hasDirection <- liftIO $ doesFileExist (directionFile p)
+         hasDirection <- liftIO $ doesFileExist (pinDirectionFileName p)
          case hasDirection of
            False -> next Nothing
            True ->
-             do dir <- readFile (directionFile p)
+             do dir <- readFile (pinDirectionFileName p)
                 case dir of
                   "in\n"  -> next $ Just In
                   "out\n" -> next $ Just Out
@@ -94,12 +100,12 @@ runSysfsT = iterT run
 
     run (SetDirection d dir next) =
       do let p = pin d
-         void $ writeFile (directionFile p) (lowercase $ show dir)
+         void $ writeFile (pinDirectionFileName p) (lowercase $ show dir)
          next
 
     run (ReadPin d next) =
       do let p = pin d
-         value <- readFile (valueFile p)
+         value <- readFile (pinValueFileName p)
          case value of
            "0\n" -> next Low
            "1\n" -> next High
@@ -107,7 +113,7 @@ runSysfsT = iterT run
 
     run (WritePin d v next) =
       do let p = pin d
-         void $ writeFile (valueFile p) (toSysfsValue v)
+         void $ writeFile (pinValueFileName p) (toSysfsValue v)
          next
 
 toSysfsValue :: Value -> String
@@ -129,11 +135,11 @@ readFromFile f = liftIO (IOS.readFile f >>= readIO)
 maybeIO :: (MonadIO m) => IO a -> MaybeT m a
 maybeIO = hushT . scriptIO
 
-chipBase :: (MonadIO m) => FilePath -> m Int
-chipBase chipDir = readFromFile (chipDir </> "base")
+chipBaseGpio :: (MonadIO m) => FilePath -> m Int
+chipBaseGpio chipDir = readFromFile (chipDir </> "base")
 
-chipNgpio :: (MonadIO m) => FilePath -> m Int
-chipNgpio chipDir = readFromFile (chipDir </> "ngpio")
+chipNGpio :: (MonadIO m) => FilePath -> m Int
+chipNGpio chipDir = readFromFile (chipDir </> "ngpio")
 
 allPins :: (MonadIO m) => m [Pin]
 allPins =
@@ -146,8 +152,8 @@ allPins =
 
 pinRange :: (MonadIO m) => FilePath -> MaybeT m [Pin]
 pinRange chipDir =
-  do base <- maybeIO $ chipBase chipDir
-     ngpio <- maybeIO $ chipNgpio chipDir
+  do base <- maybeIO $ chipBaseGpio chipDir
+     ngpio <- maybeIO $ chipNGpio chipDir
      case (base >= 0 && ngpio > 0) of
        False -> return []
        True -> return $ fmap Pin [base .. (base + ngpio - 1)]
