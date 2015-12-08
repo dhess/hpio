@@ -151,4 +151,6 @@ pinRange :: (MonadIO m) => FilePath -> MaybeT m [Pin]
 pinRange chipDir =
   do base <- maybeIO $ chipBase chipDir
      ngpio <- maybeIO $ chipNgpio chipDir
-     return $ fmap Pin [base .. base+ngpio]
+     case (base >= 0 && ngpio > 0) of
+       False -> return []
+       True -> return $ fmap Pin [base .. (base + ngpio - 1)]
