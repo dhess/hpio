@@ -18,7 +18,7 @@ import Test.Hspec
 -- the platform we're developing on doesn't actually have GPIO
 -- functionality).
 
-testOpenClose :: (MonadError String m) => MockT m ()
+testOpenClose :: (MonadError e m) => GpioT e h m ()
 testOpenClose =
   do handle <- open (Pin 1)
      case handle of
@@ -29,7 +29,7 @@ toggleDirection :: PinDirection -> PinDirection
 toggleDirection In = Out
 toggleDirection Out = In
 
-testSetDirection :: (MonadError String m) => (PinDirection -> PinDirection) -> MockT m PinDirection
+testSetDirection :: (MonadError e m) => (PinDirection -> PinDirection) -> GpioT e h m PinDirection
 testSetDirection f =
   do handle <- open (Pin 1)
      case handle of
@@ -45,7 +45,7 @@ toggleValue :: Value -> Value
 toggleValue Low = High
 toggleValue High = Low
 
-testReadWritePin :: (MonadError String m) => (Value -> Value) -> MockT m (Value, Value)
+testReadWritePin :: (MonadError e m) => (Value -> Value) -> GpioT e h m (Value, Value)
 testReadWritePin f =
   do handle <- open (Pin 1)
      case handle of
@@ -58,7 +58,7 @@ testReadWritePin f =
             close d
             return (val1, val2)
 
-testWritePinFailsOnInputPin :: (MonadError String m) => MockT m ()
+testWritePinFailsOnInputPin :: (MonadError e m) => GpioT e h m ()
 testWritePinFailsOnInputPin =
   do handle <- open (Pin 1)
      case handle of
@@ -68,7 +68,7 @@ testWritePinFailsOnInputPin =
             _ <- writePin d High
             close d
 
-invalidHandle :: (MonadError String m) => (MockHandle -> MockT m a) -> MockT m a
+invalidHandle :: (MonadError e m) => (h -> GpioT e h m a) -> GpioT e h m a
 invalidHandle action =
   do handle <- open (Pin 1)
      case handle of
