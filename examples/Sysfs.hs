@@ -4,6 +4,7 @@
 
 module Main where
 
+import Control.Error.Script (runScript, scriptIO)
 import Control.Monad (void, when)
 import Control.Monad.Except (MonadError, runExceptT, throwError)
 import Control.Monad.IO.Class (MonadIO, liftIO)
@@ -45,11 +46,36 @@ example =
                    output ("Closing " ++ show p)
                    close h
 
-main :: IO ()
-main =
+-- Note the approach to error handling here. The 'example' program
+-- above only cares that the monad in which it runs is an instance of
+-- 'MonadError e m', but otherwise is agnostic about error handling.
+--
+-- Due to the use of 'runExceptT' here, errors that occur in the
+-- example program are expressed as 'Left String' and propagated
+-- upwards as 'userError's, as will exceptions that occur in the
+-- 'runSysfsT' interpreter, due to the fact that 'runSysfsT' manifests
+-- exceptions as 'String'.
+--
+-- Errors that occur due to real-world issues (i.e., IO exceptions)
+-- will not be handled by this function. It's the job of the caller to
+-- decide what to do with those.
+--
+-- So, in summary: program errors or interpreter errors are handled
+-- here and punted upwards. Real-world errors pass through.
+runIO :: IO ()
+runIO =
   do result <- runExceptT $ runSysfsT example
      case result of
-       Left e -> putStrLn ("Error: " ++ e)
-       _ -> putStrLn "OK"
+       Left e -> fail $ "runIO caught error: " ++ e
+       Right _ -> return ()
 
+-- All errors will be handled by printing the first error to stderr.
+-- This includes program errors, interpreter errors, and IO errors.
+main :: IO ()
+main = runScript $ scriptIO runIO
 
+-- If you want to run the example with unhandled exceptions, use this
+-- version:
+
+-- main :: IO ()
+-- main = runIO
