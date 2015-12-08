@@ -88,8 +88,8 @@ runSysfsT = iterT run
            True ->
              do dir <- readFile (directionFile p)
                 case dir of
-                  "in"  -> next $ Just In
-                  "out" -> next $ Just Out
+                  "in\n"  -> next $ Just In
+                  "out\n" -> next $ Just Out
                   _     -> next Nothing -- XXX: should be an exception
 
     run (SetDirection d dir next) =
@@ -101,8 +101,8 @@ runSysfsT = iterT run
       do let p = pin d
          value <- readFile (valueFile p)
          case value of
-           "0" -> next Low
-           "1" -> next High
+           "0\n" -> next Low
+           "1\n" -> next High
            _   -> next High -- XXX: should be an exception
 
     run (WritePin d v next) =
