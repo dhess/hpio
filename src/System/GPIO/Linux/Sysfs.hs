@@ -82,8 +82,8 @@ runSysfsT = iterT run
 
     run (Direction d next) =
       do let p = pin d
-         hasDir <- hasDirection p
-         case hasDir of
+         hasDirection <- liftIO $ doesFileExist (directionFile p)
+         case hasDirection of
            False -> next Nothing
            True ->
              do dir <- readFile (directionFile p)
@@ -116,9 +116,6 @@ toSysfsValue High = "1"
 
 lowercase :: String -> String
 lowercase = fmap toLower
-
-hasDirection :: (MonadIO m) => Pin -> m Bool
-hasDirection p = liftIO $ doesFileExist (directionFile p)
 
 writeFile :: (MonadIO m) => FilePath -> String -> m ()
 writeFile f s = liftIO $ IO.writeFile f s
