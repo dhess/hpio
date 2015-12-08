@@ -4,7 +4,7 @@
 
 module Main where
 
-import Control.Monad (void)
+import Control.Monad (void, when)
 import Control.Monad.Except (MonadError, runExceptT, throwError)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import System.GPIO.Free
@@ -12,6 +12,10 @@ import System.GPIO.Linux.Sysfs (runSysfsT)
 
 output :: (MonadIO m) => String -> m ()
 output = liftIO . putStrLn
+
+toggleValue :: Value -> Value
+toggleValue High = Low
+toggleValue Low = High
 
 example :: (MonadIO m, MonadError e m) => GpioT e h m ()
 example =
@@ -29,24 +33,15 @@ example =
                    output ("Pin value is " ++ show val)
                    maybeDir <- direction h
                    case maybeDir of
-                     Nothing ->
-                       do output "Pin direction cannot be set"
-                          output ("Closing " ++ show p)
-                          void $ close h
-                          return ()
-                     Just In ->
-                       do output "Pin direction is 'in'"
-                          output "Setting pin direction to 'out'"
-                          void $ setDirection h Out
-                     Just Out ->
-                       output "Pin direction is 'out'"
-                   case val of
-                     High ->
-                       do output "Writing pin value 'low'"
-                          void $ writePin h Low
-                     Low ->
-                       do output "Writing pin value 'high'"
-                          void $ writePin h High
+                     Nothing -> output "Pin direction cannot be set"
+                     Just dir ->
+                       do output $ "Pin direction is " ++ show dir
+                          when (dir == In) $
+                            do output "Setting pin direction to 'out'"
+                               void $ setDirection h Out
+                          let newValue = toggleValue val
+                          output $ "Setting pin value to " ++ show newValue
+                          void $ writePin h newValue
                    output ("Closing " ++ show p)
                    close h
 
