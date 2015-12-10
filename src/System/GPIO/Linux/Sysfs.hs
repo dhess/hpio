@@ -1,12 +1,25 @@
+-- | A 'GpioF' interpreter for Linux GPIO via sysfs.
+--
+-- Note that this module contains some functions which are not part of
+-- the 'GpioF' DSL, but which may be useful for users of the module,
+-- particularly when running 'GpioF' programs using the sysfs
+-- interpreter. These functions are exported for your convenience.
+
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module System.GPIO.Linux.Sysfs
-       ( PinDescriptor(..)
+       ( -- * The Linux sysfs GPIO interpreter
+         PinDescriptor(..)
        , SysfsF
        , SysfsT
+       , Sysfs
        , runSysfsT
+       , runSysfs
+       , runSysfs'
+       , runSysfsSafe
+         -- * Convenience functions
        , sysfsPath
        , exportFileName
        , unexportFileName
@@ -19,7 +32,7 @@ import Prelude hiding (readFile, writeFile)
 import Control.Error.Util (hushT)
 import Control.Error.Script (scriptIO)
 import Control.Monad (filterM, void)
-import Control.Monad.Except (MonadError, throwError)
+import Control.Monad.Except (ExceptT, MonadError, runExceptT, throwError)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Trans.Free (iterT)
 import Control.Monad.Trans.Maybe (MaybeT(..), runMaybeT)
@@ -27,35 +40,67 @@ import Data.Char (toLower)
 import Data.List (isPrefixOf, sort)
 import Data.Maybe (catMaybes)
 import System.Directory (doesDirectoryExist, doesFileExist, getDirectoryContents)
-import System.FilePath
+import System.FilePath ((</>), takeFileName)
 import System.GPIO.Free (GpioF(..), GpioT, PinDirection(..), Pin(..), Value(..))
 import qualified System.IO as IO (writeFile)
 import qualified System.IO.Strict as IOS (readFile)
 
+-- | The base path to Linux's GPIO sysfs interface.
 sysfsPath :: FilePath
 sysfsPath = "/sys/class/gpio"
 
+-- | The name of the control file used to export GPIO pins via sysfs.
 exportFileName :: FilePath
 exportFileName = sysfsPath </> "export"
 
+-- | The name of the control file used to "unexport" GPIO pins via
+-- sysfs.
 unexportFileName :: FilePath
 unexportFileName = sysfsPath </> "unexport"
 
+-- | Exporting a GPIO pin via sysfs creates a control directory
+-- corresponding to that pin. 'pinDirName' gives the name of that
+-- directory for a given pin number.
 pinDirName :: Pin -> FilePath
 pinDirName (Pin n) = sysfsPath </> ("gpio" ++ show n)
 
+-- | Pins whose direction can be controlled via sysfs provide a
+-- control file. 'pinDirectionFileName' gives the name of that
+-- file. Note that for some GPIO pins, the direction cannot be set. In
+-- these cases, the file named by this function does not actually
+-- exist.
 pinDirectionFileName :: Pin -> FilePath
 pinDirectionFileName p = pinDirName p </> "direction"
 
+-- | The name of the control file used to read and write the pin's
+-- value.
 pinValueFileName :: Pin -> FilePath
 pinValueFileName p = pinDirName p </> "value"
 
+-- | The sysfs interpreter's pin handle type. Currently it's just a
+-- newtype wrapper around a 'Pin'. The constructor is exported for
+-- convenience, but note that the implementation may change in future
+-- versions of the package.
 newtype PinDescriptor = PinDescriptor { pin :: Pin } deriving (Show, Eq, Ord)
 
+-- | A monad transformer which adds Linux sysfs GPIO computations to
+-- other monads.
 type SysfsT = GpioT String PinDescriptor
 
+-- | The Linux sysfs GPIO DSL type.
 type SysfsF = GpioF String PinDescriptor
 
+-- | Run a 'SysfsT' computation embedded in a 'MonadIO' monad instance
+-- and return the result. Errors that occur in the computation or in
+-- the interpreter are thrown with a 'String' argument via
+-- 'throwError', so the wrapped monad must also be an instance of
+-- 'MonadError String'. Any 'IOException's that occur as a side effect
+-- of the computation are not handled here and are simply propagated
+-- upwards.
+--
+-- (Errors that could occur in the interpreter are generally limited
+-- to reading unexpected results from various sysfs GPIO control
+-- files.)
 runSysfsT :: (MonadError String m, MonadIO m) => SysfsT m a -> m a
 runSysfsT = iterT run
   where
@@ -115,6 +160,50 @@ runSysfsT = iterT run
       do let p = pin d
          void $ writeFile (pinValueFileName p) (toSysfsValue v)
          next
+
+-- | A convenient specialization of 'SysfsT' which runs sysfs GPIO
+-- computations in the 'IO' monad, and returns results as 'Either
+-- String a'.
+type Sysfs a = SysfsT (ExceptT String IO) a
+
+-- | Run a 'Sysfs' computation in the 'IO' monad and return the result
+-- as 'Right a'. If an error occurs in the computation or in the
+-- interpreter, it is returned as 'Left String'. However, the function
+-- does not catch any 'IOException's that occur as a side effect of
+-- the computation. Those will propagate upwards.
+runSysfs :: Sysfs a -> IO (Either String a)
+runSysfs action = runExceptT $ runSysfsT action
+
+-- | Run a 'Sysfs' computation and return the result in an 'Either
+-- String a'. If an error in the computation, in the 'Sysfs'
+-- interpreter, or elsewhere while the computation is running
+-- (including 'IOException's that occur as a side effect of the
+-- computation) it is handled by this function and is returned as an
+-- error result via 'Left String'. Therefore, this function is total;
+-- i.e., it always returns a result (assuming the computation
+-- terminates) and never throws an exception.
+runSysfsSafe :: Sysfs a -> IO (Either String a)
+runSysfsSafe action =
+  do result <- runExceptT $ scriptIO (runSysfs action)
+     case result of
+       Left e -> return $ Left e
+       Right a -> return a
+
+-- | Run a 'Sysfs' computation in the 'IO' monad. If an error occurs
+-- in the computation, in the 'Sysfs' interpreter, or in the "real
+-- world" (e.g., 'IO' exceptions) it will be thrown as an
+-- 'IOException'. In other words, all errors will be expressed as
+-- 'IOException's, just as a plain 'IO' computation would do.
+runSysfs' :: Sysfs a -> IO a
+runSysfs' action =
+  do result <- runSysfs action
+     case result of
+       Left e -> fail e
+       Right a -> return a
+
+
+-- Helper functions that aren't exported.
+--
 
 toSysfsValue :: Value -> String
 toSysfsValue Low = "0"
