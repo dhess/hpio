@@ -11,14 +11,15 @@
 
 module System.GPIO.Linux.Sysfs
        ( -- * The Linux sysfs GPIO interpreter
-         PinDescriptor(..)
-       , SysfsF
+         SysfsF
        , SysfsT
        , Sysfs
        , runSysfsT
        , runSysfs
        , runSysfs'
        , runSysfsSafe
+         -- * Linux sysfs GPIO types
+       , PinDescriptor(..)
          -- * Convenience functions
        , sysfsPath
        , exportFileName
@@ -65,10 +66,10 @@ pinDirName :: Pin -> FilePath
 pinDirName (Pin n) = sysfsPath </> ("gpio" ++ show n)
 
 -- | Pins whose direction can be controlled via sysfs provide a
--- control file. 'pinDirectionFileName' gives the name of that
--- file. Note that for some GPIO pins, the direction cannot be set. In
--- these cases, the file named by this function does not actually
--- exist.
+-- control file. 'pinDirectionFileName' gives the name of that file
+-- for a given pin number. Note that some pins' direction cannot be
+-- set. In these cases, the file named by this function does not
+-- actually exist.
 pinDirectionFileName :: Pin -> FilePath
 pinDirectionFileName p = pinDirName p </> "direction"
 
@@ -94,9 +95,9 @@ type SysfsF m = GpioF String PinDescriptor m
 -- and return the result. Errors that occur in the computation or in
 -- the interpreter are thrown with a 'String' argument via
 -- 'throwError', so the wrapped monad must also be an instance of
--- 'MonadError String'. Any 'IOException's that occur as a side effect
--- of the computation are not handled here and are simply propagated
--- upwards.
+-- 'MonadError' 'String'. Any 'Control.Exception.Base.IOException's
+-- that occur as a side effect of the computation are not handled here
+-- and are simply propagated upwards.
 --
 -- (Errors that could occur in the interpreter are generally limited
 -- to reading unexpected results from various sysfs GPIO control
@@ -175,25 +176,26 @@ runSysfsT = iterT run
                     throwError e)
 
 -- | A convenient specialization of 'SysfsT' which runs sysfs GPIO
--- computations in the 'IO' monad, and returns results as 'Either
--- String a'.
+-- computations in the 'IO' monad, and returns results as 'Either'
+-- 'String' 'a'.
 type Sysfs a = SysfsT (ExceptT String IO) (ExceptT String IO) a
 
 -- | Run a 'Sysfs' computation in the 'IO' monad and return the result
--- as 'Right a'. If an error occurs in the computation or in the
--- interpreter, it is returned as 'Left String'. However, the function
--- does not catch any 'IOException's that occur as a side effect of
--- the computation. Those will propagate upwards.
+-- as 'Right' 'a'. If an error occurs in the computation or in the
+-- interpreter, it is returned as 'Left' 'String'. However, the
+-- function does not catch any 'Control.Exception.Base.IOException's
+-- that occur as a side effect of the computation; those will
+-- propagate upwards.
 runSysfs :: Sysfs a -> IO (Either String a)
 runSysfs action = runExceptT $ runSysfsT action
 
--- | Run a 'Sysfs' computation and return the result in an 'Either
--- String a'. If an error in the computation, in the 'Sysfs'
--- interpreter, or elsewhere while the computation is running
--- (including 'IOException's that occur as a side effect of the
--- computation) it is handled by this function and is returned as an
--- error result via 'Left String'. Therefore, this function is total;
--- i.e., it always returns a result (assuming the computation
+-- | Run a 'Sysfs' computation and return the result in as 'Right'
+-- 'a'. If an error in the computation, in the 'Sysfs' interpreter, or
+-- elsewhere while the computation is running (including
+-- 'Control.Exception.Base.IOException's that occur as a side effect
+-- of the computation) it is handled by this function and is returned
+-- as an error result via 'Left' 'String'. Therefore, this function is
+-- total; i.e., it always returns a result (assuming the computation
 -- terminates) and never throws an exception.
 runSysfsSafe :: Sysfs a -> IO (Either String a)
 runSysfsSafe action =
@@ -202,11 +204,13 @@ runSysfsSafe action =
        Left e -> return $ Left e
        Right a -> return a
 
--- | Run a 'Sysfs' computation in the 'IO' monad. If an error occurs
--- in the computation, in the 'Sysfs' interpreter, or in the "real
--- world" (e.g., 'IO' exceptions) it will be thrown as an
--- 'IOException'. In other words, all errors will be expressed as
--- 'IOException's, just as a plain 'IO' computation would do.
+-- | Run a 'Sysfs' computation in the 'IO' monad and return the
+-- result. If an error occurs in the computation, in the 'Sysfs'
+-- interpreter, or in the "real world" (e.g., 'IO' exceptions) it will
+-- be thrown as an 'Control.Exception.Base.IOException'. In other
+-- words, all errors will be expressed as
+-- 'Control.Exception.Base.IOException's, just as a plain 'IO'
+-- computation would do.
 runSysfs' :: Sysfs a -> IO a
 runSysfs' action =
   do result <- runSysfs action
