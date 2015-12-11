@@ -1,19 +1,26 @@
+-- | An interpreter for testing 'GpioF' programs. It provides a mock
+-- IO environment that works on any system, even those without real
+-- GPIO capabilities.
+
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module System.GPIO.Mock
-       ( MockPins
-       , MockHandle(..)
-       , MockF
+       ( -- * A mock GPIO interpreter
+         MockF
        , MockT
+       , runMockT
+       , runMock
+       , execMock
+       , evalMock
+         -- * Mock types
+       , MockPins
+       , MockHandle(..)
+       , Mock
        , MockState(..)
        , MockStateMap
-       , evalMock
-       , execMock
-       , runMock
-       , runMockT
        ) where
 
 import Control.Error.Util (note)
@@ -28,25 +35,40 @@ import Data.Text (Text)
 import qualified Data.Text as T (intercalate, pack)
 import System.GPIO.Free (GpioF(..), GpioT, Pin(..), PinDirection(..), Value(..), openPin, closePin)
 
+-- | The set of all available pins in the mock environment.
 type MockPins = Set Pin
 
+-- | Keep track of the state of opened mock pins.
 data MockState = MockState { dir :: !PinDirection, value :: !Value } deriving (Show, Eq)
 
+-- | A handle for opened mock pins.
 data MockHandle = MockHandle Pin deriving (Show, Eq, Ord)
 
+-- | Maps mock handles to their pin state.
 type MockStateMap = Map MockHandle MockState
 
+-- | Initial state of a newly-opened mock pin.
 initialState :: MockState
 initialState = MockState In Low
 
+-- | The interface for all suitable monads in the mock system.
 type MonadMock = MonadRWS MockPins [Text] MockStateMap
 
+-- | The simplest possible mock monad.
 type Mock = RWS MockPins [Text] MockStateMap
 
+-- | A transformer for adding the mock interpreter to an existing
+-- monad. Note that it represents errors as 'String'.
 type MockT m = GpioT String MockHandle m
 
+-- | The mock eDSL.
 type MockF m = GpioF String MockHandle m
 
+-- | Run a 'GpioF' computation in the 'MockT' transformer, and return
+-- the result.
+--
+-- If an error occurs in the computation, it is thrown as an exception
+-- whose error information type is 'String'.
 runMockT :: (MonadError String m, MonadMock m) => (MockT m) m a -> m a
 runMockT = iterT run
   where
@@ -157,20 +179,24 @@ pinValue = pinF value
 pinDirection :: (MonadMock m) => MockHandle -> m (Either String PinDirection)
 pinDirection = pinF dir
 
--- | Run a GpioT program in a pure environment mimicking IO;
--- exceptions are manifested as 'Either' 'String' 'a'.
+-- | Run a 'GpioF' program in an environment mimicking IO and return
+-- the result as 'Right' 'a'; the state of the mock IO environment at
+-- the end of the computation; and a log of the GPIO side effects that
+-- were performed during the computation. If an exception occurs in
+-- the 'GpioF' program, the value part of the returned tuple is
+-- returned as 'Left' 'String'.
 runMock :: MockPins -> MockT (ExceptT String Mock) (ExceptT String Mock) a -> (Either String a, MockStateMap, [Text])
 runMock pins action = runRWS (runExceptT $ runMockT action) pins Map.empty
 
--- | Evaluate a GpioT program in the 'Mock' monad and return the final
--- value and output, discarding the final state.
+-- | Evaluate a 'GpioF' program in the 'Mock' monad and return the final
+-- value and log, discarding the final state.
 evalMock :: MockPins -> MockT (ExceptT String Mock) (ExceptT String Mock) a -> (Either String a, [Text])
 evalMock pins action =
   let (a, _, w) = runMock pins action
   in (a, w)
 
--- | Evaluate a GpioT program in the 'Mock' monad and return the final
--- state and output, discarding the final value.
+-- | Evaluate a 'GpioF' program in the 'Mock' monad and return the final
+-- state and log, discarding the final value.
 execMock :: MockPins -> MockT (ExceptT String Mock) (ExceptT String Mock) a -> (MockStateMap, [Text])
 execMock pins action =
   let (_, s, w) = runMock pins action
