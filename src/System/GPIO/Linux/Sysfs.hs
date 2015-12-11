@@ -41,7 +41,7 @@ import Data.List (isPrefixOf, sort)
 import Data.Maybe (catMaybes)
 import System.Directory (doesDirectoryExist, doesFileExist, getDirectoryContents)
 import System.FilePath ((</>), takeFileName)
-import System.GPIO.Free (GpioF(..), GpioT, PinDirection(..), Pin(..), Value(..), open, close)
+import System.GPIO.Free (GpioF(..), GpioT, PinDirection(..), Pin(..), Value(..), openPin, closePin)
 import qualified System.IO as IO (writeFile)
 import qualified System.IO.Strict as IOS (readFile)
 
@@ -114,7 +114,7 @@ runSysfsT = iterT run
 
     -- Export the pin. Note that it may already be exported, which we
     -- treat as success.
-    run (Open p@(Pin n) next) =
+    run (OpenPin p@(Pin n) next) =
       do hasSysfs <- liftIO $ doesDirectoryExist sysfsPath
          case hasSysfs of
            False -> next (Left "sysfs GPIO is not present")
@@ -126,12 +126,12 @@ runSysfsT = iterT run
                     do void $ writeFile exportFileName (show n)
                        next (Right $ PinDescriptor p)
 
-    run (Close d next) =
+    run (ClosePin d next) =
       do let (Pin n) = pin d
          void $ writeFile unexportFileName (show n)
          next
 
-    run (Direction d next) =
+    run (GetPinDirection d next) =
       do let p = pin d
          hasDirection <- liftIO $ doesFileExist (pinDirectionFileName p)
          case hasDirection of
@@ -143,7 +143,7 @@ runSysfsT = iterT run
                   "out\n" -> next $ Just Out
                   _     -> throwError $ "Unexpected direction value for " ++ show p
 
-    run (SetDirection d dir next) =
+    run (SetPinDirection d dir next) =
       do let p = pin d
          void $ writeFile (pinDirectionFileName p) (lowercase $ show dir)
          next
@@ -162,16 +162,16 @@ runSysfsT = iterT run
          next
 
     run (WithPin p block next) =
-      do result <- runSysfsT $ open p
+      do result <- runSysfsT $ openPin p
          case result of
            Left e -> throwError e
            Right pd ->
              catchError
                (do a <- runSysfsT $ block pd
-                   runSysfsT $ close pd
+                   runSysfsT $ closePin pd
                    next a)
                (\e ->
-                 do runSysfsT $ close pd
+                 do runSysfsT $ closePin pd
                     throwError e)
 
 -- | A convenient specialization of 'SysfsT' which runs sysfs GPIO

@@ -26,7 +26,7 @@ import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.Text (Text)
 import qualified Data.Text as T (intercalate, pack)
-import System.GPIO.Free (GpioF(..), GpioT, Pin(..), PinDirection(..), Value(..), open, close)
+import System.GPIO.Free (GpioF(..), GpioT, Pin(..), PinDirection(..), Value(..), openPin, closePin)
 
 type MockPins = Set Pin
 
@@ -54,7 +54,7 @@ runMockT = iterT run
 
     run (Pins next) = ask >>= next . Set.toList
 
-    run (Open p next) =
+    run (OpenPin p next) =
       do valid <- pinExists p
          case valid of
            False -> next (Left $ "Open failed: " ++ show p ++ " does not exist")
@@ -65,7 +65,7 @@ runMockT = iterT run
                 put (Map.insert d initialState states)
                 next (Right d)
 
-    run (Close h next) =
+    run (ClosePin h next) =
       do valid <- validHandle h
          case valid of
            False -> next -- double-close is OK
@@ -75,14 +75,14 @@ runMockT = iterT run
                 say ["Close", tshow h]
                 next
 
-    run (Direction h next) =
+    run (GetPinDirection h next) =
       do void $ checkHandle h
          eitherDirection <- pinDirection h
          case eitherDirection of
            Left e -> throwError e
            Right dir' -> next (Just dir')
 
-    run (SetDirection h v next) =
+    run (SetPinDirection h v next) =
       do void $ checkHandle h
          eitherState <- mockState h
          case eitherState of
@@ -115,16 +115,16 @@ runMockT = iterT run
                     next
 
     run (WithPin p block next) =
-      do openResult <- runMockT $ open p
+      do openResult <- runMockT $ openPin p
          case openResult of
            Left e1 -> throwError e1
            Right handle ->
              catchError
                (do a <- runMockT $ block handle
-                   runMockT $ close handle
+                   runMockT $ closePin handle
                    next a)
                (\e ->
-                 do runMockT $ close handle
+                 do runMockT $ closePin handle
                     throwError e)
 
 pinExists :: (MonadMock m) => Pin -> m Bool

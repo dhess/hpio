@@ -29,10 +29,10 @@ module System.GPIO.Free
        , PinDirection(..)
        , Value(..)
        , pins
-       , open
-       , close
-       , direction
-       , setDirection
+       , openPin
+       , closePin
+       , getPinDirection
+       , setPinDirection
        , readPin
        , writePin
        , withPin
@@ -54,20 +54,20 @@ data Value = Low | High deriving (Eq, Enum, Ord, Show, Generic)
 -- | Commands for the GPIO eDSL.
 data GpioF e h m next where
   Pins :: ([Pin] -> next) -> GpioF e h m next
-  Open :: Pin -> (Either e h -> next) -> GpioF e h m next
-  Close :: h -> next -> GpioF e h m next
-  Direction :: h -> (Maybe PinDirection -> next) -> GpioF e h m next
-  SetDirection :: h -> PinDirection -> next -> GpioF e h m next
+  OpenPin :: Pin -> (Either e h -> next) -> GpioF e h m next
+  ClosePin :: h -> next -> GpioF e h m next
+  GetPinDirection :: h -> (Maybe PinDirection -> next) -> GpioF e h m next
+  SetPinDirection :: h -> PinDirection -> next -> GpioF e h m next
   ReadPin :: h -> (Value -> next) -> GpioF e h m next
   WritePin :: h -> Value -> next -> GpioF e h m next
   WithPin :: Pin -> (h -> GpioT e h m m a) -> (a -> next) -> GpioF e h m next
 
 instance Functor (GpioF e h m) where
   fmap f (Pins g) = Pins (f . g)
-  fmap f (Open p g) = Open p (f . g)
-  fmap f (Close h x) = Close h (f x)
-  fmap f (Direction h g) = Direction h (f . g)
-  fmap f (SetDirection h dir x) = SetDirection h dir (f x)
+  fmap f (OpenPin p g) = OpenPin p (f . g)
+  fmap f (ClosePin h x) = ClosePin h (f x)
+  fmap f (GetPinDirection h g) = GetPinDirection h (f . g)
+  fmap f (SetPinDirection h dir x) = SetPinDirection h dir (f x)
   fmap f (ReadPin h g) = ReadPin h (f . g)
   fmap f (WritePin h v x) = WritePin h v (f x)
   fmap f (WithPin p block g) = WithPin p block (f . g)
@@ -94,11 +94,11 @@ makeFreeCon 'Pins
 -- the function returns a pin handle, which is used to operate on the
 -- pin. If the pin cannot be opened (e.g., due to a permissions
 -- failure), the function returns an error value.
-makeFreeCon 'Open
+makeFreeCon 'OpenPin
 
 -- | Close a pin; i.e., indicate to the system that you no longer
 -- intend to use the pin via the given handle.
-makeFreeCon 'Close
+makeFreeCon 'ClosePin
 
 -- | Get the pin's 'PinDirection'.
 --
@@ -107,14 +107,14 @@ makeFreeCon 'Close
 -- "System.GPIO.Linux.Sysfs"), the direction of hard-wired pins is not
 -- made available at run-time. In such cases, this function returns
 -- 'Nothing'.
-makeFreeCon 'Direction
+makeFreeCon 'GetPinDirection
 
 -- | Set the pin's 'PinDirection'.
 --
 -- As some pins' direction cannot be changed, you should first call
--- 'direction' to make sure this particular pin's direction is
+-- 'getPinDirection' to make sure this particular pin's direction is
 -- configurable.
-makeFreeCon 'SetDirection
+makeFreeCon 'SetPinDirection
 
 -- | Read the pin's 'Value'.
 makeFreeCon 'ReadPin
@@ -125,10 +125,10 @@ makeFreeCon 'WritePin
 
 -- | Exception-safe pin management.
 --
--- 'withPin' opens a pin using 'open' and passes the handle to the
+-- 'withPin' opens a pin using 'openPin' and passes the handle to the
 -- given GPIO computation. Upon completion of the computation or an
 -- exception occuring within the computation, 'withPin' closes the
--- handle using 'close' and then propagates the result, either by
+-- handle using 'closePin' and then propagates the result, either by
 -- returning the value of the computation or by re-raising the
 -- exception. If closing the handle raises an exception, this
 -- exception will be raised by 'withPin'.
