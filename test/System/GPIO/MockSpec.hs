@@ -18,7 +18,7 @@ import Test.Hspec
 -- the platform we're developing on doesn't actually have GPIO
 -- functionality).
 
-testOpenClose :: (MonadError e m) => GpioT e h m ()
+testOpenClose :: (MonadError e m) => GpioT e h m m ()
 testOpenClose =
   do handle <- open (Pin 1)
      case handle of
@@ -29,7 +29,7 @@ toggleDirection :: PinDirection -> PinDirection
 toggleDirection In = Out
 toggleDirection Out = In
 
-testSetDirection :: (MonadError e m) => (PinDirection -> PinDirection) -> GpioT e h m PinDirection
+testSetDirection :: (MonadError e m) => (PinDirection -> PinDirection) -> GpioT e h m m PinDirection
 testSetDirection f =
   do handle <- open (Pin 1)
      case handle of
@@ -45,30 +45,30 @@ toggleValue :: Value -> Value
 toggleValue Low = High
 toggleValue High = Low
 
-testReadWritePin :: (MonadError e m) => (Value -> Value) -> GpioT e h m (Value, Value)
+testReadWritePin :: (MonadError e m) => (Value -> Value) -> GpioT e h m m (Value, Value)
 testReadWritePin f =
   do handle <- open (Pin 1)
      case handle of
        Left e -> throwError e
        Right d ->
-         do _ <- setDirection d Out
+         do void $ setDirection d Out
             val1 <- readPin d
-            _ <- writePin d (f val1)
+            void $ writePin d (f val1)
             val2 <- readPin d
             close d
             return (val1, val2)
 
-testWritePinFailsOnInputPin :: (MonadError e m) => GpioT e h m ()
+testWritePinFailsOnInputPin :: (MonadError e m) => GpioT e h m m ()
 testWritePinFailsOnInputPin =
   do handle <- open (Pin 1)
      case handle of
        Left e -> throwError e
        Right d ->
-         do _ <- setDirection d In
-            _ <- writePin d High
+         do void $ setDirection d In
+            void $ writePin d High
             close d
 
-invalidHandle :: (MonadError e m) => (h -> GpioT e h m a) -> GpioT e h m a
+invalidHandle :: (MonadError e m) => (h -> GpioT e h m m a) -> GpioT e h m m a
 invalidHandle action =
   do handle <- open (Pin 1)
      case handle of
@@ -76,6 +76,44 @@ invalidHandle action =
        Right d ->
          do close d
             action d
+
+testWithPin :: (MonadError e m) => GpioT e h m m Value
+testWithPin = withPin (Pin 1) $ \h ->
+  do void $ setDirection h Out
+     void $ writePin h High
+     val <- readPin h
+     return val
+
+testWithPinError :: (MonadError e m) => GpioT e h m m Value
+testWithPinError = withPin (Pin 1) $ \h ->
+  do void $ setDirection h In
+     void $ writePin h High -- should fail
+     val <- readPin h
+     return val
+
+testNestedWithPin :: (MonadError e m) => GpioT e h m m (Value, Value)
+testNestedWithPin =
+  withPin (Pin 1) $ \h1 ->
+    withPin (Pin 2) $ \h2 ->
+      do void $ setDirection h1 Out
+         void $ setDirection h2 Out
+         void $ writePin h1 High
+         void $ writePin h2 Low
+         val1 <- readPin h1
+         val2 <- readPin h2
+         return (val1, val2)
+
+testNestedWithPinError :: (MonadError e m) => GpioT e h m m (Value, Value)
+testNestedWithPinError =
+  withPin (Pin 1) $ \h1 ->
+    withPin (Pin 2) $ \h2 ->
+      do void $ setDirection h1 Out
+         void $ setDirection h2 In
+         void $ writePin h1 High
+         void $ writePin h2 Low -- should fail
+         val1 <- readPin h1
+         val2 <- readPin h2
+         return (val1, val2)
 
 spec :: Spec
 spec =
@@ -135,3 +173,28 @@ spec =
 
           it "in writePin" $
             runMock (Set.fromList [Pin 1]) (invalidHandle (\d -> writePin d High)) `shouldBe` expectedResult
+
+     describe "withPin" $
+       do it "opens and closes the pin as expected" $
+            let expectedResult = (Right High, Map.empty, ["Open Pin 1", "Set direction: MockHandle (Pin 1) Out", "Write: MockHandle (Pin 1) High", "Close MockHandle (Pin 1)"])
+            in runMock (Set.fromList [Pin 1]) testWithPin `shouldBe` expectedResult
+
+          it "throws an exception when the pin does not exist" $
+            let expectedResult = (Left "Open failed: Pin 1 does not exist", Map.empty, [])
+            in runMock (Set.fromList [Pin 2]) testWithPin `shouldBe` expectedResult
+
+          it "closes the pin when an exception occurs inside the block" $
+            let expectedResult = (Left "MockHandle (Pin 1) is configured for input", Map.empty, ["Open Pin 1", "Set direction: MockHandle (Pin 1) In", "Close MockHandle (Pin 1)"])
+            in runMock (Set.fromList [Pin 1]) testWithPinError `shouldBe` expectedResult
+
+
+          it "can nest" $
+            let expectedResult = (Right (High, Low), Map.empty, ["Open Pin 1", "Open Pin 2", "Set direction: MockHandle (Pin 1) Out", "Set direction: MockHandle (Pin 2) Out", "Write: MockHandle (Pin 1) High", "Write: MockHandle (Pin 2) Low", "Close MockHandle (Pin 2)", "Close MockHandle (Pin 1)"])
+            in runMock (Set.fromList [Pin 1, Pin 2]) testNestedWithPin `shouldBe` expectedResult
+
+          it "fails properly when nested" $
+            let expectedResult1 = (Left "Open failed: Pin 2 does not exist", Map.empty, ["Open Pin 1", "Close MockHandle (Pin 1)"])
+                expectedResult2 = (Left "MockHandle (Pin 2) is configured for input", Map.empty, ["Open Pin 1", "Open Pin 2", "Set direction: MockHandle (Pin 1) Out", "Set direction: MockHandle (Pin 2) In", "Write: MockHandle (Pin 1) High", "Close MockHandle (Pin 2)", "Close MockHandle (Pin 1)"])
+            in
+              do runMock (Set.fromList [Pin 1]) testNestedWithPin `shouldBe` expectedResult1
+                 runMock (Set.fromList [Pin 1, Pin 2]) testNestedWithPinError `shouldBe` expectedResult2

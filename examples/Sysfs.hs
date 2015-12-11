@@ -19,7 +19,7 @@ toggleValue :: Value -> Value
 toggleValue High = Low
 toggleValue Low = High
 
-pickAPin :: (MonadIO m) => GpioT e h m Pin
+pickAPin :: (MonadIO m) => GpioT e h m m Pin
 pickAPin =
   do availablePins <- pins
      output ("GPIO pins available: " ++ show availablePins)
@@ -29,29 +29,24 @@ pickAPin =
             return $ Pin 0
        p:_ -> return p
 
-example :: (MonadIO m, MonadError e m) => GpioT e h m ()
+example :: (MonadIO m, MonadError e m) => GpioT e h m m ()
 example =
   do p <- pickAPin
      output ("Opening " ++ show p)
-     result <- open p
-     case result of
-       Left e -> throwError e
-       Right h ->
-         do val <- readPin h
-            output ("Pin value is " ++ show val)
-            maybeDir <- direction h
-            case maybeDir of
-              Nothing -> output "Pin direction cannot be set"
-              Just dir ->
-                do output $ "Pin direction is " ++ show dir
-                   when (dir == In) $
-                     do output $ "Setting pin direction to " ++ show Out
-                        void $ setDirection h Out
-                   let newValue = toggleValue val
-                   output $ "Setting pin value to " ++ show newValue
-                   void $ writePin h newValue
-            output ("Closing " ++ show p)
-            close h
+     withPin p $ \h ->
+       do val <- readPin h
+          output ("Pin value is " ++ show val)
+          maybeDir <- direction h
+          case maybeDir of
+            Nothing -> output "Pin direction cannot be set"
+            Just dir ->
+              do output $ "Pin direction is " ++ show dir
+                 when (dir == In) $
+                   do output $ "Setting pin direction to " ++ show Out
+                      void $ setDirection h Out
+                 let newValue = toggleValue val
+                 output $ "Setting pin value to " ++ show newValue
+                 void $ writePin h newValue
 
 main :: IO ()
 main =

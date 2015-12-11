@@ -1,6 +1,7 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module System.GPIO.Mock
        ( MockPins
@@ -25,7 +26,7 @@ import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.Text (Text)
 import qualified Data.Text as T (intercalate, pack)
-import System.GPIO.Free (GpioF(..), GpioT, Pin(..), PinDirection(..), Value(..))
+import System.GPIO.Free (GpioF(..), GpioT, Pin(..), PinDirection(..), Value(..), open, close)
 
 type MockPins = Set Pin
 
@@ -42,14 +43,14 @@ type MonadMock = MonadRWS MockPins [Text] MockStateMap
 
 type Mock = RWS MockPins [Text] MockStateMap
 
-type MockT = GpioT String MockHandle
+type MockT m = GpioT String MockHandle m
 
-type MockF = GpioF String MockHandle
+type MockF m = GpioF String MockHandle m
 
-runMockT :: (MonadError String m, MonadMock m) => MockT m a -> m a
+runMockT :: (MonadError String m, MonadMock m) => (MockT m) m a -> m a
 runMockT = iterT run
   where
-    run :: (MonadError String m, MonadMock m) => MockF (m a) -> m a
+    run :: (MonadError String m, MonadMock m) => (MockF m) (m a) -> m a
 
     run (Pins next) = ask >>= next . Set.toList
 
@@ -113,6 +114,19 @@ runMockT = iterT run
                     say ["Write:", tshow h, tshow v]
                     next
 
+    run (WithPin p block next) =
+      do openResult <- runMockT $ open p
+         case openResult of
+           Left e1 -> throwError e1
+           Right handle ->
+             catchError
+               (do a <- runMockT $ block handle
+                   runMockT $ close handle
+                   next a)
+               (\e ->
+                 do runMockT $ close handle
+                    throwError e)
+
 pinExists :: (MonadMock m) => Pin -> m Bool
 pinExists p = ask >>= return . (Set.member p)
 
@@ -145,19 +159,19 @@ pinDirection = pinF dir
 
 -- | Run a GpioT program in a pure environment mimicking IO;
 -- exceptions are manifested as 'Either' 'String' 'a'.
-runMock :: MockPins -> MockT (ExceptT String Mock) a -> (Either String a, MockStateMap, [Text])
+runMock :: MockPins -> MockT (ExceptT String Mock) (ExceptT String Mock) a -> (Either String a, MockStateMap, [Text])
 runMock pins action = runRWS (runExceptT $ runMockT action) pins Map.empty
 
 -- | Evaluate a GpioT program in the 'Mock' monad and return the final
 -- value and output, discarding the final state.
-evalMock :: MockPins -> MockT (ExceptT String Mock) a -> (Either String a, [Text])
+evalMock :: MockPins -> MockT (ExceptT String Mock) (ExceptT String Mock) a -> (Either String a, [Text])
 evalMock pins action =
   let (a, _, w) = runMock pins action
   in (a, w)
 
 -- | Evaluate a GpioT program in the 'Mock' monad and return the final
 -- state and output, discarding the final value.
-execMock :: MockPins -> MockT (ExceptT String Mock) a -> (MockStateMap, [Text])
+execMock :: MockPins -> MockT (ExceptT String Mock) (ExceptT String Mock) a -> (MockStateMap, [Text])
 execMock pins action =
   let (_, s, w) = runMock pins action
   in (s, w)

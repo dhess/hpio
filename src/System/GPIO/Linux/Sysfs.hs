@@ -32,7 +32,7 @@ import Prelude hiding (readFile, writeFile)
 import Control.Error.Util (hushT)
 import Control.Error.Script (scriptIO)
 import Control.Monad (filterM, void)
-import Control.Monad.Except (ExceptT, MonadError, runExceptT, throwError)
+import Control.Monad.Except (ExceptT, MonadError, catchError, runExceptT, throwError)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Trans.Free (iterT)
 import Control.Monad.Trans.Maybe (MaybeT(..), runMaybeT)
@@ -41,7 +41,7 @@ import Data.List (isPrefixOf, sort)
 import Data.Maybe (catMaybes)
 import System.Directory (doesDirectoryExist, doesFileExist, getDirectoryContents)
 import System.FilePath ((</>), takeFileName)
-import System.GPIO.Free (GpioF(..), GpioT, PinDirection(..), Pin(..), Value(..))
+import System.GPIO.Free (GpioF(..), GpioT, PinDirection(..), Pin(..), Value(..), open, close)
 import qualified System.IO as IO (writeFile)
 import qualified System.IO.Strict as IOS (readFile)
 
@@ -85,10 +85,10 @@ newtype PinDescriptor = PinDescriptor { pin :: Pin } deriving (Show, Eq, Ord)
 
 -- | A monad transformer which adds Linux sysfs GPIO computations to
 -- other monads.
-type SysfsT = GpioT String PinDescriptor
+type SysfsT m = GpioT String PinDescriptor m
 
 -- | The Linux sysfs GPIO DSL type.
-type SysfsF = GpioF String PinDescriptor
+type SysfsF m = GpioF String PinDescriptor m
 
 -- | Run a 'SysfsT' computation embedded in a 'MonadIO' monad instance
 -- and return the result. Errors that occur in the computation or in
@@ -101,10 +101,10 @@ type SysfsF = GpioF String PinDescriptor
 -- (Errors that could occur in the interpreter are generally limited
 -- to reading unexpected results from various sysfs GPIO control
 -- files.)
-runSysfsT :: (MonadError String m, MonadIO m) => SysfsT m a -> m a
+runSysfsT :: (MonadError String m, MonadIO m) => (SysfsT m) m a -> m a
 runSysfsT = iterT run
   where
-    run :: (MonadError String m, MonadIO m) => SysfsF (m a) -> m a
+    run :: (MonadError String m, MonadIO m) => (SysfsF m) (m a) -> m a
 
     run (Pins next) =
       do hasSysfs <- liftIO $ doesDirectoryExist sysfsPath
@@ -161,10 +161,23 @@ runSysfsT = iterT run
          void $ writeFile (pinValueFileName p) (toSysfsValue v)
          next
 
+    run (WithPin p block next) =
+      do result <- runSysfsT $ open p
+         case result of
+           Left e -> throwError e
+           Right pd ->
+             catchError
+               (do a <- runSysfsT $ block pd
+                   runSysfsT $ close pd
+                   next a)
+               (\e ->
+                 do runSysfsT $ close pd
+                    throwError e)
+
 -- | A convenient specialization of 'SysfsT' which runs sysfs GPIO
 -- computations in the 'IO' monad, and returns results as 'Either
 -- String a'.
-type Sysfs a = SysfsT (ExceptT String IO) a
+type Sysfs a = SysfsT (ExceptT String IO) (ExceptT String IO) a
 
 -- | Run a 'Sysfs' computation in the 'IO' monad and return the result
 -- as 'Right a'. If an error occurs in the computation or in the
