@@ -23,11 +23,8 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module System.GPIO.Free
-       ( GpioF(..)
-       , GpioT
-       , Pin(..)
-       , PinDirection(..)
-       , Value(..)
+       ( -- * The abstract GPIO eDSL
+         GpioF(..)
        , pins
        , openPin
        , closePin
@@ -36,6 +33,12 @@ module System.GPIO.Free
        , readPin
        , writePin
        , withPin
+         -- * The GpioT monad transformer
+       , GpioT
+         -- * GPIO types
+       , Pin(..)
+       , PinDirection(..)
+       , Value(..)
        ) where
 
 import Control.Monad.Trans.Free (FreeT, MonadFree, liftF)
