@@ -36,14 +36,14 @@ example =
      withPin p $ \h ->
        do val <- readPin h
           output ("Pin value is " ++ show val)
-          maybeDir <- direction h
+          maybeDir <- getPinDirection h
           case maybeDir of
             Nothing -> output "Pin direction cannot be set"
             Just dir ->
               do output $ "Pin direction is " ++ show dir
                  when (dir == In) $
                    do output $ "Setting pin direction to " ++ show Out
-                      void $ setDirection h Out
+                      void $ setPinDirection h Out
                  let newValue = toggleValue val
                  output $ "Setting pin value to " ++ show newValue
                  void $ writePin h newValue
