@@ -81,22 +81,49 @@ testTogglePinDirection =
             closePin d
             return (dir1, dir2, dir3, dir4, dir5)
 
-togglePinValue :: PinValue -> PinValue
-togglePinValue Low = High
-togglePinValue High = Low
-
-testReadWritePin :: (MonadError e m) => (PinValue -> PinValue) -> GpioT e h m m (PinValue, PinValue)
-testReadWritePin f =
+testReadWritePin :: (MonadError e m) => GpioT e h m m (PinValue, PinValue, PinValue)
+testReadWritePin =
   do handle <- openPin (Pin 1)
      case handle of
        Left e -> throwError e
        Right d ->
          do void $ setPinDirection d Out
             val1 <- readPin d
-            void $ writePin d (f val1)
-            val2 <- readPin d
-            closePin d
-            return (val1, val2)
+            case val1 of
+              Low ->
+                do void $ writePin d High
+                   val2 <- readPin d
+                   void $ writePin d Low
+                   val3 <- readPin d
+                   closePin d
+                   return (val1, val2, val3)
+              High ->
+                do void $ writePin d Low
+                   val2 <- readPin d
+                   void $ writePin d High
+                   val3 <- readPin d
+                   closePin d
+                   return (val1, val2, val3)
+
+testReadWritePinIdempotent :: (MonadError e m) => GpioT e h m m (PinValue, PinValue)
+testReadWritePinIdempotent =
+  do handle <- openPin (Pin 1)
+     case handle of
+       Left e -> throwError e
+       Right d ->
+         do void $ setPinDirection d Out
+            val1 <- readPin d
+            case val1 of
+              Low ->
+                do void $ writePin d Low
+                   val2 <- readPin d
+                   closePin d
+                   return (val1, val2)
+              High ->
+                do void $ writePin d High
+                   val2 <- readPin d
+                   closePin d
+                   return (val1, val2)
 
 testWritePinFailsOnInputPin :: (MonadError e m) => GpioT e h m m ()
 testWritePinFailsOnInputPin =
@@ -107,6 +134,21 @@ testWritePinFailsOnInputPin =
          do void $ setPinDirection d In
             void $ writePin d High
             closePin d
+
+testTogglePinValue :: (MonadError e m) => GpioT e h m m (PinValue, PinValue, PinValue, PinValue, PinValue)
+testTogglePinValue =
+  do handle <- openPin (Pin 1)
+     case handle of
+       Left e -> throwError e
+       Right d ->
+         do void $ setPinDirection d Out
+            val1 <- readPin d
+            val2 <- togglePinValue d
+            val3 <- readPin d
+            val4 <- togglePinValue d
+            val5 <- readPin d
+            closePin d
+            return (val1, val2, val3, val4, val5)
 
 invalidHandle :: (MonadError e m) => (h -> GpioT e h m m a) -> GpioT e h m m a
 invalidHandle action =
@@ -190,17 +232,22 @@ spec =
 
      describe "writePin" $
        do it "toggles pin value" $
-            let expectedResult = (Right (Low, High), Map.empty, ["Open Pin 1", "Set direction: MockHandle (Pin 1) Out", "Write: MockHandle (Pin 1) High", "Close MockHandle (Pin 1)"])
-            in runMock (Set.fromList [Pin 1]) (testReadWritePin togglePinValue) `shouldBe` expectedResult
+            let expectedResult = (Right (Low, High, Low), Map.empty, ["Open Pin 1", "Set direction: MockHandle (Pin 1) Out", "Write: MockHandle (Pin 1) High", "Write: MockHandle (Pin 1) Low", "Close MockHandle (Pin 1)"])
+            in runMock (Set.fromList [Pin 1]) testReadWritePin `shouldBe` expectedResult
 
           it "is idempotent" $
             let expectedResult = (Right (Low, Low), Map.empty, ["Open Pin 1", "Set direction: MockHandle (Pin 1) Out", "Write: MockHandle (Pin 1) Low", "Close MockHandle (Pin 1)"])
-            in runMock (Set.fromList [Pin 1]) (testReadWritePin id) `shouldBe` expectedResult
+            in runMock (Set.fromList [Pin 1]) testReadWritePinIdempotent `shouldBe` expectedResult
 
           it "fails when the pin direction is In" $
             -- Note that this test will leave Pin 1 in the "open" state.
             let expectedResult = (Left "MockHandle (Pin 1) is configured for input", Map.fromList [(MockHandle (Pin 1),MockState {dir = In, value = Low})], ["Open Pin 1", "Set direction: MockHandle (Pin 1) In"])
             in runMock (Set.fromList [Pin 1]) testWritePinFailsOnInputPin `shouldBe` expectedResult
+
+     describe "togglePinValue" $
+       do it "toggles the pin's value" $
+             let expectedResult = (Right (Low, High, High, Low, Low), Map.empty, ["Open Pin 1", "Set direction: MockHandle (Pin 1) Out", "Write: MockHandle (Pin 1) High", "Write: MockHandle (Pin 1) Low", "Close MockHandle (Pin 1)"])
+             in runMock (Set.fromList [Pin 1]) testTogglePinValue `shouldBe` expectedResult
 
      describe "invalid handles throw exceptions" $
        do it "in getPinDirection" $

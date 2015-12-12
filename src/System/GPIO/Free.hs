@@ -33,6 +33,7 @@ module System.GPIO.Free
        , togglePinDirection
        , readPin
        , writePin
+       , togglePinValue
        , withPin
          -- * The GpioT monad transformer
        , GpioT
@@ -42,6 +43,7 @@ module System.GPIO.Free
        , PinValue(..)
          -- * Convenience functions
        , invertDirection
+       , invertValue
        ) where
 
 import Control.Monad.Trans.Free (FreeT, MonadFree, liftF)
@@ -67,6 +69,7 @@ data GpioF e h m next where
   TogglePinDirection :: h -> (Maybe PinDirection -> next) -> GpioF e h m next
   ReadPin :: h -> (PinValue -> next) -> GpioF e h m next
   WritePin :: h -> PinValue -> next -> GpioF e h m next
+  TogglePinValue :: h -> (PinValue -> next) -> GpioF e h m next
   WithPin :: Pin -> (h -> GpioT e h m m a) -> (a -> next) -> GpioF e h m next
 
 instance Functor (GpioF e h m) where
@@ -78,6 +81,7 @@ instance Functor (GpioF e h m) where
   fmap f (TogglePinDirection h g) = TogglePinDirection h (f . g)
   fmap f (ReadPin h g) = ReadPin h (f . g)
   fmap f (WritePin h v x) = WritePin h v (f x)
+  fmap f (TogglePinValue h g) = TogglePinValue h (f . g)
   fmap f (WithPin p block g) = WithPin p block (f . g)
 
 -- | A transformer which adds GPIO programs to a monad stack. The 'e'
@@ -137,6 +141,9 @@ makeFreeCon 'ReadPin
 -- the pin is not configured for output.
 makeFreeCon 'WritePin
 
+-- | Toggle the pin's 'PinValue'.
+makeFreeCon 'TogglePinValue
+
 -- | Exception-safe pin management.
 --
 -- 'withPin' opens a pin using 'openPin' and passes the handle to the
@@ -159,3 +166,8 @@ makeFreeCon 'WithPin
 invertDirection :: PinDirection -> PinDirection
 invertDirection In = Out
 invertDirection Out = In
+
+-- | Invert a 'PinValue'.
+invertValue :: PinValue -> PinValue
+invertValue High = Low
+invertValue Low = High

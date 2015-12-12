@@ -34,7 +34,7 @@ import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.Text (Text)
 import qualified Data.Text as T (intercalate, pack)
-import System.GPIO.Free (GpioF(..), GpioT, Pin(..), PinDirection(..), PinValue(..), openPin, closePin, setPinDirection, invertDirection)
+import System.GPIO.Free (GpioF(..), GpioT, Pin(..), PinDirection(..), PinValue(..), openPin, closePin, readPin, writePin, setPinDirection, invertDirection, invertValue)
 
 -- | The set of all available pins in the mock environment.
 type MockPins = Set Pin
@@ -147,6 +147,13 @@ runMockT = iterT run
                     put (Map.insert h (s { value = v }) states)
                     say ["Write:", tshow h, tshow v]
                     next
+
+    run (TogglePinValue h next) =
+      do void $ checkHandle h
+         val <- runMockT $ readPin h
+         let newVal = invertValue val
+         void $ runMockT $ writePin h newVal
+         next newVal
 
     run (WithPin p block next) =
       do openResult <- runMockT $ openPin p
