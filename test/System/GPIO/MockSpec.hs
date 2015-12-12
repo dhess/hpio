@@ -25,21 +25,61 @@ testOpenClose =
        Left e -> throwError e
        Right d -> closePin d
 
-toggleDirection :: PinDirection -> PinDirection
-toggleDirection In = Out
-toggleDirection Out = In
-
-testSetDirection :: (MonadError e m) => (PinDirection -> PinDirection) -> GpioT e h m m PinDirection
-testSetDirection f =
+testSetDirection :: (MonadError e m) => GpioT e h m m (PinDirection, PinDirection, PinDirection)
+testSetDirection =
   do handle <- openPin (Pin 1)
      case handle of
        Left e -> throwError e
        Right d ->
          do (Just dir1) <- getPinDirection d
-            setPinDirection d (f dir1)
-            (Just dir2) <- getPinDirection d
+            case dir1 of
+              In ->
+                do void $ setPinDirection d Out
+                   (Just dir2) <- getPinDirection d
+                   void $ setPinDirection d In
+                   (Just dir3) <- getPinDirection d
+                   closePin d
+                   return (dir1, dir2, dir3)
+              Out ->
+                do void $ setPinDirection d In
+                   (Just dir2) <- getPinDirection d
+                   void $ setPinDirection d Out
+                   (Just dir3) <- getPinDirection d
+                   closePin d
+                   return (dir1, dir2, dir3)
+
+testSetDirectionIdempotent :: (MonadError e m) => GpioT e h m m (PinDirection, PinDirection)
+testSetDirectionIdempotent =
+  do handle <- openPin (Pin 1)
+     case handle of
+       Left e -> throwError e
+       Right d ->
+         do (Just dir1) <- getPinDirection d
+            case dir1 of
+              In ->
+                do void $ setPinDirection d In
+                   (Just dir2) <- getPinDirection d
+                   closePin d
+                   return (dir1, dir2)
+              Out ->
+                do void $ setPinDirection d Out
+                   (Just dir2) <- getPinDirection d
+                   closePin d
+                   return (dir1, dir2)
+
+testTogglePinDirection :: (MonadError e m) => GpioT e h m m (PinDirection, PinDirection, PinDirection, PinDirection, PinDirection)
+testTogglePinDirection =
+  do handle <- openPin (Pin 1)
+     case handle of
+       Left e -> throwError e
+       Right d ->
+         do (Just dir1) <- getPinDirection d
+            (Just dir2) <- togglePinDirection d
+            (Just dir3) <- getPinDirection d
+            (Just dir4) <- togglePinDirection d
+            (Just dir5) <- getPinDirection d
             closePin d
-            return dir2
+            return (dir1, dir2, dir3, dir4, dir5)
 
 toggleValue :: Value -> Value
 toggleValue Low = High
@@ -135,13 +175,18 @@ spec =
 
      describe "setPinDirection" $
 
-       do it "toggles pin direction" $
-            let expectedResult = (Right Out, Map.empty, ["Open Pin 1", "Set direction: MockHandle (Pin 1) Out", "Close MockHandle (Pin 1)"])
-            in runMock (Set.fromList [Pin 1]) (testSetDirection toggleDirection) `shouldBe` expectedResult
+       do it "sets the pin direction" $
+            let expectedResult = (Right (In, Out, In), Map.empty, ["Open Pin 1", "Set direction: MockHandle (Pin 1) Out", "Set direction: MockHandle (Pin 1) In", "Close MockHandle (Pin 1)"])
+            in runMock (Set.fromList [Pin 1]) testSetDirection `shouldBe` expectedResult
 
           it "is idempotent" $
-            let expectedResult = (Right In, Map.empty, ["Open Pin 1", "Set direction: MockHandle (Pin 1) In", "Close MockHandle (Pin 1)"])
-            in runMock (Set.fromList [Pin 1]) (testSetDirection id) `shouldBe` expectedResult
+            let expectedResult = (Right (In, In), Map.empty, ["Open Pin 1", "Set direction: MockHandle (Pin 1) In", "Close MockHandle (Pin 1)"])
+            in runMock (Set.fromList [Pin 1]) testSetDirectionIdempotent `shouldBe` expectedResult
+
+     describe "togglePinDirection" $
+       do it "toggles pin direction" $
+             let expectedResult = (Right (In, Out, Out, In, In), Map.empty, ["Open Pin 1", "Set direction: MockHandle (Pin 1) Out", "Set direction: MockHandle (Pin 1) In", "Close MockHandle (Pin 1)"])
+             in runMock (Set.fromList [Pin 1]) testTogglePinDirection `shouldBe` expectedResult
 
      describe "writePin" $
        do it "toggles pin value" $
