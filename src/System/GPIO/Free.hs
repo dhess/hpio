@@ -30,6 +30,7 @@ module System.GPIO.Free
        , closePin
        , getPinDirection
        , setPinDirection
+       , togglePinDirection
        , readPin
        , writePin
        , withPin
@@ -39,6 +40,8 @@ module System.GPIO.Free
        , Pin(..)
        , PinDirection(..)
        , Value(..)
+         -- * Convenience functions
+       , invertDirection
        ) where
 
 import Control.Monad.Trans.Free (FreeT, MonadFree, liftF)
@@ -61,6 +64,7 @@ data GpioF e h m next where
   ClosePin :: h -> next -> GpioF e h m next
   GetPinDirection :: h -> (Maybe PinDirection -> next) -> GpioF e h m next
   SetPinDirection :: h -> PinDirection -> next -> GpioF e h m next
+  TogglePinDirection :: h -> (Maybe PinDirection -> next) -> GpioF e h m next
   ReadPin :: h -> (Value -> next) -> GpioF e h m next
   WritePin :: h -> Value -> next -> GpioF e h m next
   WithPin :: Pin -> (h -> GpioT e h m m a) -> (a -> next) -> GpioF e h m next
@@ -71,6 +75,7 @@ instance Functor (GpioF e h m) where
   fmap f (ClosePin h x) = ClosePin h (f x)
   fmap f (GetPinDirection h g) = GetPinDirection h (f . g)
   fmap f (SetPinDirection h dir x) = SetPinDirection h dir (f x)
+  fmap f (TogglePinDirection h g) = TogglePinDirection h (f . g)
   fmap f (ReadPin h g) = ReadPin h (f . g)
   fmap f (WritePin h v x) = WritePin h v (f x)
   fmap f (WithPin p block g) = WithPin p block (f . g)
@@ -119,6 +124,12 @@ makeFreeCon 'GetPinDirection
 -- configurable.
 makeFreeCon 'SetPinDirection
 
+-- | Toggle the pin's 'PinDirection'.
+--
+-- If the pin's direction cannot be changed, this function returns
+-- 'Nothing'. Otherwise, it returns the new direction.
+makeFreeCon 'TogglePinDirection
+
 -- | Read the pin's 'Value'.
 makeFreeCon 'ReadPin
 
@@ -143,3 +154,8 @@ makeFreeCon 'WritePin
 -- regardless of how that exception is then expressed to the caller by
 -- the implementation.
 makeFreeCon 'WithPin
+
+-- | Invert a 'PinDirection' value.
+invertDirection :: PinDirection -> PinDirection
+invertDirection In = Out
+invertDirection Out = In

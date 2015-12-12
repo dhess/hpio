@@ -42,7 +42,7 @@ import Data.List (isPrefixOf, sort)
 import Data.Maybe (catMaybes)
 import System.Directory (doesDirectoryExist, doesFileExist, getDirectoryContents)
 import System.FilePath ((</>), takeFileName)
-import System.GPIO.Free (GpioF(..), GpioT, PinDirection(..), Pin(..), Value(..), openPin, closePin)
+import System.GPIO.Free (GpioF(..), GpioT, PinDirection(..), Pin(..), Value(..), openPin, closePin, getPinDirection, setPinDirection, invertDirection)
 import qualified System.IO as IO (writeFile)
 import qualified System.IO.Strict as IOS (readFile)
 
@@ -148,6 +148,15 @@ runSysfsT = iterT run
       do let p = pin d
          void $ writeFile (pinDirectionFileName p) (lowercase $ show dir)
          next
+
+    run (TogglePinDirection d next) =
+      do maybeDir <- runSysfsT $ getPinDirection d
+         case maybeDir of
+           Nothing -> next Nothing
+           Just dir ->
+             do let newDir = invertDirection dir
+                void $ runSysfsT $ setPinDirection d newDir
+                next $ Just newDir
 
     run (ReadPin d next) =
       do let p = pin d

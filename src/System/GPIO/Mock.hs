@@ -34,7 +34,7 @@ import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.Text (Text)
 import qualified Data.Text as T (intercalate, pack)
-import System.GPIO.Free (GpioF(..), GpioT, Pin(..), PinDirection(..), Value(..), openPin, closePin)
+import System.GPIO.Free (GpioF(..), GpioT, Pin(..), PinDirection(..), Value(..), openPin, closePin, setPinDirection, invertDirection)
 
 -- | The set of all available pins in the mock environment.
 type MockPins = Set Pin
@@ -116,6 +116,16 @@ runMockT = iterT run
                 put (Map.insert h (s { dir = v }) states)
                 say ["Set direction:", tshow h, tshow v ]
                 next
+
+    run (TogglePinDirection h next) =
+      do void $ checkHandle h
+         eitherDirection <- pinDirection h
+         case eitherDirection of
+           Left e -> throwError e
+           Right dir' ->
+             do let newDir = invertDirection dir'
+                void $ runMockT $ setPinDirection h newDir
+                next (Just newDir)
 
     run (ReadPin h next) =
       do void $ checkHandle h
