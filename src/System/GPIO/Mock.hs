@@ -11,6 +11,7 @@ module System.GPIO.Mock
        ( -- * A mock GPIO interpreter
          MockF
        , MockT
+       , MonadMock
        , runMockT
        , runMock
        , execMock
@@ -51,10 +52,11 @@ type MockStateMap = Map MockHandle MockState
 initialState :: MockState
 initialState = MockState In Low
 
--- | The interface for all suitable monads in the mock system.
+-- | If you want to wrap 'MockT' around your own monads, they must
+-- have this type.
 type MonadMock = MonadRWS MockPins [Text] MockStateMap
 
--- | The simplest possible mock monad.
+-- | The base mock monad.
 type Mock = RWS MockPins [Text] MockStateMap
 
 -- | A transformer for adding the mock interpreter to an existing
