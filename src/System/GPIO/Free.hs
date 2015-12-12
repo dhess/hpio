@@ -1,12 +1,12 @@
 -- | An eDSL for GPIO computations.
 --
 -- To make it easier to use the eDSL in typical scenarios, the eDSL is
--- implemented as a transformer using the 'FreeT' transformer.
+-- implemented as a functor for the 'FreeT' transformer.
 --
 -- As the acronym implies, GPIO means performing I/O; therefore
 -- unexpected errors may occur during program excecution. The 'GpioF'
 -- eDSL makes allowances for "expected" failures (e.g., attempting to
--- open a pin may fail). How unxpected failures are handled is a
+-- open a pin may fail), but how unxpected failures are handled is a
 -- detail left to each particular interpreter. The interpreters
 -- included in the 'gpio' package strive to cleanly separate errors
 -- which occur in the program itself (semantic errors, e.g., writing

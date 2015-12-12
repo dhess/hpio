@@ -13,8 +13,21 @@ Copyright:              Copyright (c) 2015, Drew Hess
 Tested-With:            GHC == 7.10.2
 Synopsis:               Control GPIO pins
 Description:
-  @gpio@ provides a DSL for controlling GPIO pins. Currently only
-  Linux is supported (via the @sysfs@ filesystem).
+  @gpio@ provides an embedded DSL ("eDSL") for writing
+  platform-independent GPIO programs in Haskell. Currently only Linux
+  is supported (via the @sysfs@ filesystem), but other platforms will
+  be supported in the future.
+  .
+  Additionally, the package provides a "mock" GPIO environment for
+  testing GPIO programs on platforms that don't provide real GPIO
+  capabilities.
+  .
+  The abstract GPIO eDSL is implemented as a functor for the free
+  monad transformer, so it is easily embedded in other monad
+  transformer stacks which perform I/O.
+  .
+  Example programs are provided in the 'examples' directory of the
+  source code distribution.
 
 Extra-Doc-Files:        README.md
 Extra-Source-Files:     examples/*.hs
