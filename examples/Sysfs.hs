@@ -15,9 +15,9 @@ import System.GPIO.Linux.Sysfs (runSysfsSafe)
 output :: (MonadIO m) => String -> m ()
 output = liftIO . putStrLn
 
-toggleValue :: Value -> Value
-toggleValue High = Low
-toggleValue Low = High
+togglePinValue :: PinValue -> PinValue
+togglePinValue High = Low
+togglePinValue Low = High
 
 pickAPin :: (MonadIO m) => GpioT e h m m Pin
 pickAPin =
@@ -44,7 +44,7 @@ example =
                  when (dir == In) $
                    do output $ "Setting pin direction to " ++ show Out
                       void $ setPinDirection h Out
-                 let newValue = toggleValue val
+                 let newValue = togglePinValue val
                  output $ "Setting pin value to " ++ show newValue
                  void $ writePin h newValue
 
