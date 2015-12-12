@@ -39,7 +39,7 @@ module System.GPIO.Free
          -- * GPIO types
        , Pin(..)
        , PinDirection(..)
-       , Value(..)
+       , PinValue(..)
          -- * Convenience functions
        , invertDirection
        ) where
@@ -55,7 +55,7 @@ data Pin = Pin Int deriving (Eq, Ord, Show, Generic)
 data PinDirection = In | Out deriving (Eq, Show, Generic)
 
 -- | Pin value (high/low voltage).
-data Value = Low | High deriving (Eq, Enum, Ord, Show, Generic)
+data PinValue = Low | High deriving (Eq, Enum, Ord, Show, Generic)
 
 -- | Commands for the GPIO eDSL.
 data GpioF e h m next where
@@ -65,8 +65,8 @@ data GpioF e h m next where
   GetPinDirection :: h -> (Maybe PinDirection -> next) -> GpioF e h m next
   SetPinDirection :: h -> PinDirection -> next -> GpioF e h m next
   TogglePinDirection :: h -> (Maybe PinDirection -> next) -> GpioF e h m next
-  ReadPin :: h -> (Value -> next) -> GpioF e h m next
-  WritePin :: h -> Value -> next -> GpioF e h m next
+  ReadPin :: h -> (PinValue -> next) -> GpioF e h m next
+  WritePin :: h -> PinValue -> next -> GpioF e h m next
   WithPin :: Pin -> (h -> GpioT e h m m a) -> (a -> next) -> GpioF e h m next
 
 instance Functor (GpioF e h m) where
@@ -130,10 +130,10 @@ makeFreeCon 'SetPinDirection
 -- 'Nothing'. Otherwise, it returns the new direction.
 makeFreeCon 'TogglePinDirection
 
--- | Read the pin's 'Value'.
+-- | Read the pin's 'PinValue'.
 makeFreeCon 'ReadPin
 
--- | Set the pin's 'Value'. It is an error to call this function when
+-- | Set the pin's 'PinValue'. It is an error to call this function when
 -- the pin is not configured for output.
 makeFreeCon 'WritePin
 

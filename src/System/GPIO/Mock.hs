@@ -34,13 +34,13 @@ import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.Text (Text)
 import qualified Data.Text as T (intercalate, pack)
-import System.GPIO.Free (GpioF(..), GpioT, Pin(..), PinDirection(..), Value(..), openPin, closePin, setPinDirection, invertDirection)
+import System.GPIO.Free (GpioF(..), GpioT, Pin(..), PinDirection(..), PinValue(..), openPin, closePin, setPinDirection, invertDirection)
 
 -- | The set of all available pins in the mock environment.
 type MockPins = Set Pin
 
 -- | Keep track of the state of opened mock pins.
-data MockState = MockState { dir :: !PinDirection, value :: !Value } deriving (Show, Eq)
+data MockState = MockState { dir :: !PinDirection, value :: !PinValue } deriving (Show, Eq)
 
 -- | A handle for opened mock pins.
 data MockHandle = MockHandle Pin deriving (Show, Eq, Ord)
@@ -129,8 +129,8 @@ runMockT = iterT run
 
     run (ReadPin h next) =
       do void $ checkHandle h
-         eitherValue <- pinValue h
-         case eitherValue of
+         eitherPinValue <- pinValue h
+         case eitherPinValue of
            Left e -> throwError e
            Right v -> next v
 
@@ -185,7 +185,7 @@ pinF f h =
 mockState :: (MonadMock m) => MockHandle -> m (Either String MockState)
 mockState = pinF id
 
-pinValue :: (MonadMock m) => MockHandle -> m (Either String Value)
+pinValue :: (MonadMock m) => MockHandle -> m (Either String PinValue)
 pinValue = pinF value
 
 pinDirection :: (MonadMock m) => MockHandle -> m (Either String PinDirection)

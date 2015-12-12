@@ -81,11 +81,11 @@ testTogglePinDirection =
             closePin d
             return (dir1, dir2, dir3, dir4, dir5)
 
-toggleValue :: Value -> Value
-toggleValue Low = High
-toggleValue High = Low
+togglePinValue :: PinValue -> PinValue
+togglePinValue Low = High
+togglePinValue High = Low
 
-testReadWritePin :: (MonadError e m) => (Value -> Value) -> GpioT e h m m (Value, Value)
+testReadWritePin :: (MonadError e m) => (PinValue -> PinValue) -> GpioT e h m m (PinValue, PinValue)
 testReadWritePin f =
   do handle <- openPin (Pin 1)
      case handle of
@@ -117,21 +117,21 @@ invalidHandle action =
          do closePin d
             action d
 
-testWithPin :: (MonadError e m) => GpioT e h m m Value
+testWithPin :: (MonadError e m) => GpioT e h m m PinValue
 testWithPin = withPin (Pin 1) $ \h ->
   do void $ setPinDirection h Out
      void $ writePin h High
      val <- readPin h
      return val
 
-testWithPinError :: (MonadError e m) => GpioT e h m m Value
+testWithPinError :: (MonadError e m) => GpioT e h m m PinValue
 testWithPinError = withPin (Pin 1) $ \h ->
   do void $ setPinDirection h In
      void $ writePin h High -- should fail
      val <- readPin h
      return val
 
-testNestedWithPin :: (MonadError e m) => GpioT e h m m (Value, Value)
+testNestedWithPin :: (MonadError e m) => GpioT e h m m (PinValue, PinValue)
 testNestedWithPin =
   withPin (Pin 1) $ \h1 ->
     withPin (Pin 2) $ \h2 ->
@@ -143,7 +143,7 @@ testNestedWithPin =
          val2 <- readPin h2
          return (val1, val2)
 
-testNestedWithPinError :: (MonadError e m) => GpioT e h m m (Value, Value)
+testNestedWithPinError :: (MonadError e m) => GpioT e h m m (PinValue, PinValue)
 testNestedWithPinError =
   withPin (Pin 1) $ \h1 ->
     withPin (Pin 2) $ \h2 ->
@@ -191,7 +191,7 @@ spec =
      describe "writePin" $
        do it "toggles pin value" $
             let expectedResult = (Right (Low, High), Map.empty, ["Open Pin 1", "Set direction: MockHandle (Pin 1) Out", "Write: MockHandle (Pin 1) High", "Close MockHandle (Pin 1)"])
-            in runMock (Set.fromList [Pin 1]) (testReadWritePin toggleValue) `shouldBe` expectedResult
+            in runMock (Set.fromList [Pin 1]) (testReadWritePin togglePinValue) `shouldBe` expectedResult
 
           it "is idempotent" $
             let expectedResult = (Right (Low, Low), Map.empty, ["Open Pin 1", "Set direction: MockHandle (Pin 1) Out", "Write: MockHandle (Pin 1) Low", "Close MockHandle (Pin 1)"])
