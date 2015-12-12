@@ -27,6 +27,7 @@ module System.GPIO.Free
          GpioF(..)
        , pins
        , openPin
+       , openPinWithValue
        , closePin
        , getPinDirection
        , setPinDirection
@@ -63,6 +64,7 @@ data PinValue = Low | High deriving (Eq, Enum, Ord, Show, Generic)
 data GpioF e h m next where
   Pins :: ([Pin] -> next) -> GpioF e h m next
   OpenPin :: Pin -> (Either e h -> next) -> GpioF e h m next
+  OpenPinWithValue :: Pin -> PinValue -> (Either e h -> next) -> GpioF e h m next
   ClosePin :: h -> next -> GpioF e h m next
   GetPinDirection :: h -> (Maybe PinDirection -> next) -> GpioF e h m next
   SetPinDirection :: h -> PinDirection -> next -> GpioF e h m next
@@ -75,6 +77,7 @@ data GpioF e h m next where
 instance Functor (GpioF e h m) where
   fmap f (Pins g) = Pins (f . g)
   fmap f (OpenPin p g) = OpenPin p (f . g)
+  fmap f (OpenPinWithValue p v g) = OpenPinWithValue p v (f . g)
   fmap f (ClosePin h x) = ClosePin h (f x)
   fmap f (GetPinDirection h g) = GetPinDirection h (f . g)
   fmap f (SetPinDirection h dir x) = SetPinDirection h dir (f x)
@@ -102,11 +105,22 @@ type GpioT e h m = FreeT (GpioF e h m)
 -- returned by this function.
 makeFreeCon 'Pins
 
--- | Open a pin for reading and writing. If the pin can be opened,
--- the function returns a pin handle, which is used to operate on the
--- pin. If the pin cannot be opened (e.g., due to a permissions
--- failure), the function returns an error value.
+-- | Open a pin for use. If the pin can be opened, the function returns
+-- a pin handle, which is used to operate on the pin. If the pin
+-- cannot be opened (e.g., due to a permissions failure), the function
+-- returns an error value.
 makeFreeCon 'OpenPin
+
+-- | Open a pin with an initial 'PinValue'. This implies that the pin's
+-- 'PinDirection' will be set to 'Out', as well. If the pin cannot be
+-- opened, or if it cannot be configured as an output pin, the
+-- function returns an error value.
+--
+-- Note that on some platforms (e.g., Linux sysfs), the pin's
+-- direction and value can be set atomically to ensure "glitch-free"
+-- operation. Otherwise, it will be performed as 2 discrete
+-- operations.
+makeFreeCon 'OpenPinWithValue
 
 -- | Close a pin; i.e., indicate to the system that you no longer
 -- intend to use the pin via the given handle.

@@ -127,6 +127,20 @@ runSysfsT = iterT run
                     do void $ writeFile exportFileName (show n)
                        next (Right $ PinDescriptor p)
 
+    run (OpenPinWithValue p v next) =
+      do eitherHandle <- runSysfsT $ openPin p
+         case eitherHandle of
+           Left e -> next $ Left e
+           Right h ->
+             do settable <- hasDirection p
+                case settable of
+                  False ->
+                    do runSysfsT $ closePin h
+                       next (Left $ "Can't configure " ++ show p ++ " for output")
+                  True ->
+                    do writeFile (pinDirectionFileName p) (lowercase $ show v)
+                       next $ Right h
+
     run (ClosePin d next) =
       do let (Pin n) = pin d
          void $ writeFile unexportFileName (show n)
@@ -134,8 +148,8 @@ runSysfsT = iterT run
 
     run (GetPinDirection d next) =
       do let p = pin d
-         hasDirection <- liftIO $ doesFileExist (pinDirectionFileName p)
-         case hasDirection of
+         settable <- hasDirection p
+         case settable of
            False -> next Nothing
            True ->
              do dir <- readFile (pinDirectionFileName p)
@@ -243,6 +257,9 @@ toSysfsPinValue High = "1"
 
 lowercase :: String -> String
 lowercase = fmap toLower
+
+hasDirection :: (MonadIO m) => Pin -> m Bool
+hasDirection p = liftIO $ doesFileExist (pinDirectionFileName p)
 
 writeFile :: (MonadIO m) => FilePath -> String -> m ()
 writeFile f s = liftIO $ IO.writeFile f s

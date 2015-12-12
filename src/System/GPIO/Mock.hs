@@ -89,6 +89,14 @@ runMockT = iterT run
                 put (Map.insert d initialState states)
                 next (Right d)
 
+    run (OpenPinWithValue p v next) =
+      do eitherHandle <- runMockT $ openPin p
+         case eitherHandle of
+           Left e -> next $ Left e
+           Right h ->
+             do runMockT $ setPinDirection h Out >> writePin h v
+                next $ Right h
+
     run (ClosePin h next) =
       do valid <- validHandle h
          case valid of
