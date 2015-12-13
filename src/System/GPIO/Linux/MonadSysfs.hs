@@ -17,9 +17,18 @@ import Prelude hiding (readFile, writeFile)
 import Control.Error.Script (scriptIO)
 import Control.Error.Util (hushT)
 import Control.Monad (filterM)
-import Control.Monad.Except (ExceptT)
 import Control.Monad.IO.Class (MonadIO, liftIO)
-import Control.Monad.Trans.Maybe (MaybeT(..), runMaybeT)
+import Control.Monad.Trans.Cont (ContT)
+import Control.Monad.Trans.Except (ExceptT)
+import Control.Monad.Trans.List (ListT)
+import Control.Monad.Trans.Maybe (MaybeT, runMaybeT)
+import Control.Monad.Trans.Reader (ReaderT)
+import qualified Control.Monad.Trans.RWS.Lazy as LazyRWS (RWST)
+import qualified Control.Monad.Trans.RWS.Strict as StrictRWS (RWST)
+import qualified Control.Monad.Trans.State.Lazy as LazyState (StateT)
+import qualified Control.Monad.Trans.State.Strict as StrictState (StateT)
+import qualified Control.Monad.Trans.Writer.Lazy as LazyWriter (WriterT)
+import qualified Control.Monad.Trans.Writer.Strict as StrictWriter (WriterT)
 import Data.Char (toLower)
 import Data.List (isPrefixOf, sort)
 import Data.Maybe (catMaybes)
@@ -94,7 +103,137 @@ instance MonadSysfs IO where
   writePinValue = writePinValueIO
   availablePins = availablePinsIO
 
+instance (MonadIO m, MonadSysfs m) => MonadSysfs (ContT r m) where
+  sysfsIsPresent = sysfsIsPresentIO
+  pinIsExported = pinIsExportedIO
+  pinHasDirection = pinHasDirectionIO
+  exportPin = exportPinIO
+  unexportPin = unexportPinIO
+  readPinDirection = readPinDirectionIO
+  writePinDirection = writePinDirectionIO
+  writePinDirectionWithValue = writePinDirectionWithValueIO
+  readPinValue = readPinValueIO
+  writePinValue = writePinValueIO
+  availablePins = availablePinsIO
+
 instance (MonadIO m, MonadSysfs m) => MonadSysfs (ExceptT e m) where
+  sysfsIsPresent = sysfsIsPresentIO
+  pinIsExported = pinIsExportedIO
+  pinHasDirection = pinHasDirectionIO
+  exportPin = exportPinIO
+  unexportPin = unexportPinIO
+  readPinDirection = readPinDirectionIO
+  writePinDirection = writePinDirectionIO
+  writePinDirectionWithValue = writePinDirectionWithValueIO
+  readPinValue = readPinValueIO
+  writePinValue = writePinValueIO
+  availablePins = availablePinsIO
+
+instance (MonadIO m, MonadSysfs m) => MonadSysfs (ListT m) where
+  sysfsIsPresent = sysfsIsPresentIO
+  pinIsExported = pinIsExportedIO
+  pinHasDirection = pinHasDirectionIO
+  exportPin = exportPinIO
+  unexportPin = unexportPinIO
+  readPinDirection = readPinDirectionIO
+  writePinDirection = writePinDirectionIO
+  writePinDirectionWithValue = writePinDirectionWithValueIO
+  readPinValue = readPinValueIO
+  writePinValue = writePinValueIO
+  availablePins = availablePinsIO
+
+instance (MonadIO m, MonadSysfs m) => MonadSysfs (MaybeT m) where
+  sysfsIsPresent = sysfsIsPresentIO
+  pinIsExported = pinIsExportedIO
+  pinHasDirection = pinHasDirectionIO
+  exportPin = exportPinIO
+  unexportPin = unexportPinIO
+  readPinDirection = readPinDirectionIO
+  writePinDirection = writePinDirectionIO
+  writePinDirectionWithValue = writePinDirectionWithValueIO
+  readPinValue = readPinValueIO
+  writePinValue = writePinValueIO
+  availablePins = availablePinsIO
+
+instance (MonadIO m, MonadSysfs m) => MonadSysfs (ReaderT r m) where
+  sysfsIsPresent = sysfsIsPresentIO
+  pinIsExported = pinIsExportedIO
+  pinHasDirection = pinHasDirectionIO
+  exportPin = exportPinIO
+  unexportPin = unexportPinIO
+  readPinDirection = readPinDirectionIO
+  writePinDirection = writePinDirectionIO
+  writePinDirectionWithValue = writePinDirectionWithValueIO
+  readPinValue = readPinValueIO
+  writePinValue = writePinValueIO
+  availablePins = availablePinsIO
+
+instance (MonadIO m, MonadSysfs m, Monoid w) => MonadSysfs (LazyRWS.RWST r w s m) where
+  sysfsIsPresent = sysfsIsPresentIO
+  pinIsExported = pinIsExportedIO
+  pinHasDirection = pinHasDirectionIO
+  exportPin = exportPinIO
+  unexportPin = unexportPinIO
+  readPinDirection = readPinDirectionIO
+  writePinDirection = writePinDirectionIO
+  writePinDirectionWithValue = writePinDirectionWithValueIO
+  readPinValue = readPinValueIO
+  writePinValue = writePinValueIO
+  availablePins = availablePinsIO
+
+instance (MonadIO m, MonadSysfs m, Monoid w) => MonadSysfs (StrictRWS.RWST r w s m) where
+  sysfsIsPresent = sysfsIsPresentIO
+  pinIsExported = pinIsExportedIO
+  pinHasDirection = pinHasDirectionIO
+  exportPin = exportPinIO
+  unexportPin = unexportPinIO
+  readPinDirection = readPinDirectionIO
+  writePinDirection = writePinDirectionIO
+  writePinDirectionWithValue = writePinDirectionWithValueIO
+  readPinValue = readPinValueIO
+  writePinValue = writePinValueIO
+  availablePins = availablePinsIO
+
+instance (MonadIO m, MonadSysfs m) => MonadSysfs (LazyState.StateT s m) where
+  sysfsIsPresent = sysfsIsPresentIO
+  pinIsExported = pinIsExportedIO
+  pinHasDirection = pinHasDirectionIO
+  exportPin = exportPinIO
+  unexportPin = unexportPinIO
+  readPinDirection = readPinDirectionIO
+  writePinDirection = writePinDirectionIO
+  writePinDirectionWithValue = writePinDirectionWithValueIO
+  readPinValue = readPinValueIO
+  writePinValue = writePinValueIO
+  availablePins = availablePinsIO
+
+instance (MonadIO m, MonadSysfs m) => MonadSysfs (StrictState.StateT s m) where
+  sysfsIsPresent = sysfsIsPresentIO
+  pinIsExported = pinIsExportedIO
+  pinHasDirection = pinHasDirectionIO
+  exportPin = exportPinIO
+  unexportPin = unexportPinIO
+  readPinDirection = readPinDirectionIO
+  writePinDirection = writePinDirectionIO
+  writePinDirectionWithValue = writePinDirectionWithValueIO
+  readPinValue = readPinValueIO
+  writePinValue = writePinValueIO
+  availablePins = availablePinsIO
+
+instance (MonadIO m, MonadSysfs m, Monoid w) => MonadSysfs (LazyWriter.WriterT w m) where
+  sysfsIsPresent = sysfsIsPresentIO
+  pinIsExported = pinIsExportedIO
+  pinHasDirection = pinHasDirectionIO
+  exportPin = exportPinIO
+  unexportPin = unexportPinIO
+  readPinDirection = readPinDirectionIO
+  writePinDirection = writePinDirectionIO
+  writePinDirectionWithValue = writePinDirectionWithValueIO
+  readPinValue = readPinValueIO
+  writePinValue = writePinValueIO
+  availablePins = availablePinsIO
+
+instance (MonadIO m, MonadSysfs m, Monoid w) => MonadSysfs (StrictWriter.WriterT w m) where
   sysfsIsPresent = sysfsIsPresentIO
   pinIsExported = pinIsExportedIO
   pinHasDirection = pinHasDirectionIO
