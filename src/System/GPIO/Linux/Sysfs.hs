@@ -1,17 +1,14 @@
 -- | A 'GpioF' interpreter for Linux GPIO via sysfs.
---
--- Note that this module contains some functions which are not part of
--- the 'GpioF' DSL, but which may be useful for users of the module,
--- particularly when running 'GpioF' programs using the sysfs
--- interpreter. These functions are exported for your convenience.
 
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module System.GPIO.Linux.Sysfs
-       ( -- * The Linux sysfs GPIO interpreter
-         SysfsF
+       ( -- * MonadSysfs class
+         MonadSysfs(..)
+         -- * The Linux sysfs GPIO interpreter
+       , SysfsF
        , SysfsT
        , Sysfs
        , runSysfsT
@@ -20,63 +17,14 @@ module System.GPIO.Linux.Sysfs
        , runSysfsSafe
          -- * Linux sysfs GPIO types
        , PinDescriptor(..)
-         -- * Convenience functions
-       , sysfsPath
-       , exportFileName
-       , unexportFileName
-       , pinDirName
-       , pinDirectionFileName
-       , pinValueFileName
        ) where
 
-import Prelude hiding (readFile, writeFile)
-import Control.Error.Util (hushT)
 import Control.Error.Script (scriptIO)
-import Control.Monad (filterM, void)
+import Control.Monad (void)
 import Control.Monad.Except (ExceptT, MonadError, catchError, runExceptT, throwError)
-import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Trans.Free (iterT)
-import Control.Monad.Trans.Maybe (MaybeT(..), runMaybeT)
-import Data.Char (toLower)
-import Data.List (isPrefixOf, sort)
-import Data.Maybe (catMaybes)
-import System.Directory (doesDirectoryExist, doesFileExist, getDirectoryContents)
-import System.FilePath ((</>), takeFileName)
 import System.GPIO.Free (GpioF(..), GpioT, PinDirection(..), Pin(..), PinValue(..), openPin, closePin, readPin, writePin, getPinDirection, setPinDirection, invertDirection, invertValue)
-import qualified System.IO as IO (writeFile)
-import qualified System.IO.Strict as IOS (readFile)
-
--- | The base path to Linux's GPIO sysfs interface.
-sysfsPath :: FilePath
-sysfsPath = "/sys/class/gpio"
-
--- | The name of the control file used to export GPIO pins via sysfs.
-exportFileName :: FilePath
-exportFileName = sysfsPath </> "export"
-
--- | The name of the control file used to "unexport" GPIO pins via
--- sysfs.
-unexportFileName :: FilePath
-unexportFileName = sysfsPath </> "unexport"
-
--- | Exporting a GPIO pin via sysfs creates a control directory
--- corresponding to that pin. 'pinDirName' gives the name of that
--- directory for a given pin number.
-pinDirName :: Pin -> FilePath
-pinDirName (Pin n) = sysfsPath </> ("gpio" ++ show n)
-
--- | Pins whose direction can be controlled via sysfs provide a
--- control file. 'pinDirectionFileName' gives the name of that file
--- for a given pin number. Note that some pins' direction cannot be
--- set. In these cases, the file named by this function does not
--- actually exist.
-pinDirectionFileName :: Pin -> FilePath
-pinDirectionFileName p = pinDirName p </> "direction"
-
--- | The name of the control file used to read and write the pin's
--- value.
-pinValueFileName :: Pin -> FilePath
-pinValueFileName p = pinDirName p </> "value"
+import System.GPIO.Linux.MonadSysfs (MonadSysfs(..))
 
 -- | The sysfs interpreter's pin handle type. Currently it's just a
 -- newtype wrapper around a 'Pin'. The constructor is exported for
@@ -102,29 +50,29 @@ type SysfsF m = GpioF String PinDescriptor m
 -- (Errors that could occur in the interpreter are generally limited
 -- to reading unexpected results from various sysfs GPIO control
 -- files.)
-runSysfsT :: (MonadError String m, MonadIO m) => (SysfsT m) m a -> m a
+runSysfsT :: (MonadError String m, MonadSysfs m) => (SysfsT m) m a -> m a
 runSysfsT = iterT run
   where
-    run :: (MonadError String m, MonadIO m) => (SysfsF m) (m a) -> m a
+    run :: (MonadError String m, MonadSysfs m) => (SysfsF m) (m a) -> m a
 
     run (Pins next) =
-      do hasSysfs <- liftIO $ doesDirectoryExist sysfsPath
+      do hasSysfs <- sysfsIsPresent
          case hasSysfs of
            False -> next []
-           True -> allPins >>= next
+           True -> availablePins >>= next
 
     -- Export the pin. Note that it may already be exported, which we
     -- treat as success.
-    run (OpenPin p@(Pin n) next) =
-      do hasSysfs <- liftIO $ doesDirectoryExist sysfsPath
+    run (OpenPin p next) =
+      do hasSysfs <- sysfsIsPresent
          case hasSysfs of
            False -> next (Left "sysfs GPIO is not present")
            True ->
-             do exported <- liftIO $ doesDirectoryExist (pinDirName p)
+             do exported <- pinIsExported p
                 case exported of
                   True -> next (Right $ PinDescriptor p)
                   False ->
-                    do void $ writeFile exportFileName (show n)
+                    do exportPin p
                        next (Right $ PinDescriptor p)
 
     run (OpenPinWithValue p v next) =
@@ -132,27 +80,27 @@ runSysfsT = iterT run
          case eitherHandle of
            Left e -> next $ Left e
            Right h ->
-             do settable <- hasDirection p
+             do settable <- pinHasDirection p
                 case settable of
                   False ->
                     do runSysfsT $ closePin h
                        next (Left $ "Can't configure " ++ show p ++ " for output")
                   True ->
-                    do writeFile (pinDirectionFileName p) (lowercase $ show v)
+                    do writePinDirectionWithValue p v
                        next $ Right h
 
     run (ClosePin d next) =
-      do let (Pin n) = pin d
-         void $ writeFile unexportFileName (show n)
+      do let p = pin d
+         unexportPin p
          next
 
     run (GetPinDirection d next) =
       do let p = pin d
-         settable <- hasDirection p
+         settable <- pinHasDirection p
          case settable of
            False -> next Nothing
            True ->
-             do dir <- readFile (pinDirectionFileName p)
+             do dir <- readPinDirection p
                 case dir of
                   "in\n"  -> next $ Just In
                   "out\n" -> next $ Just Out
@@ -160,7 +108,7 @@ runSysfsT = iterT run
 
     run (SetPinDirection d dir next) =
       do let p = pin d
-         void $ writeFile (pinDirectionFileName p) (lowercase $ show dir)
+         writePinDirection p dir
          next
 
     run (TogglePinDirection d next) =
@@ -174,7 +122,7 @@ runSysfsT = iterT run
 
     run (ReadPin d next) =
       do let p = pin d
-         value <- readFile (pinValueFileName p)
+         value <- readPinValue p
          case value of
            "0\n" -> next Low
            "1\n" -> next High
@@ -182,7 +130,7 @@ runSysfsT = iterT run
 
     run (WritePin d v next) =
       do let p = pin d
-         void $ writeFile (pinValueFileName p) (toSysfsPinValue v)
+         writePinValue p v
          next
 
     run (TogglePinValue h next) =
@@ -246,52 +194,3 @@ runSysfs' action =
      case result of
        Left e -> fail e
        Right a -> return a
-
-
--- Helper functions that aren't exported.
---
-
-toSysfsPinValue :: PinValue -> String
-toSysfsPinValue Low = "0"
-toSysfsPinValue High = "1"
-
-lowercase :: String -> String
-lowercase = fmap toLower
-
-hasDirection :: (MonadIO m) => Pin -> m Bool
-hasDirection p = liftIO $ doesFileExist (pinDirectionFileName p)
-
-writeFile :: (MonadIO m) => FilePath -> String -> m ()
-writeFile f s = liftIO $ IO.writeFile f s
-
-readFile :: (MonadIO m) => FilePath -> m String
-readFile f = liftIO $ IOS.readFile f
-
-readFromFile :: (MonadIO m, Read a) => FilePath -> m a
-readFromFile f = liftIO (IOS.readFile f >>= readIO)
-
-maybeIO :: (MonadIO m) => IO a -> MaybeT m a
-maybeIO = hushT . scriptIO
-
-chipBaseGpio :: (MonadIO m) => FilePath -> m Int
-chipBaseGpio chipDir = readFromFile (chipDir </> "base")
-
-chipNGpio :: (MonadIO m) => FilePath -> m Int
-chipNGpio chipDir = readFromFile (chipDir </> "ngpio")
-
-allPins :: (MonadIO m) => m [Pin]
-allPins =
-  do sysfsEntries <- liftIO $ getDirectoryContents sysfsPath
-     let sysfsContents = fmap (sysfsPath </>) sysfsEntries
-     sysfsDirectories <- filterM (liftIO . doesDirectoryExist) sysfsContents
-     let chipDirs = filter (\f -> isPrefixOf "gpiochip" $ takeFileName f) sysfsDirectories
-     maybePins <- mapM (runMaybeT . pinRange) chipDirs
-     return $ sort $ concat $ catMaybes maybePins
-
-pinRange :: (MonadIO m) => FilePath -> MaybeT m [Pin]
-pinRange chipDir =
-  do base <- maybeIO $ chipBaseGpio chipDir
-     ngpio <- maybeIO $ chipNGpio chipDir
-     case (base >= 0 && ngpio > 0) of
-       False -> return []
-       True -> return $ fmap Pin [base .. (base + ngpio - 1)]
