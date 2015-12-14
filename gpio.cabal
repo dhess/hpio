@@ -40,12 +40,14 @@ Library
                       , System.GPIO.Mock
                       , System.GPIO.Free
                       , System.GPIO.Linux.Sysfs
+                      , System.GPIO.Linux.MockSysfs
                       , System.GPIO.Linux.MonadSysfs
   Other-Extensions:     DeriveGeneric
                       , FlexibleContexts
                       , GADTs
                       , TemplateHaskell
   Build-Depends:        base >= 4 && < 5
+                      , cond
                       , containers
                       , directory
                       , errors
@@ -69,6 +71,7 @@ Test-Suite spec
                       , GADTs
                       , TemplateHaskell
   Build-Depends:        base
+                      , cond
                       , containers
                       , directory
                       , errors
@@ -81,8 +84,10 @@ Test-Suite spec
                       , text
                       , transformers
   Other-modules:        System.GPIO
+                      , System.GPIO.Mock
                       , System.GPIO.Free
                       , System.GPIO.Linux.Sysfs
+                      , System.GPIO.Linux.MockSysfs
                       , System.GPIO.Linux.MonadSysfs
 
 Source-Repository head

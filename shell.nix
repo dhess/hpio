@@ -4,7 +4,7 @@ let
 
   inherit (nixpkgs) pkgs;
 
-  f = { mkDerivation, base, containers, directory, errors
+  f = { mkDerivation, base, cond, containers, directory, errors
       , exceptions, filepath, free, hspec, mtl, stdenv, strict, text
       , transformers
       }:
@@ -13,12 +13,12 @@ let
         version = "0.3.1";
         src = ./.;
         libraryHaskellDepends = [
-          base containers directory errors exceptions filepath free mtl
+          base cond containers directory errors exceptions filepath free mtl
           strict text transformers
         ];
         testHaskellDepends = [
-          base containers directory errors exceptions filepath free hspec mtl
-          strict text transformers
+          base cond containers directory errors exceptions filepath free
+          hspec mtl strict text transformers
         ];
         homepage = "https://github.com/dhess/gpio";
         description = "Control GPIO pins";
