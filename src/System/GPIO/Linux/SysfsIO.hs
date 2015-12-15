@@ -6,10 +6,9 @@ module System.GPIO.Linux.SysfsIO
          ( -- * 'SysfsIOT' transformer
            SysfsIOT(..)
          , SysfsIO
-         , Sysfs
-         , runSysfs
-         , runSysfsSafe
-         , runSysfs'
+         , runSysfsIO
+         , runSysfsIO'
+         , runSysfsIOSafe
          ) where
 
 import Prelude hiding (readFile, writeFile)
@@ -35,51 +34,46 @@ newtype SysfsIOT m a =
   SysfsIOT { runSysfsIOT :: m a }
   deriving (Alternative,Applicative,Functor,Monad,MonadIO)
 
--- | A convenient specialization of 'SysfsIOT' which runs computations
--- in the 'IO' monad.
-type SysfsIO a = SysfsIOT IO a
-
 -- | A convenient specialization of 'SysfsT' which runs GPIO
--- computations in the 'SysfsIO' monad, and returns results as
--- 'Either' 'String' 'a'.
-type Sysfs a = SysfsT (ExceptT String (SysfsIOT IO)) (ExceptT String (SysfsIOT IO)) a
+-- computations in 'IO', and returns results as 'Either' 'String' 'a'.
+type SysfsIO a = SysfsT (ExceptT String (SysfsIOT IO)) (ExceptT String (SysfsIOT IO)) a
 
--- | Run a 'Sysfs' computation in the 'IO' monad and return the result
--- as 'Right' 'a'. If an error occurs in the computation or in the
--- interpreter, it is returned as 'Left' 'String'. However, the
--- function does not catch any 'Control.Exception.Base.IOException's
--- that occur as a side effect of the computation; those will
--- propagate upwards.
-runSysfs :: Sysfs a -> IO (Either String a)
-runSysfs action = runSysfsIOT $ runExceptT $ runSysfsT action
-
--- | Run a 'Sysfs' computation and return the result in as 'Right'
--- 'a'. If an error in the computation, in the 'Sysfs' interpreter, or
--- elsewhere while the computation is running (including
--- 'Control.Exception.Base.IOException's that occur as a side effect
--- of the computation) it is handled by this function and is returned
--- as an error result via 'Left' 'String'. Therefore, this function is
--- total; i.e., it always returns a result (assuming the computation
--- terminates) and never throws an exception.
-runSysfsSafe :: Sysfs a -> IO (Either String a)
-runSysfsSafe action =
-  do result <- runExceptT $ scriptIO (runSysfs action)
-     case result of
-       Left e -> return $ Left e
-       Right a -> return a
-
--- | Run a 'Sysfs' computation in the 'IO' monad and return the
--- result. If an error occurs in the computation, in the 'Sysfs'
+-- | Run a 'SysfsIO' computation in the 'IO' monad and return the
+-- result. If an error occurs in the computation, in the 'SysfsT'
 -- interpreter, or in the "real world" (e.g., 'IO' exceptions) it will
 -- be thrown as an 'Control.Exception.Base.IOException'. In other
 -- words, all errors will be expressed as
 -- 'Control.Exception.Base.IOException's, just as a plain 'IO'
 -- computation would do.
-runSysfs' :: Sysfs a -> IO a
-runSysfs' action =
-  do result <- runSysfs action
+runSysfsIO :: SysfsIO a -> IO a
+runSysfsIO action =
+  do result <- runSysfsIO' action
      case result of
        Left e -> fail e
+       Right a -> return a
+
+-- | Run a 'SysfsT' computation in the 'IO' monad and return the result
+-- as 'Right' 'a'. If an error occurs in the computation or in the
+-- interpreter, it is returned as 'Left' 'String'. However, the
+-- function does not catch any 'Control.Exception.Base.IOException's
+-- that occur as a side effect of the computation; those will
+-- propagate upwards.
+runSysfsIO' :: SysfsIO a -> IO (Either String a)
+runSysfsIO' action = runSysfsIOT $ runExceptT $ runSysfsT action
+
+-- | Run a 'SysfsT' computation in the 'IO' monad and return the result
+-- in as 'Right' 'a'. If an error in the computation, in the 'SysfsT'
+-- interpreter, or elsewhere while the computation is running
+-- (including 'Control.Exception.Base.IOException's that occur as a
+-- side effect of the computation) it is handled by this function and
+-- is returned as an error result via 'Left' 'String'. Therefore, this
+-- function always returns a result (assuming the computation
+-- terminates) and never throws an exception.
+runSysfsIOSafe :: SysfsIO a -> IO (Either String a)
+runSysfsIOSafe action =
+  do result <- runExceptT $ scriptIO (runSysfsIO' action)
+     case result of
+       Left e -> return $ Left e
        Right a -> return a
 
 instance (MonadIO m) => MonadSysfs (SysfsIOT m) where
