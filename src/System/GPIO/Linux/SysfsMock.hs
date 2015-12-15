@@ -179,11 +179,11 @@ exportPinMock p =
 unexportPinMock :: (MonadIO m) => Pin -> SysfsMockT m ()
 unexportPinMock p =
   ifM (pinIsExportedMock p)
-    (liftIO $ ioError unexportErrorInvalidArgument)
     (do exportedPins <- gets exported
         unexportedPins <- gets unexported
         let (newExp, newUnexp) = movePin p exportedPins unexportedPins
         put $ MockWorld newUnexp newExp)
+    (liftIO $ ioError unexportErrorInvalidArgument)
 
 readPinDirectionMock :: (MonadIO m) => Pin -> SysfsMockT m String
 readPinDirectionMock p =

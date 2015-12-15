@@ -6,10 +6,11 @@ module System.GPIO.SysfsSpec (spec) where
 import Control.Monad.Except
 import qualified Data.Map.Strict as Map
 import Data.Text (Text)
+import GHC.IO.Exception (IOErrorType(..), IOException(ioe_type))
 import System.GPIO.Free
 import System.GPIO.Linux.Sysfs
 import System.GPIO.Linux.SysfsMock
-
+import System.IO.Error
 
 import Test.Hspec
 
@@ -199,10 +200,18 @@ testNestedWithPinError =
          val2 <- readPin h2
          return (val1, val2)
 
+-- System.IO.Error does not provide this.
+myIsInvalidArgumentErrorType :: IOErrorType -> Bool
+myIsInvalidArgumentErrorType InvalidArgument = True
+myIsInvalidArgumentErrorType _ = False
+
+-- myIsInvalidArgument :: IOError -> Bool
+-- myIsInvalidArgument = myIsInvalidArgument . ioe_type
+
 spec :: Spec
 spec =
   do describe "pins" $
-       let unexportedPinList = [Pin 1 , Pin 8 ]
+       let unexportedPinList = [Pin 1, Pin 8]
            unexportedPinState = repeat defaultState
            unexportedPins = Map.fromList $ zip unexportedPinList unexportedPinState
            exportedPins = Map.empty
@@ -210,91 +219,21 @@ spec =
            expectedResult = (unexportedPinList, world, [])
        in
          it "returns the list of available pins" $
-             do result <- runSysfsMock pins world
-                result `shouldBe` expectedResult
+             runSysfsMock pins world `shouldReturn` expectedResult
 
-     -- describe "openPin and closePin" $
-
-     --   do it "succeeds when the pin is available" $
-     --        do let expectedResult = (Right (), Map.empty, ["Open Pin 1", "Close MockHandle (Pin 1)"])
-     --           runMock (Set.fromList [Pin 1]) testOpenClose `shouldBe` expectedResult
-
-     --      it "fails when the pin is unavailable" $
-     --        do let expectedResult = (Left "Open failed: Pin 1 does not exist", Map.empty, [])
-     --           runMock (Set.fromList [Pin 2]) testOpenClose `shouldBe` expectedResult
-
-     -- describe "setPinDirection" $
-
-     --   do it "sets the pin direction" $
-     --        let expectedResult = (Right (In, Out, In), Map.empty, ["Open Pin 1", "Set direction: MockHandle (Pin 1) Out", "Set direction: MockHandle (Pin 1) In", "Close MockHandle (Pin 1)"])
-     --        in runMock (Set.fromList [Pin 1]) testSetDirection `shouldBe` expectedResult
-
-     --      it "is idempotent" $
-     --        let expectedResult = (Right (In, In), Map.empty, ["Open Pin 1", "Set direction: MockHandle (Pin 1) In", "Close MockHandle (Pin 1)"])
-     --        in runMock (Set.fromList [Pin 1]) testSetDirectionIdempotent `shouldBe` expectedResult
-
-     -- describe "togglePinDirection" $
-     --   do it "toggles pin direction" $
-     --         let expectedResult = (Right (In, Out, Out, In, In), Map.empty, ["Open Pin 1", "Set direction: MockHandle (Pin 1) Out", "Set direction: MockHandle (Pin 1) In", "Close MockHandle (Pin 1)"])
-     --         in runMock (Set.fromList [Pin 1]) testTogglePinDirection `shouldBe` expectedResult
-
-     -- describe "writePin" $
-     --   do it "toggles pin value" $
-     --        let expectedResult = (Right (Low, High, Low), Map.empty, ["Open Pin 1", "Set direction: MockHandle (Pin 1) Out", "Write: MockHandle (Pin 1) High", "Write: MockHandle (Pin 1) Low", "Close MockHandle (Pin 1)"])
-     --        in runMock (Set.fromList [Pin 1]) testReadWritePin `shouldBe` expectedResult
-
-     --      it "is idempotent" $
-     --        let expectedResult = (Right (Low, Low), Map.empty, ["Open Pin 1", "Set direction: MockHandle (Pin 1) Out", "Write: MockHandle (Pin 1) Low", "Close MockHandle (Pin 1)"])
-     --        in runMock (Set.fromList [Pin 1]) testReadWritePinIdempotent `shouldBe` expectedResult
-
-     --      it "fails when the pin direction is In" $
-     --        -- Note that this test will leave Pin 1 in the "open" state.
-     --        let expectedResult = (Left "MockHandle (Pin 1) is configured for input", Map.fromList [(MockHandle (Pin 1),MockState {dir = In, value = Low})], ["Open Pin 1", "Set direction: MockHandle (Pin 1) In"])
-     --        in runMock (Set.fromList [Pin 1]) testWritePinFailsOnInputPin `shouldBe` expectedResult
-
-     -- describe "togglePinValue" $
-     --   do it "toggles the pin's value" $
-     --         let expectedResult = (Right (Low, High, High, Low, Low), Map.empty, ["Open Pin 1", "Set direction: MockHandle (Pin 1) Out", "Write: MockHandle (Pin 1) High", "Write: MockHandle (Pin 1) Low", "Close MockHandle (Pin 1)"])
-     --         in runMock (Set.fromList [Pin 1]) testTogglePinValue `shouldBe` expectedResult
-
-     -- describe "invalid handles throw exceptions" $
-     --   do it "in getPinDirection" $
-     --        let expectedResult = (Left "Pin handle MockHandle (Pin 1) is invalid", Map.empty, ["Open Pin 1", "Close MockHandle (Pin 1)"])
-     --        in
-     --          runMock (Set.fromList [Pin 1]) (invalidHandle getPinDirection) `shouldBe` expectedResult
-
-     --      let expectedResult = (Left "Pin handle MockHandle (Pin 1) is invalid", Map.empty, ["Open Pin 1", "Close MockHandle (Pin 1)"])
-
-     --      it "in setPinDirection" $
-     --        runMock (Set.fromList [Pin 1]) (invalidHandle (\d -> setPinDirection d Out)) `shouldBe` expectedResult
-
-     --      it "in readPin" $
-     --        runMock (Set.fromList [Pin 1]) (invalidHandle readPin) `shouldBe` expectedResult
-
-     --      it "in writePin" $
-     --        runMock (Set.fromList [Pin 1]) (invalidHandle (\d -> writePin d High)) `shouldBe` expectedResult
-
-     -- describe "withPin" $
-     --   do it "opens and closes the pin as expected" $
-     --        let expectedResult = (Right High, Map.empty, ["Open Pin 1", "Set direction: MockHandle (Pin 1) Out", "Write: MockHandle (Pin 1) High", "Close MockHandle (Pin 1)"])
-     --        in runMock (Set.fromList [Pin 1]) testWithPin `shouldBe` expectedResult
-
-     --      it "throws an exception when the pin does not exist" $
-     --        let expectedResult = (Left "Open failed: Pin 1 does not exist", Map.empty, [])
-     --        in runMock (Set.fromList [Pin 2]) testWithPin `shouldBe` expectedResult
-
-     --      it "closes the pin when an exception occurs inside the block" $
-     --        let expectedResult = (Left "MockHandle (Pin 1) is configured for input", Map.empty, ["Open Pin 1", "Set direction: MockHandle (Pin 1) In", "Close MockHandle (Pin 1)"])
-     --        in runMock (Set.fromList [Pin 1]) testWithPinError `shouldBe` expectedResult
-
-
-     --      it "can nest" $
-     --        let expectedResult = (Right (High, Low), Map.empty, ["Open Pin 1", "Open Pin 2", "Set direction: MockHandle (Pin 1) Out", "Set direction: MockHandle (Pin 2) Out", "Write: MockHandle (Pin 1) High", "Write: MockHandle (Pin 2) Low", "Close MockHandle (Pin 2)", "Close MockHandle (Pin 1)"])
-     --        in runMock (Set.fromList [Pin 1, Pin 2]) testNestedWithPin `shouldBe` expectedResult
-
-     --      it "fails properly when nested" $
-     --        let expectedResult1 = (Left "Open failed: Pin 2 does not exist", Map.empty, ["Open Pin 1", "Close MockHandle (Pin 1)"])
-     --            expectedResult2 = (Left "MockHandle (Pin 2) is configured for input", Map.empty, ["Open Pin 1", "Open Pin 2", "Set direction: MockHandle (Pin 1) Out", "Set direction: MockHandle (Pin 2) In", "Write: MockHandle (Pin 1) High", "Close MockHandle (Pin 2)", "Close MockHandle (Pin 1)"])
-     --        in
-     --          do runMock (Set.fromList [Pin 1]) testNestedWithPin `shouldBe` expectedResult1
-     --             runMock (Set.fromList [Pin 1, Pin 2]) testNestedWithPinError `shouldBe` expectedResult2
+     describe "openPin and closePin" $
+       let unexportedPinState = repeat defaultState
+           unexportedPinList1 = [Pin 1]
+           unexportedPins1 = Map.fromList $ zip unexportedPinList1 unexportedPinState
+           unexportedPinList2 = [Pin 2]
+           unexportedPins2 = Map.fromList $ zip unexportedPinList2 unexportedPinState
+           exportedPins = Map.empty
+           world1 = MockWorld unexportedPins1 exportedPins
+           expectedResult1 = ((), world1, [])
+           world2 = MockWorld unexportedPins2 exportedPins
+           expectedResult2 = ((), world2, [])
+       in
+         do it "succeeds when the pin is available" $
+              runSysfsMock testOpenClose world1 `shouldReturn` expectedResult1
+            it "fails when the pin is unavailable" $
+              do runSysfsMock testOpenClose world2 `shouldThrow` anyIOException
