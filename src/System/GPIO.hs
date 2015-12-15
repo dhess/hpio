@@ -12,4 +12,4 @@ module System.GPIO
        ) where
 
 import System.GPIO.Free
-import System.GPIO.Linux.Sysfs (SysfsF, SysfsT, Sysfs, runSysfs, runSysfs', runSysfsSafe)
+import System.GPIO.Linux.Sysfs (SysfsF, SysfsT, runSysfsT)

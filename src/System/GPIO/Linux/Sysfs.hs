@@ -10,18 +10,13 @@ module System.GPIO.Linux.Sysfs
          -- * The Linux sysfs GPIO interpreter
        , SysfsF
        , SysfsT
-       , Sysfs
        , runSysfsT
-       , runSysfs
-       , runSysfs'
-       , runSysfsSafe
          -- * Linux sysfs GPIO types
        , PinDescriptor(..)
        ) where
 
-import Control.Error.Script (scriptIO)
 import Control.Monad (void)
-import Control.Monad.Except (ExceptT, MonadError, catchError, runExceptT, throwError)
+import Control.Monad.Except (MonadError, catchError, throwError)
 import Control.Monad.Trans.Free (iterT)
 import System.GPIO.Free (GpioF(..), GpioT, PinDirection(..), Pin(..), PinValue(..), openPin, closePin, readPin, writePin, getPinDirection, setPinDirection, invertDirection, invertValue)
 import System.GPIO.Linux.MonadSysfs (MonadSysfs(..))
@@ -151,46 +146,3 @@ runSysfsT = iterT run
                (\e ->
                  do runSysfsT $ closePin pd
                     throwError e)
-
--- | A convenient specialization of 'SysfsT' which runs sysfs GPIO
--- computations in the 'IO' monad, and returns results as 'Either'
--- 'String' 'a'.
-type Sysfs a = SysfsT (ExceptT String IO) (ExceptT String IO) a
-
--- | Run a 'Sysfs' computation in the 'IO' monad and return the result
--- as 'Right' 'a'. If an error occurs in the computation or in the
--- interpreter, it is returned as 'Left' 'String'. However, the
--- function does not catch any 'Control.Exception.Base.IOException's
--- that occur as a side effect of the computation; those will
--- propagate upwards.
-runSysfs :: Sysfs a -> IO (Either String a)
-runSysfs action = runExceptT $ runSysfsT action
-
--- | Run a 'Sysfs' computation and return the result in as 'Right'
--- 'a'. If an error in the computation, in the 'Sysfs' interpreter, or
--- elsewhere while the computation is running (including
--- 'Control.Exception.Base.IOException's that occur as a side effect
--- of the computation) it is handled by this function and is returned
--- as an error result via 'Left' 'String'. Therefore, this function is
--- total; i.e., it always returns a result (assuming the computation
--- terminates) and never throws an exception.
-runSysfsSafe :: Sysfs a -> IO (Either String a)
-runSysfsSafe action =
-  do result <- runExceptT $ scriptIO (runSysfs action)
-     case result of
-       Left e -> return $ Left e
-       Right a -> return a
-
--- | Run a 'Sysfs' computation in the 'IO' monad and return the
--- result. If an error occurs in the computation, in the 'Sysfs'
--- interpreter, or in the "real world" (e.g., 'IO' exceptions) it will
--- be thrown as an 'Control.Exception.Base.IOException'. In other
--- words, all errors will be expressed as
--- 'Control.Exception.Base.IOException's, just as a plain 'IO'
--- computation would do.
-runSysfs' :: Sysfs a -> IO a
-runSysfs' action =
-  do result <- runSysfs action
-     case result of
-       Left e -> fail e
-       Right a -> return a

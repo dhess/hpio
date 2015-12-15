@@ -13,15 +13,12 @@ module System.GPIO.Linux.MonadSysfs
        , pinValueFileName
        ) where
 
-import Prelude hiding (readFile, writeFile)
-import Control.Error.Script (scriptIO)
-import Control.Error.Util (hushT)
-import Control.Monad (filterM)
-import Control.Monad.IO.Class (MonadIO, liftIO)
+import Control.Monad.IO.Class (MonadIO)
+import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Cont (ContT)
 import Control.Monad.Trans.Except (ExceptT)
 import Control.Monad.Trans.List (ListT)
-import Control.Monad.Trans.Maybe (MaybeT, runMaybeT)
+import Control.Monad.Trans.Maybe (MaybeT)
 import Control.Monad.Trans.Reader (ReaderT)
 import qualified Control.Monad.Trans.RWS.Lazy as LazyRWS (RWST)
 import qualified Control.Monad.Trans.RWS.Strict as StrictRWS (RWST)
@@ -29,14 +26,8 @@ import qualified Control.Monad.Trans.State.Lazy as LazyState (StateT)
 import qualified Control.Monad.Trans.State.Strict as StrictState (StateT)
 import qualified Control.Monad.Trans.Writer.Lazy as LazyWriter (WriterT)
 import qualified Control.Monad.Trans.Writer.Strict as StrictWriter (WriterT)
-import Data.Char (toLower)
-import Data.List (isPrefixOf, sort)
-import Data.Maybe (catMaybes)
-import System.Directory (doesDirectoryExist, doesFileExist, getDirectoryContents)
-import System.FilePath ((</>), takeFileName)
+import System.FilePath ((</>))
 import System.GPIO.Free (PinDirection(..), Pin(..), PinValue(..))
-import qualified System.IO as IO (writeFile)
-import qualified System.IO.Strict as IOS (readFile)
 
 -- | The base path to Linux's GPIO sysfs interface.
 sysfsPath :: FilePath
@@ -90,227 +81,146 @@ class (Monad m) => MonadSysfs m where
   writePinValue :: Pin -> PinValue -> m ()
   availablePins :: m [Pin]
 
-instance MonadSysfs IO where
-  sysfsIsPresent = sysfsIsPresentIO
-  pinIsExported = pinIsExportedIO
-  pinHasDirection = pinHasDirectionIO
-  exportPin = exportPinIO
-  unexportPin = unexportPinIO
-  readPinDirection = readPinDirectionIO
-  writePinDirection = writePinDirectionIO
-  writePinDirectionWithValue = writePinDirectionWithValueIO
-  readPinValue = readPinValueIO
-  writePinValue = writePinValueIO
-  availablePins = availablePinsIO
-
 instance (MonadIO m, MonadSysfs m) => MonadSysfs (ContT r m) where
-  sysfsIsPresent = sysfsIsPresentIO
-  pinIsExported = pinIsExportedIO
-  pinHasDirection = pinHasDirectionIO
-  exportPin = exportPinIO
-  unexportPin = unexportPinIO
-  readPinDirection = readPinDirectionIO
-  writePinDirection = writePinDirectionIO
-  writePinDirectionWithValue = writePinDirectionWithValueIO
-  readPinValue = readPinValueIO
-  writePinValue = writePinValueIO
-  availablePins = availablePinsIO
+  sysfsIsPresent = lift sysfsIsPresent
+  pinIsExported = lift . pinIsExported
+  pinHasDirection = lift . pinHasDirection
+  exportPin = lift . exportPin
+  unexportPin = lift . unexportPin
+  readPinDirection = lift . readPinDirection
+  writePinDirection h d = lift $ writePinDirection h d
+  writePinDirectionWithValue h v = lift $ writePinDirectionWithValue h v
+  readPinValue = lift . readPinValue
+  writePinValue h v = lift $ writePinValue h v
+  availablePins = lift availablePins
 
 instance (MonadIO m, MonadSysfs m) => MonadSysfs (ExceptT e m) where
-  sysfsIsPresent = sysfsIsPresentIO
-  pinIsExported = pinIsExportedIO
-  pinHasDirection = pinHasDirectionIO
-  exportPin = exportPinIO
-  unexportPin = unexportPinIO
-  readPinDirection = readPinDirectionIO
-  writePinDirection = writePinDirectionIO
-  writePinDirectionWithValue = writePinDirectionWithValueIO
-  readPinValue = readPinValueIO
-  writePinValue = writePinValueIO
-  availablePins = availablePinsIO
+  sysfsIsPresent = lift sysfsIsPresent
+  pinIsExported = lift . pinIsExported
+  pinHasDirection = lift . pinHasDirection
+  exportPin = lift . exportPin
+  unexportPin = lift . unexportPin
+  readPinDirection = lift . readPinDirection
+  writePinDirection h d = lift $ writePinDirection h d
+  writePinDirectionWithValue h v = lift $ writePinDirectionWithValue h v
+  readPinValue = lift . readPinValue
+  writePinValue h v = lift $ writePinValue h v
+  availablePins = lift availablePins
 
 instance (MonadIO m, MonadSysfs m) => MonadSysfs (ListT m) where
-  sysfsIsPresent = sysfsIsPresentIO
-  pinIsExported = pinIsExportedIO
-  pinHasDirection = pinHasDirectionIO
-  exportPin = exportPinIO
-  unexportPin = unexportPinIO
-  readPinDirection = readPinDirectionIO
-  writePinDirection = writePinDirectionIO
-  writePinDirectionWithValue = writePinDirectionWithValueIO
-  readPinValue = readPinValueIO
-  writePinValue = writePinValueIO
-  availablePins = availablePinsIO
+  sysfsIsPresent = lift sysfsIsPresent
+  pinIsExported = lift . pinIsExported
+  pinHasDirection = lift . pinHasDirection
+  exportPin = lift . exportPin
+  unexportPin = lift . unexportPin
+  readPinDirection = lift . readPinDirection
+  writePinDirection h d = lift $ writePinDirection h d
+  writePinDirectionWithValue h v = lift $ writePinDirectionWithValue h v
+  readPinValue = lift . readPinValue
+  writePinValue h v = lift $ writePinValue h v
+  availablePins = lift availablePins
 
 instance (MonadIO m, MonadSysfs m) => MonadSysfs (MaybeT m) where
-  sysfsIsPresent = sysfsIsPresentIO
-  pinIsExported = pinIsExportedIO
-  pinHasDirection = pinHasDirectionIO
-  exportPin = exportPinIO
-  unexportPin = unexportPinIO
-  readPinDirection = readPinDirectionIO
-  writePinDirection = writePinDirectionIO
-  writePinDirectionWithValue = writePinDirectionWithValueIO
-  readPinValue = readPinValueIO
-  writePinValue = writePinValueIO
-  availablePins = availablePinsIO
+  sysfsIsPresent = lift sysfsIsPresent
+  pinIsExported = lift . pinIsExported
+  pinHasDirection = lift . pinHasDirection
+  exportPin = lift . exportPin
+  unexportPin = lift . unexportPin
+  readPinDirection = lift . readPinDirection
+  writePinDirection h d = lift $ writePinDirection h d
+  writePinDirectionWithValue h v = lift $ writePinDirectionWithValue h v
+  readPinValue = lift . readPinValue
+  writePinValue h v = lift $ writePinValue h v
+  availablePins = lift availablePins
 
 instance (MonadIO m, MonadSysfs m) => MonadSysfs (ReaderT r m) where
-  sysfsIsPresent = sysfsIsPresentIO
-  pinIsExported = pinIsExportedIO
-  pinHasDirection = pinHasDirectionIO
-  exportPin = exportPinIO
-  unexportPin = unexportPinIO
-  readPinDirection = readPinDirectionIO
-  writePinDirection = writePinDirectionIO
-  writePinDirectionWithValue = writePinDirectionWithValueIO
-  readPinValue = readPinValueIO
-  writePinValue = writePinValueIO
-  availablePins = availablePinsIO
+  sysfsIsPresent = lift sysfsIsPresent
+  pinIsExported = lift . pinIsExported
+  pinHasDirection = lift . pinHasDirection
+  exportPin = lift . exportPin
+  unexportPin = lift . unexportPin
+  readPinDirection = lift . readPinDirection
+  writePinDirection h d = lift $ writePinDirection h d
+  writePinDirectionWithValue h v = lift $ writePinDirectionWithValue h v
+  readPinValue = lift . readPinValue
+  writePinValue h v = lift $ writePinValue h v
+  availablePins = lift availablePins
 
 instance (MonadIO m, MonadSysfs m, Monoid w) => MonadSysfs (LazyRWS.RWST r w s m) where
-  sysfsIsPresent = sysfsIsPresentIO
-  pinIsExported = pinIsExportedIO
-  pinHasDirection = pinHasDirectionIO
-  exportPin = exportPinIO
-  unexportPin = unexportPinIO
-  readPinDirection = readPinDirectionIO
-  writePinDirection = writePinDirectionIO
-  writePinDirectionWithValue = writePinDirectionWithValueIO
-  readPinValue = readPinValueIO
-  writePinValue = writePinValueIO
-  availablePins = availablePinsIO
+  sysfsIsPresent = lift sysfsIsPresent
+  pinIsExported = lift . pinIsExported
+  pinHasDirection = lift . pinHasDirection
+  exportPin = lift . exportPin
+  unexportPin = lift . unexportPin
+  readPinDirection = lift . readPinDirection
+  writePinDirection h d = lift $ writePinDirection h d
+  writePinDirectionWithValue h v = lift $ writePinDirectionWithValue h v
+  readPinValue = lift . readPinValue
+  writePinValue h v = lift $ writePinValue h v
+  availablePins = lift availablePins
 
 instance (MonadIO m, MonadSysfs m, Monoid w) => MonadSysfs (StrictRWS.RWST r w s m) where
-  sysfsIsPresent = sysfsIsPresentIO
-  pinIsExported = pinIsExportedIO
-  pinHasDirection = pinHasDirectionIO
-  exportPin = exportPinIO
-  unexportPin = unexportPinIO
-  readPinDirection = readPinDirectionIO
-  writePinDirection = writePinDirectionIO
-  writePinDirectionWithValue = writePinDirectionWithValueIO
-  readPinValue = readPinValueIO
-  writePinValue = writePinValueIO
-  availablePins = availablePinsIO
+  sysfsIsPresent = lift sysfsIsPresent
+  pinIsExported = lift . pinIsExported
+  pinHasDirection = lift . pinHasDirection
+  exportPin = lift . exportPin
+  unexportPin = lift . unexportPin
+  readPinDirection = lift . readPinDirection
+  writePinDirection h d = lift $ writePinDirection h d
+  writePinDirectionWithValue h v = lift $ writePinDirectionWithValue h v
+  readPinValue = lift . readPinValue
+  writePinValue h v = lift $ writePinValue h v
+  availablePins = lift availablePins
 
 instance (MonadIO m, MonadSysfs m) => MonadSysfs (LazyState.StateT s m) where
-  sysfsIsPresent = sysfsIsPresentIO
-  pinIsExported = pinIsExportedIO
-  pinHasDirection = pinHasDirectionIO
-  exportPin = exportPinIO
-  unexportPin = unexportPinIO
-  readPinDirection = readPinDirectionIO
-  writePinDirection = writePinDirectionIO
-  writePinDirectionWithValue = writePinDirectionWithValueIO
-  readPinValue = readPinValueIO
-  writePinValue = writePinValueIO
-  availablePins = availablePinsIO
+  sysfsIsPresent = lift sysfsIsPresent
+  pinIsExported = lift . pinIsExported
+  pinHasDirection = lift . pinHasDirection
+  exportPin = lift . exportPin
+  unexportPin = lift . unexportPin
+  readPinDirection = lift . readPinDirection
+  writePinDirection h d = lift $ writePinDirection h d
+  writePinDirectionWithValue h v = lift $ writePinDirectionWithValue h v
+  readPinValue = lift . readPinValue
+  writePinValue h v = lift $ writePinValue h v
+  availablePins = lift availablePins
 
 instance (MonadIO m, MonadSysfs m) => MonadSysfs (StrictState.StateT s m) where
-  sysfsIsPresent = sysfsIsPresentIO
-  pinIsExported = pinIsExportedIO
-  pinHasDirection = pinHasDirectionIO
-  exportPin = exportPinIO
-  unexportPin = unexportPinIO
-  readPinDirection = readPinDirectionIO
-  writePinDirection = writePinDirectionIO
-  writePinDirectionWithValue = writePinDirectionWithValueIO
-  readPinValue = readPinValueIO
-  writePinValue = writePinValueIO
-  availablePins = availablePinsIO
+  sysfsIsPresent = lift sysfsIsPresent
+  pinIsExported = lift . pinIsExported
+  pinHasDirection = lift . pinHasDirection
+  exportPin = lift . exportPin
+  unexportPin = lift . unexportPin
+  readPinDirection = lift . readPinDirection
+  writePinDirection h d = lift $ writePinDirection h d
+  writePinDirectionWithValue h v = lift $ writePinDirectionWithValue h v
+  readPinValue = lift . readPinValue
+  writePinValue h v = lift $ writePinValue h v
+  availablePins = lift availablePins
 
 instance (MonadIO m, MonadSysfs m, Monoid w) => MonadSysfs (LazyWriter.WriterT w m) where
-  sysfsIsPresent = sysfsIsPresentIO
-  pinIsExported = pinIsExportedIO
-  pinHasDirection = pinHasDirectionIO
-  exportPin = exportPinIO
-  unexportPin = unexportPinIO
-  readPinDirection = readPinDirectionIO
-  writePinDirection = writePinDirectionIO
-  writePinDirectionWithValue = writePinDirectionWithValueIO
-  readPinValue = readPinValueIO
-  writePinValue = writePinValueIO
-  availablePins = availablePinsIO
+  sysfsIsPresent = lift sysfsIsPresent
+  pinIsExported = lift . pinIsExported
+  pinHasDirection = lift . pinHasDirection
+  exportPin = lift . exportPin
+  unexportPin = lift . unexportPin
+  readPinDirection = lift . readPinDirection
+  writePinDirection h d = lift $ writePinDirection h d
+  writePinDirectionWithValue h v = lift $ writePinDirectionWithValue h v
+  readPinValue = lift . readPinValue
+  writePinValue h v = lift $ writePinValue h v
+  availablePins = lift availablePins
 
 instance (MonadIO m, MonadSysfs m, Monoid w) => MonadSysfs (StrictWriter.WriterT w m) where
-  sysfsIsPresent = sysfsIsPresentIO
-  pinIsExported = pinIsExportedIO
-  pinHasDirection = pinHasDirectionIO
-  exportPin = exportPinIO
-  unexportPin = unexportPinIO
-  readPinDirection = readPinDirectionIO
-  writePinDirection = writePinDirectionIO
-  writePinDirectionWithValue = writePinDirectionWithValueIO
-  readPinValue = readPinValueIO
-  writePinValue = writePinValueIO
-  availablePins = availablePinsIO
+  sysfsIsPresent = lift sysfsIsPresent
+  pinIsExported = lift . pinIsExported
+  pinHasDirection = lift . pinHasDirection
+  exportPin = lift . exportPin
+  unexportPin = lift . unexportPin
+  readPinDirection = lift . readPinDirection
+  writePinDirection h d = lift $ writePinDirection h d
+  writePinDirectionWithValue h v = lift $ writePinDirectionWithValue h v
+  readPinValue = lift . readPinValue
+  writePinValue h v = lift $ writePinValue h v
+  availablePins = lift availablePins
 
--- Helper functions that aren't exported.
---
-
-sysfsIsPresentIO :: (MonadIO m) => m Bool
-sysfsIsPresentIO = liftIO $ doesDirectoryExist sysfsPath
-
-pinIsExportedIO :: (MonadIO m) => Pin -> m Bool
-pinIsExportedIO p = liftIO $ doesDirectoryExist (pinDirName p)
-
-pinHasDirectionIO :: (MonadIO m) => Pin -> m Bool
-pinHasDirectionIO p = liftIO $ doesFileExist (pinDirectionFileName p)
-
-exportPinIO :: (MonadIO m) => Pin -> m ()
-exportPinIO (Pin n) = liftIO $ IO.writeFile exportFileName (show n)
-
-unexportPinIO :: (MonadIO m) => Pin -> m ()
-unexportPinIO (Pin n) = liftIO $ IO.writeFile unexportFileName (show n)
-
-readPinDirectionIO :: (MonadIO m) => Pin -> m String
-readPinDirectionIO p = liftIO $ IOS.readFile (pinDirectionFileName p)
-
-writePinDirectionIO :: (MonadIO m) => Pin -> PinDirection -> m ()
-writePinDirectionIO p d = liftIO $ IO.writeFile (pinDirectionFileName p) (lowercase $ show d)
-
-writePinDirectionWithValueIO :: (MonadIO m) => Pin -> PinValue -> m ()
-writePinDirectionWithValueIO p v = liftIO $ IO.writeFile (pinDirectionFileName p) (lowercase $ show v)
-
-readPinValueIO :: (MonadIO m) => Pin -> m String
-readPinValueIO p = liftIO $ IOS.readFile (pinValueFileName p)
-
-writePinValueIO :: (MonadIO m) => Pin -> PinValue -> m ()
-writePinValueIO p v = liftIO $ IO.writeFile (pinValueFileName p) (toSysfsPinValue v)
-
-availablePinsIO :: (MonadIO m) => m [Pin]
-availablePinsIO =
-  do sysfsEntries <- liftIO $ getDirectoryContents sysfsPath
-     let sysfsContents = fmap (sysfsPath </>) sysfsEntries
-     sysfsDirectories <- filterM (liftIO . doesDirectoryExist) sysfsContents
-     let chipDirs = filter (\f -> isPrefixOf "gpiochip" $ takeFileName f) sysfsDirectories
-     maybePins <- mapM (runMaybeT . pinRange) chipDirs
-     return $ sort $ concat $ catMaybes maybePins
-
-lowercase :: String -> String
-lowercase = fmap toLower
-
-toSysfsPinValue :: PinValue -> String
-toSysfsPinValue Low = "0"
-toSysfsPinValue High = "1"
-
-readFromFile :: (MonadIO m, Read a) => FilePath -> m a
-readFromFile f = liftIO (IOS.readFile f >>= readIO)
-
-maybeIO :: (MonadIO m) => IO a -> MaybeT m a
-maybeIO = hushT . scriptIO
-
-chipBaseGpio :: (MonadIO m) => FilePath -> m Int
-chipBaseGpio chipDir = readFromFile (chipDir </> "base")
-
-chipNGpio :: (MonadIO m) => FilePath -> m Int
-chipNGpio chipDir = readFromFile (chipDir </> "ngpio")
-
-pinRange :: (MonadIO m) => FilePath -> MaybeT m [Pin]
-pinRange chipDir =
-  do base <- maybeIO $ chipBaseGpio chipDir
-     ngpio <- maybeIO $ chipNGpio chipDir
-     case (base >= 0 && ngpio > 0) of
-       False -> return []
-       True -> return $ fmap Pin [base .. (base + ngpio - 1)]

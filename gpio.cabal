@@ -41,6 +41,7 @@ Library
                       , System.GPIO.Free
                       , System.GPIO.Linux.MonadSysfs
                       , System.GPIO.Linux.Sysfs
+                      , System.GPIO.Linux.SysfsIO
                         System.GPIO.Linux.SysfsMock
   Other-Extensions:     DeriveGeneric
                       , FlexibleContexts
@@ -88,6 +89,7 @@ Test-Suite spec
                       , System.GPIO.Free
                       , System.GPIO.Linux.MonadSysfs
                       , System.GPIO.Linux.Sysfs
+                      , System.GPIO.Linux.SysfsIO
                         System.GPIO.Linux.SysfsMock
 
 Source-Repository head
