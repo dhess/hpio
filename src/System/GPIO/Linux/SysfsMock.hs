@@ -127,7 +127,7 @@ runSysfsMock' action world = runSysfsMockT (runExceptT $ runSysfsT action) world
  -- | Run a 'SysfsT' computation in the mock sysfs environment with
  -- the given 'MockWorld', and return the result as a 'Right' value
  -- containing a tuple of 'a', the log, and the final 'MockWorld'
- -- state. If an error in the computation, in the 'SysfsT'
+ -- state. If an error occurs in the computation, in the 'SysfsT'
  -- interpreter, or elsewhere while the computation is running
  -- (including 'Control.Exception.Base.IOException's that occur as a
  -- side effect of the computation) it is handled by this function and
