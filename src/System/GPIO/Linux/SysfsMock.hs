@@ -1,7 +1,7 @@
 -- | A "mock" 'MonadSysfs' instance for testing
 -- "System.GPIO.Free.GpioF" programs in a faux-Linux environment.
 --
--- The 'MockSysfsT' transformer makes a best-effort attempt to emulate
+-- The 'SysfsMockT' transformer makes a best-effort attempt to emulate
 -- an actual Linux sysfs GPIO environment, including but not limited
 -- to throwing the same 'IOError's that the default
 -- 'System.GPIO.Linux.Sysfs.MonadSysfs' implementation throws in the
@@ -27,17 +27,17 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 
-module System.GPIO.Linux.MockSysfs
-       ( -- * The 'MockSysfs' monad
-         MockSysfsT(..)
-       , MockSysfs
-       , runMockSysfsT
-       , evalMockSysfsT
-       , execMockSysfsT
-       , runMockSysfs
-       , execMockSysfs
-       , evalMockSysfs
-         -- * 'MockSysfs' types
+module System.GPIO.Linux.SysfsMock
+       ( -- * The 'SysfsMock' monad
+         SysfsMockT(..)
+       , SysfsMock
+       , runSysfsMockT
+       , evalSysfsMockT
+       , execSysfsMockT
+       , runSysfsMock
+       , execSysfsMock
+       , evalSysfsMock
+         -- * 'SysfsMock' types
        , MockState(..)
        , MockStateMap
        , MockWorld(..)
@@ -83,50 +83,50 @@ defaultState = MockState True Out Low
 
 -- | A monad transformer which adds mock sysfs computations to an
 -- inner monad 'm'.
-newtype MockSysfsT m a =
-  MockSysfsT { unMockSysfsT :: RWST () [Text] MockWorld m a }
+newtype SysfsMockT m a =
+  SysfsMockT { unSysfsMockT :: RWST () [Text] MockWorld m a }
   deriving (Alternative,Applicative,Functor,Monad,MonadRWS () [Text] MockWorld,MonadWriter [Text],MonadState MockWorld,MonadReader (),MonadFix,MonadPlus,MonadIO,MonadCont)
 
 -- | Run a mock sysfs computation with the given 'MockWorld', and
 -- return a tuple containing the final value, log, and final
 -- 'MockWorld' state.
-runMockSysfsT :: (MonadIO m) => MockSysfsT m a -> MockWorld -> m (a, MockWorld, [Text])
-runMockSysfsT action world = runRWST (unMockSysfsT action) () world
+runSysfsMockT :: (MonadIO m) => SysfsMockT m a -> MockWorld -> m (a, MockWorld, [Text])
+runSysfsMockT action world = runRWST (unSysfsMockT action) () world
 
 -- | Run a mock sysfs computation with the given 'MockWorld, and
 -- return a tuple containing the final value and log, discarding the
 -- state.
-evalMockSysfsT :: (MonadIO m) => MockSysfsT m a -> MockWorld -> m (a, [Text])
-evalMockSysfsT action world = evalRWST (unMockSysfsT action) () world
+evalSysfsMockT :: (MonadIO m) => SysfsMockT m a -> MockWorld -> m (a, [Text])
+evalSysfsMockT action world = evalRWST (unSysfsMockT action) () world
 
 -- | Run a mock sysfs computation with the given 'MockWorld, and
 -- return a tuple containing the final state and log, discarding the
 -- value.
-execMockSysfsT :: (MonadIO m) => MockSysfsT m a -> MockWorld -> m (MockWorld, [Text])
-execMockSysfsT action world = execRWST (unMockSysfsT action) () world
+execSysfsMockT :: (MonadIO m) => SysfsMockT m a -> MockWorld -> m (MockWorld, [Text])
+execSysfsMockT action world = execRWST (unSysfsMockT action) () world
 
 -- | The base mock sysfs monad, which sits on top of 'IO'.
-type MockSysfs a = MockSysfsT IO a
+type SysfsMock a = SysfsMockT IO a
 
--- | Run a 'MockSysfs' computation with the given 'MockWorld', and
+-- | Run a 'SysfsMock' computation with the given 'MockWorld', and
 -- return a tuple containing the final value, log, and final
 -- 'MockWorld' state.
-runMockSysfs :: MockSysfs a -> MockWorld -> IO (a, MockWorld, [Text])
-runMockSysfs = runMockSysfsT
+runSysfsMock :: SysfsMock a -> MockWorld -> IO (a, MockWorld, [Text])
+runSysfsMock = runSysfsMockT
 
--- | Run a 'MockSysfs' computation with the given 'MockWorld, and
+-- | Run a 'SysfsMock' computation with the given 'MockWorld, and
 -- return a tuple containing the final value and log, discarding the
 -- state.
-evalMockSysfs :: MockSysfs a -> MockWorld -> IO (a, [Text])
-evalMockSysfs = evalMockSysfsT
+evalSysfsMock :: SysfsMock a -> MockWorld -> IO (a, [Text])
+evalSysfsMock = evalSysfsMockT
 
--- | Run a 'MockSysfs' computation with the given 'MockWorld, and
+-- | Run a 'SysfsMock' computation with the given 'MockWorld, and
 -- return a tuple containing the final state and log, discarding the
 -- value.
-execMockSysfs :: MockSysfs a -> MockWorld -> IO (MockWorld, [Text])
-execMockSysfs = execMockSysfsT
+execSysfsMock :: SysfsMock a -> MockWorld -> IO (MockWorld, [Text])
+execSysfsMock = execSysfsMockT
 
-instance (MonadIO m) => MonadSysfs (MockSysfsT m) where
+instance (MonadIO m) => MonadSysfs (SysfsMockT m) where
   sysfsIsPresent = sysfsIsPresentMock
   pinIsExported = pinIsExportedMock
   pinHasDirection = pinHasDirectionMock
@@ -139,19 +139,19 @@ instance (MonadIO m) => MonadSysfs (MockSysfsT m) where
   writePinValue = writePinValueMock
   availablePins = availablePinsMock
 
-sysfsIsPresentMock :: (Monad m) => MockSysfsT m Bool
+sysfsIsPresentMock :: (Monad m) => SysfsMockT m Bool
 sysfsIsPresentMock = return True
 
-pinIsExportedMock :: (Monad m) => Pin -> MockSysfsT m Bool
+pinIsExportedMock :: (Monad m) => Pin -> SysfsMockT m Bool
 pinIsExportedMock p = exportedPinState p >>= return . isJust
 
 -- The way this is implemented in 'MonadSysfs' is, if the pin is not
 -- exported, or if the pin does not have a user-visible direction
 -- attribute, it's 'False', otherwise 'True'.
-pinHasDirectionMock :: (Monad m) => Pin -> MockSysfsT m Bool
+pinHasDirectionMock :: (Monad m) => Pin -> SysfsMockT m Bool
 pinHasDirectionMock p = userVisibleDirection p >>= return . isJust
 
-exportPinMock :: (MonadIO m) => Pin -> MockSysfsT m ()
+exportPinMock :: (MonadIO m) => Pin -> SysfsMockT m ()
 exportPinMock p =
   do whenM (pinIsExportedMock p) $
        liftIO $ ioError exportErrorResourceBusy
@@ -162,7 +162,7 @@ exportPinMock p =
            put $ MockWorld newUnexp newExp)
        (liftIO $ ioError exportErrorInvalidArgument)
 
-unexportPinMock :: (MonadIO m) => Pin -> MockSysfsT m ()
+unexportPinMock :: (MonadIO m) => Pin -> SysfsMockT m ()
 unexportPinMock p =
   ifM (pinIsExportedMock p)
     (liftIO $ ioError unexportErrorInvalidArgument)
@@ -171,32 +171,32 @@ unexportPinMock p =
         let (newExp, newUnexp) = movePin p exportedPins unexportedPins
         put $ MockWorld newUnexp newExp)
 
-readPinDirectionMock :: (MonadIO m) => Pin -> MockSysfsT m String
+readPinDirectionMock :: (MonadIO m) => Pin -> SysfsMockT m String
 readPinDirectionMock p =
   userVisibleDirection p >>= \case
     Nothing -> liftIO $ ioError (readPinDirectionErrorNoSuchThing p)
     Just In -> return "in\n"
     Just Out -> return "out\n"
 
-writePinDirectionMock :: (MonadIO m) => Pin -> PinDirection -> MockSysfsT m ()
+writePinDirectionMock :: (MonadIO m) => Pin -> PinDirection -> SysfsMockT m ()
 writePinDirectionMock p dir =
   guardedPinState p id hasUserDirection >>= \case
     Nothing -> liftIO $ ioError (writePinDirectionErrorNoSuchThing p)
     Just s -> modifyExportedPinState p (s { direction = dir })
 
-writePinDirectionWithValueMock :: (MonadIO m) => Pin -> PinValue -> MockSysfsT m ()
+writePinDirectionWithValueMock :: (MonadIO m) => Pin -> PinValue -> SysfsMockT m ()
 writePinDirectionWithValueMock p v =
   guardedPinState p id hasUserDirection >>= \case
     Nothing -> liftIO $ ioError (writePinDirectionErrorNoSuchThing p)
     Just s -> modifyExportedPinState p (s { direction = Out, value = v})
 
-readPinValueMock :: (MonadIO m) => Pin -> MockSysfsT m String
+readPinValueMock :: (MonadIO m) => Pin -> SysfsMockT m String
 readPinValueMock p =
   checkedPinState p value (readPinValueErrorNoSuchThing p) >>= \case
     Low -> return "0\n"
     High -> return "1\n"
 
-writePinValueMock :: (MonadIO m) => Pin -> PinValue -> MockSysfsT m ()
+writePinValueMock :: (MonadIO m) => Pin -> PinValue -> SysfsMockT m ()
 writePinValueMock p v =
   do s <- checkedPinState p id (writePinValueErrorNoSuchThing p)
      case (direction s) of
@@ -207,7 +207,7 @@ writePinValueMock p v =
 -- of the hunt for the "base" and "ngpio" files in GPIO chip
 -- subdirectories. Under normal conditions, those files will always
 -- exist, but....
-availablePinsMock :: (MonadIO m) => MockSysfsT m [Pin]
+availablePinsMock :: (MonadIO m) => SysfsMockT m [Pin]
 availablePinsMock =
   do unlessM sysfsIsPresentMock $
        liftIO $ ioError availablePinsErrorNoSuchThing
@@ -219,7 +219,7 @@ availablePinsMock =
 -- Convenience functions
 --
 
-pinIsUnexported :: (Monad m) => Pin -> MockSysfsT m Bool
+pinIsUnexported :: (Monad m) => Pin -> SysfsMockT m Bool
 pinIsUnexported p = unexportedPinState p >>= return . isJust
 
 -- Note: if 'p' is not in 'src' then 'src' and 'dst' will be unchanged.
@@ -229,19 +229,19 @@ movePin p src dst =
     Nothing -> (src, dst)
     Just s -> (Map.delete p src, Map.insert p s dst)
 
-modifyExportedPinState :: (Monad m) => Pin -> MockState -> MockSysfsT m ()
+modifyExportedPinState :: (Monad m) => Pin -> MockState -> SysfsMockT m ()
 modifyExportedPinState p newState = modify $ \world ->
   let exportedPins = exported world
       newExported = Map.insert p newState exportedPins
   in world { exported = newExported }
 
-checkedPinState :: (MonadIO m) => Pin -> (MockState -> a) -> IOError -> MockSysfsT m a
+checkedPinState :: (MonadIO m) => Pin -> (MockState -> a) -> IOError -> SysfsMockT m a
 checkedPinState p f ioe =
   exportedPinState p >>= \case
     Nothing -> liftIO $ ioError ioe
     Just s -> return $ f s
 
-guardedPinState :: (Monad m) => Pin -> (MockState -> a) -> (MockState -> Bool) -> MockSysfsT m (Maybe a)
+guardedPinState :: (Monad m) => Pin -> (MockState -> a) -> (MockState -> Bool) -> SysfsMockT m (Maybe a)
 guardedPinState p f predicate =
   do exportedPins <- gets exported
      return $ guardedPinState' p exportedPins f predicate
@@ -252,15 +252,15 @@ guardedPinState' p stateMap f predicate =
      guard $ predicate pinState
      return $ f pinState
 
-userVisibleDirection :: (Monad m) => Pin -> MockSysfsT m (Maybe PinDirection)
+userVisibleDirection :: (Monad m) => Pin -> SysfsMockT m (Maybe PinDirection)
 userVisibleDirection p = guardedPinState p direction hasUserDirection
 
-exportedPinState :: (Monad m) => Pin -> MockSysfsT m (Maybe MockState)
+exportedPinState :: (Monad m) => Pin -> SysfsMockT m (Maybe MockState)
 exportedPinState p =
   do exportedPins <- gets exported
      return $ Map.lookup p exportedPins
 
-unexportedPinState :: (Monad m) => Pin -> MockSysfsT m (Maybe MockState)
+unexportedPinState :: (Monad m) => Pin -> SysfsMockT m (Maybe MockState)
 unexportedPinState p =
   do unexportedPins <- gets unexported
      return $ Map.lookup p unexportedPins

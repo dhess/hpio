@@ -39,9 +39,9 @@ Library
   Exposed-Modules:      System.GPIO
                       , System.GPIO.Mock
                       , System.GPIO.Free
-                      , System.GPIO.Linux.Sysfs
-                      , System.GPIO.Linux.MockSysfs
                       , System.GPIO.Linux.MonadSysfs
+                      , System.GPIO.Linux.Sysfs
+                        System.GPIO.Linux.SysfsMock
   Other-Extensions:     DeriveGeneric
                       , FlexibleContexts
                       , GADTs
@@ -86,9 +86,9 @@ Test-Suite spec
   Other-modules:        System.GPIO
                       , System.GPIO.Mock
                       , System.GPIO.Free
-                      , System.GPIO.Linux.Sysfs
-                      , System.GPIO.Linux.MockSysfs
                       , System.GPIO.Linux.MonadSysfs
+                      , System.GPIO.Linux.Sysfs
+                        System.GPIO.Linux.SysfsMock
 
 Source-Repository head
   Type:                 git
