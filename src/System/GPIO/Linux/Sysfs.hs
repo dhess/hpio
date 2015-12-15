@@ -39,13 +39,13 @@ type SysfsT m = GpioT String PinDescriptor m
 -- | The Linux sysfs GPIO DSL type.
 type SysfsF m = GpioF String PinDescriptor m
 
--- | Run a 'SysfsT' computation embedded in a 'MonadIO' monad instance
--- and return the result. Errors that occur in the computation or in
--- the interpreter are thrown with a 'String' argument via
--- 'throwError', so the wrapped monad must also be an instance of
--- 'MonadError' 'String'. Any 'Control.Exception.Base.IOException's
--- that occur as a side effect of the computation are not handled here
--- and are simply propagated upwards.
+-- | Run a 'SysfsT' computation embedded in monad 'm' and return the
+-- result. Errors that occur in the computation or in the interpreter
+-- are thrown with a 'String' argument via 'throwError', so the
+-- wrapped monad must also be an instance of 'MonadError' 'String'.
+-- Any 'Control.Exception.Base.IOException's that occur as a side
+-- effect of the computation are not handled here and are simply
+-- propagated upwards.
 --
 -- (Errors that could occur in the interpreter are generally limited
 -- to reading unexpected results from various sysfs GPIO control
