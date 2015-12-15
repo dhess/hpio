@@ -199,24 +199,19 @@ testNestedWithPinError =
          val2 <- readPin h2
          return (val1, val2)
 
---type MockExceptT m a = SysfsT (ExceptT String (SysfsMockT m)) (ExceptT String (SysfsMockT m)) a
-
---runMock' :: (MonadIO m, MonadError String (SysfsMockT m)) => MockWorld -> SysfsT (SysfsMockT m) (SysfsMockT m) a -> m (a, MockWorld, [Text])
---runMock' world action = runSysfsMockT (runSysfsT action) world
-
 spec :: Spec
 spec =
   do describe "pins" $
-       it "returns the list of available pins" $
-         let unexportedPinList = [Pin 1 , Pin 8 ]
-             unexportedPinState = repeat defaultState
-             unexportedPins = Map.fromList $ zip unexportedPinList unexportedPinState
-             exportedPins = Map.empty
-             world = MockWorld unexportedPins exportedPins
-             expectedResult = (Right unexportedPinList, world, [])
-         in
-           do result <- runSysfsMock (runExceptT $ runSysfsT pins) world
-              result `shouldBe` expectedResult
+       let unexportedPinList = [Pin 1 , Pin 8 ]
+           unexportedPinState = repeat defaultState
+           unexportedPins = Map.fromList $ zip unexportedPinList unexportedPinState
+           exportedPins = Map.empty
+           world = MockWorld unexportedPins exportedPins
+           expectedResult = (unexportedPinList, world, [])
+       in
+         it "returns the list of available pins" $
+             do result <- runSysfsMock pins world
+                result `shouldBe` expectedResult
 
      -- describe "openPin and closePin" $
 
