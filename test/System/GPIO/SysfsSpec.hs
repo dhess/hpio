@@ -5,11 +5,8 @@ module System.GPIO.SysfsSpec (spec) where
 
 import Control.Monad.Except
 import qualified Data.Map.Strict as Map
-import GHC.IO.Exception (IOErrorType(..), IOException(ioe_type))
 import System.GPIO.Free
-import System.GPIO.Linux.Sysfs
 import System.GPIO.Linux.SysfsMock
-import System.IO.Error
 
 import Test.Hspec
 
@@ -168,13 +165,6 @@ testWithPin = withPin (Pin 1) $ \h ->
      val <- readPin h
      return val
 
-testWithPinError :: (MonadError e m) => GpioT e h m m PinValue
-testWithPinError = withPin (Pin 1) $ \h ->
-  do void $ setPinDirection h In
-     void $ writePin h High -- should fail
-     val <- readPin h
-     return val
-
 testNestedWithPin :: (MonadError e m) => GpioT e h m m (PinValue, PinValue)
 testNestedWithPin =
   withPin (Pin 1) $ \h1 ->
@@ -208,14 +198,6 @@ testOpenPinWithValue iv =
          do v <- readPin h
             void $ closePin h
             return v
-
--- System.IO.Error does not provide this.
-myIsInvalidArgumentErrorType :: IOErrorType -> Bool
-myIsInvalidArgumentErrorType InvalidArgument = True
-myIsInvalidArgumentErrorType _ = False
-
--- myIsInvalidArgument :: IOError -> Bool
--- myIsInvalidArgument = myIsInvalidArgument . ioe_type
 
 spec :: Spec
 spec =
