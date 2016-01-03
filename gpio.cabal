@@ -18,10 +18,6 @@ Description:
   is supported (via the @sysfs@ filesystem), but other platforms will
   be supported in the future.
   .
-  Additionally, the package provides a "mock" GPIO environment for
-  testing GPIO programs on platforms that don't provide real GPIO
-  capabilities.
-  .
   The abstract GPIO eDSL is implemented as a functor for the free
   monad transformer, so it is easily embedded in other monad
   transformer stacks which perform I/O.
@@ -37,7 +33,6 @@ Library
   HS-Source-Dirs:       src
   GHC-Options:          -Wall
   Exposed-Modules:      System.GPIO
-                      , System.GPIO.Mock
                       , System.GPIO.Free
                       , System.GPIO.Linux.MonadSysfs
                       , System.GPIO.Linux.Sysfs
@@ -85,7 +80,6 @@ Test-Suite spec
                       , text
                       , transformers
   Other-modules:        System.GPIO
-                      , System.GPIO.Mock
                       , System.GPIO.Free
                       , System.GPIO.Linux.MonadSysfs
                       , System.GPIO.Linux.Sysfs
