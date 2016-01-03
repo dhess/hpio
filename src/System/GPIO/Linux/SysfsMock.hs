@@ -97,8 +97,8 @@ newtype SysfsMockT m a =
   deriving (Alternative,Applicative,Functor,Monad,MonadState MockWorld,MonadReader r,MonadWriter w,MonadFix,MonadPlus,MonadIO,MonadCont,MonadTrans)
 
 -- | Run a mock sysfs computation with the given 'MockWorld', and
--- return a tuple containing the final value, log, and final
--- 'MockWorld' state.
+-- return a tuple containing the final value and final 'MockWorld'
+-- state.
 runSysfsMockT :: (MonadIO m) => SysfsMockT m a -> MockWorld -> m (a, MockWorld)
 runSysfsMockT action world = runStateT (unSysfsMockT action) world
 
@@ -107,43 +107,42 @@ runSysfsMockT action world = runStateT (unSysfsMockT action) world
 -- 'Either' 'String' 'a'.
 type SysfsMock a = SysfsT (ExceptT String (SysfsMockT IO)) (ExceptT String (SysfsMockT IO)) a
 
--- | Run a 'SysfsT' computation in the mock syfs environment with
--- the given 'MockWorld', and return a tuple containing the final
--- value, log, and final 'MockWorld' state. If an error occurs in the
--- computation, in the 'SysfsT' interpreter, or in the mock sysfs
--- environment, it will be thrown as an
--- 'Control.Exception.Base.IOException'. In other words, all errors
--- will be expressed as 'Control.Exception.Base.IOException's, just as
--- a plain 'IO' computation would do.
+-- | Run a 'SysfsT' computation in the mock syfs environment with the
+-- given 'MockWorld', and return a tuple containing the final value
+-- and final 'MockWorld' state. If an error occurs in the computation,
+-- in the 'SysfsT' interpreter, or in the mock sysfs environment, it
+-- will be thrown as an 'Control.Exception.Base.IOException'. In other
+-- words, all errors will be expressed as
+-- 'Control.Exception.Base.IOException's, just as a plain 'IO'
+-- computation would do.
 runSysfsMock :: SysfsMock a -> MockWorld -> IO (a, MockWorld)
 runSysfsMock action world =
   runSysfsMock' action world >>= \case
     (Left e, _) -> fail e
     (Right a, w) -> return (a, w)
 
--- | Run a 'SysfsT' computation in the mock sysfs environment with
--- the given 'MockWorld', and return the result as 'Right' 'a', in
--- addition to the log and the final 'MockWorld' state. If an error
--- occurs in the computation or in the interpreter, it is returned as
--- 'Left' 'String', in addition to the 'MockWorld' state and log at
--- the time the exception occurred. However, the function does not
--- catch any 'Control.Exception.Base.IOException's that occur as a
--- side effect of the computation; those will propagate upwards.
+-- | Run a 'SysfsT' computation in the mock sysfs environment with the
+-- given 'MockWorld', and return the result as 'Right' 'a', in
+-- addition to the final 'MockWorld' state. If an error occurs in the
+-- computation or in the interpreter, it is returned as 'Left'
+-- 'String', in addition to the 'MockWorld' state at the time the
+-- exception occurred. However, the function does not catch any
+-- 'Control.Exception.Base.IOException's that occur as a side effect
+-- of the computation; those will propagate upwards.
 runSysfsMock' :: SysfsMock a -> MockWorld -> IO (Either String a, MockWorld)
 runSysfsMock' action world = runSysfsMockT (runExceptT $ runSysfsT action) world
 
- -- | Run a 'SysfsT' computation in the mock sysfs environment with
- -- the given 'MockWorld', and return the result as a 'Right' value
- -- containing a tuple of 'a', the log, and the final 'MockWorld'
- -- state. If an error occurs in the computation, in the 'SysfsT'
- -- interpreter, or elsewhere while the computation is running
- -- (including 'Control.Exception.Base.IOException's that occur as a
- -- side effect of the computation) it is handled by this function and
- -- is returned as an error result via 'Left' 'String'. (Unfortuntely,
- -- the log and 'MockWorld' state at the time of the exception cannot
- -- be captured.) Therefore, this function always returns a result
- -- (assuming the computation terminates) and never throws an
- -- exception.
+-- | Run a 'SysfsT' computation in the mock sysfs environment with the
+-- given 'MockWorld', and return the result as a 'Right' value
+-- containing a tuple of 'a' and the final 'MockWorld' state. If an
+-- error occurs in the computation, in the 'SysfsT' interpreter, or
+-- elsewhere while the computation is running (including
+-- 'Control.Exception.Base.IOException's that occur as a side effect
+-- of the computation) it is handled by this function and is returned
+-- as an error result via 'Left' 'String'. (Unfortuntely, the
+-- 'MockWorld' state at the time of the exception cannot be captured.)
+-- Therefore, this function always returns a result (assuming the
+-- computation terminates) and never throws an exception.
 runSysfsMockSafe :: SysfsMock a -> MockWorld -> IO (Either String (a, MockWorld))
 runSysfsMockSafe action world =
   runExceptT $ scriptIO (runSysfsMock action world)
