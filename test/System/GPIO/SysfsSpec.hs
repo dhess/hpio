@@ -5,7 +5,6 @@ module System.GPIO.SysfsSpec (spec) where
 
 import Control.Monad.Except
 import qualified Data.Map.Strict as Map
-import Data.Text (Text)
 import GHC.IO.Exception (IOErrorType(..), IOException(ioe_type))
 import System.GPIO.Free
 import System.GPIO.Linux.Sysfs
@@ -223,7 +222,7 @@ spec =
   do describe "pins" $
        let pinList = [Pin 1, Pin 8]
            world = mockWorld pinList
-           expectedResult = (pinList, world, [])
+           expectedResult = (pinList, world)
        in
          it "returns the list of available pins" $
              runSysfsMock pins world `shouldReturn` expectedResult
@@ -231,7 +230,7 @@ spec =
      describe "openPin and closePin" $
        let world1 = mockWorld [Pin 1]
            world2 = mockWorld [Pin 2]
-           expectedResult1 = ((), world1, [])
+           expectedResult1 = ((), world1)
        in
          do it "succeeds when the pin is available" $
               runSysfsMock testOpenClose world1 `shouldReturn` expectedResult1
@@ -242,8 +241,8 @@ spec =
        do it "opens the pin, sets the direction to Out and sets the proper value" $
             let world1 = mockWorld [Pin 1]
                 world2 = MockWorld (Map.fromList $ zip [Pin 1] [MockState True Out High]) Map.empty
-                expectedResult1 = (Low, world1, [])
-                expectedResult2 = (High, world2, [])
+                expectedResult1 = (Low, world1)
+                expectedResult2 = (High, world2)
             in
               do runSysfsMock (testOpenPinWithValue Low) world1 `shouldReturn` expectedResult1
                  runSysfsMock (testOpenPinWithValue High) world1 `shouldReturn` expectedResult2
@@ -251,29 +250,29 @@ spec =
      describe "setPinDirection" $
        do it "sets the pin direction" $
             let world = mockWorld [Pin 1]
-                expectedResult = ((Out, In, Out), world, [])
+                expectedResult = ((Out, In, Out), world)
             in runSysfsMock testSetDirection world `shouldReturn` expectedResult
 
           it "is idempotent" $
             let world = mockWorld [Pin 1]
-                expectedResult = ((Out, Out), world, [])
+                expectedResult = ((Out, Out), world)
             in runSysfsMock testSetDirectionIdempotent world `shouldReturn` expectedResult
 
      describe "togglePinDirection" $
        do it "toggles pin direction" $
             let world = mockWorld [Pin 1]
-                expectedResult = ((Out, In, In, Out, Out), world, [])
+                expectedResult = ((Out, In, In, Out, Out), world)
             in runSysfsMock testTogglePinDirection world `shouldReturn` expectedResult
 
      describe "writePin" $
        do it "sets the pin value" $
             let world = mockWorld [Pin 1]
-                expectedResult = ((Low, High, Low), world, [])
+                expectedResult = ((Low, High, Low), world)
             in runSysfsMock testReadWritePin world `shouldReturn` expectedResult
 
           it "is idempotent" $
             let world = mockWorld [Pin 1]
-                expectedResult = ((Low, Low), world, [])
+                expectedResult = ((Low, Low), world)
             in runSysfsMock testReadWritePinIdempotent world `shouldReturn` expectedResult
 
           it "fails when the pin direction is In" $
@@ -284,7 +283,7 @@ spec =
      describe "togglePinValue" $
        do it "toggles the pin's value" $
             let world = mockWorld [Pin 1]
-                expectedResult = ((Low, High, High, Low, Low), world, [])
+                expectedResult = ((Low, High, High, Low, Low), world)
             in runSysfsMock testTogglePinValue world `shouldReturn` expectedResult
 
      describe "invalid handles throw exceptions" $
@@ -307,7 +306,7 @@ spec =
      describe "withPin" $
        do it "opens and closes the pin as expected" $
             let world = MockWorld (Map.fromList $ zip [Pin 1] [MockState True Out High]) Map.empty
-                expectedResult = (High, world, [])
+                expectedResult = (High, world)
             in runSysfsMock testWithPin (mockWorld [Pin 1]) `shouldReturn` expectedResult
 
           it "throws an exception when the pin doesn't exist" $
@@ -315,7 +314,7 @@ spec =
 
           it "can nest" $
             let world = MockWorld {unexported = Map.fromList [(Pin 1,MockState {hasUserDirection = True, direction = Out, value = High}),(Pin 2,MockState {hasUserDirection = True, direction = Out, value = Low})], exported = Map.empty}
-                expectedResult = ((High, Low), world, [])
+                expectedResult = ((High, Low), world)
             in runSysfsMock testNestedWithPin world `shouldReturn` expectedResult
 
           it "fails properly when nested" $
@@ -325,12 +324,12 @@ spec =
      describe "runSysfsMock'" $
        do it "returns results as Right a" $
             let world = mockWorld [Pin 1]
-                expectedResult = (Right (Out, In, Out), world, [])
+                expectedResult = (Right (Out, In, Out), world)
             in runSysfsMock' testSetDirection world `shouldReturn` expectedResult
 
           it "returns errors in the computation as Left String" $
             let world = MockWorld {unexported = Map.fromList [(Pin 1, MockState False Out Low)], exported = Map.empty}
-                expectedResult = (Left "Can't configure Pin 1 for output", world, [])
+                expectedResult = (Left "Can't configure Pin 1 for output", world)
             in runSysfsMock' (testOpenPinWithValue Low) world `shouldReturn` expectedResult
 
           it "returns IO errors as IOException" $
@@ -339,7 +338,7 @@ spec =
      describe "runSysfsMockSafe" $
        do it "returns results as Right a" $
             let world = mockWorld [Pin 1]
-                expectedResult = Right ((Out, In, Out), world, [])
+                expectedResult = Right ((Out, In, Out), world)
             in runSysfsMockSafe testSetDirection world `shouldReturn` expectedResult
 
           it "returns errors in the computation as Left String" $

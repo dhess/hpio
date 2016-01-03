@@ -51,12 +51,12 @@ import Control.Monad
 import Control.Monad.Cont
 import Control.Monad.Fix
 import Control.Monad.Reader
-import Control.Monad.RWS.Strict
+import Control.Monad.State.Strict
+import Control.Monad.Writer
 import Data.List (sort)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 import Data.Maybe (isJust)
-import Data.Text (Text)
 import GHC.IO.Exception (IOErrorType(..))
 import System.GPIO.Free (PinDirection(..), Pin(..), PinValue(..))
 import System.GPIO.Linux.MonadSysfs
@@ -93,14 +93,14 @@ mockWorld pins =
 -- | A monad transformer which adds mock sysfs computations to an
 -- inner monad 'm'.
 newtype SysfsMockT m a =
-  SysfsMockT { unSysfsMockT :: RWST () [Text] MockWorld m a }
-  deriving (Alternative,Applicative,Functor,Monad,MonadRWS () [Text] MockWorld,MonadWriter [Text],MonadState MockWorld,MonadReader (),MonadFix,MonadPlus,MonadIO,MonadCont)
+  SysfsMockT { unSysfsMockT :: StateT MockWorld m a }
+  deriving (Alternative,Applicative,Functor,Monad,MonadState MockWorld,MonadReader r,MonadWriter w,MonadFix,MonadPlus,MonadIO,MonadCont,MonadTrans)
 
 -- | Run a mock sysfs computation with the given 'MockWorld', and
 -- return a tuple containing the final value, log, and final
 -- 'MockWorld' state.
-runSysfsMockT :: (MonadIO m) => SysfsMockT m a -> MockWorld -> m (a, MockWorld, [Text])
-runSysfsMockT action world = runRWST (unSysfsMockT action) () world
+runSysfsMockT :: (MonadIO m) => SysfsMockT m a -> MockWorld -> m (a, MockWorld)
+runSysfsMockT action world = runStateT (unSysfsMockT action) world
 
 -- | A convenient specialization of 'SysfsT' which runs GPIO
 -- computations in the mock sysfs environment, and returns results as
@@ -115,11 +115,11 @@ type SysfsMock a = SysfsT (ExceptT String (SysfsMockT IO)) (ExceptT String (Sysf
 -- 'Control.Exception.Base.IOException'. In other words, all errors
 -- will be expressed as 'Control.Exception.Base.IOException's, just as
 -- a plain 'IO' computation would do.
-runSysfsMock :: SysfsMock a -> MockWorld -> IO (a, MockWorld, [Text])
+runSysfsMock :: SysfsMock a -> MockWorld -> IO (a, MockWorld)
 runSysfsMock action world =
   runSysfsMock' action world >>= \case
-    (Left e, _, _) -> fail e
-    (Right a, w, l) -> return (a, w, l)
+    (Left e, _) -> fail e
+    (Right a, w) -> return (a, w)
 
 -- | Run a 'SysfsT' computation in the mock sysfs environment with
 -- the given 'MockWorld', and return the result as 'Right' 'a', in
@@ -129,7 +129,7 @@ runSysfsMock action world =
 -- the time the exception occurred. However, the function does not
 -- catch any 'Control.Exception.Base.IOException's that occur as a
 -- side effect of the computation; those will propagate upwards.
-runSysfsMock' :: SysfsMock a -> MockWorld -> IO (Either String a, MockWorld, [Text])
+runSysfsMock' :: SysfsMock a -> MockWorld -> IO (Either String a, MockWorld)
 runSysfsMock' action world = runSysfsMockT (runExceptT $ runSysfsT action) world
 
  -- | Run a 'SysfsT' computation in the mock sysfs environment with
@@ -144,7 +144,7 @@ runSysfsMock' action world = runSysfsMockT (runExceptT $ runSysfsT action) world
  -- be captured.) Therefore, this function always returns a result
  -- (assuming the computation terminates) and never throws an
  -- exception.
-runSysfsMockSafe :: SysfsMock a -> MockWorld -> IO (Either String (a, MockWorld, [Text]))
+runSysfsMockSafe :: SysfsMock a -> MockWorld -> IO (Either String (a, MockWorld))
 runSysfsMockSafe action world =
   runExceptT $ scriptIO (runSysfsMock action world)
 
