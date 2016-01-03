@@ -200,6 +200,16 @@ testNestedWithPinError =
          val2 <- readPin h2
          return (val1, val2)
 
+testOpenPinWithValue' :: (MonadError e m) => GpioT e h m m PinValue
+testOpenPinWithValue' =
+  do handle <- openPinWithValue (Pin 1) Low
+     case handle of
+       Left e -> throwError e
+       Right h ->
+         do v <- readPin h
+            void $ closePin h
+            return v
+
 -- System.IO.Error does not provide this.
 myIsInvalidArgumentErrorType :: IOErrorType -> Bool
 myIsInvalidArgumentErrorType InvalidArgument = True
@@ -301,3 +311,33 @@ spec =
           it "fails properly when nested" $
             do runSysfsMock testNestedWithPin (mockWorld [Pin 1]) `shouldThrow` anyIOException
                runSysfsMock testNestedWithPinError (mockWorld [Pin 1, Pin 2]) `shouldThrow` anyIOException
+
+     describe "runSysfsMock'" $
+       do it "returns results as Right a" $
+            let world = mockWorld [Pin 1]
+                expectedResult = (Right (Out, In, Out), world, [])
+            in runSysfsMock' testSetDirection world `shouldReturn` expectedResult
+
+          it "returns errors in the computation as Left String" $
+            let world = MockWorld {unexported = Map.fromList [(Pin 1, MockState False Out Low)], exported = Map.empty}
+                expectedResult = (Left "Can't configure Pin 1 for output", world, [])
+            in runSysfsMock' testOpenPinWithValue' world `shouldReturn` expectedResult
+
+          it "returns IO errors as IOException" $
+            runSysfsMock' testOpenPinWithValue' (mockWorld []) `shouldThrow` anyIOException
+
+     describe "runSysfsMockSafe" $
+       do it "returns results as Right a" $
+            let world = mockWorld [Pin 1]
+                expectedResult = Right ((Out, In, Out), world, [])
+            in runSysfsMockSafe testSetDirection world `shouldReturn` expectedResult
+
+          it "returns errors in the computation as Left String" $
+            let world = MockWorld {unexported = Map.fromList [(Pin 1, MockState False Out Low)], exported = Map.empty}
+                expectedResult = Left "user error (Can't configure Pin 1 for output)"
+            in runSysfsMockSafe testOpenPinWithValue' world `shouldReturn` expectedResult
+
+          it "returns IO errors as Left String" $
+            let world = mockWorld []
+                expectedResult = Left "/sys/class/gpio/export: hClose: invalid argument (Invalid argument)"
+            in runSysfsMockSafe testOpenPinWithValue' world `shouldReturn` expectedResult
