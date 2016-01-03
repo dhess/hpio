@@ -219,14 +219,85 @@ spec =
              runSysfsMock pins world `shouldReturn` expectedResult
 
      describe "openPin and closePin" $
-       let pinList1 = [Pin 1]
-           pinList2 = [Pin 2]
-           world1 = mockWorld pinList1
-           world2 = mockWorld pinList2
+       let world1 = mockWorld [Pin 1]
+           world2 = mockWorld [Pin 2]
            expectedResult1 = ((), world1, [])
-           expectedResult2 = ((), world2, [])
        in
          do it "succeeds when the pin is available" $
               runSysfsMock testOpenClose world1 `shouldReturn` expectedResult1
             it "fails when the pin is unavailable" $
               do runSysfsMock testOpenClose world2 `shouldThrow` anyIOException
+
+     describe "setPinDirection" $
+       do it "sets the pin direction" $
+            let world = mockWorld [Pin 1]
+                expectedResult = ((Out, In, Out), world, [])
+            in runSysfsMock testSetDirection world `shouldReturn` expectedResult
+
+          it "is idempotent" $
+            let world = mockWorld [Pin 1]
+                expectedResult = ((Out, Out), world, [])
+            in runSysfsMock testSetDirectionIdempotent world `shouldReturn` expectedResult
+
+     describe "togglePinDirection" $
+       do it "toggles pin direction" $
+            let world = mockWorld [Pin 1]
+                expectedResult = ((Out, In, In, Out, Out), world, [])
+            in runSysfsMock testTogglePinDirection world `shouldReturn` expectedResult
+
+     describe "writePin" $
+       do it "sets the pin value" $
+            let world = mockWorld [Pin 1]
+                expectedResult = ((Low, High, Low), world, [])
+            in runSysfsMock testReadWritePin world `shouldReturn` expectedResult
+
+          it "is idempotent" $
+            let world = mockWorld [Pin 1]
+                expectedResult = ((Low, Low), world, [])
+            in runSysfsMock testReadWritePinIdempotent world `shouldReturn` expectedResult
+
+          it "fails when the pin direction is In" $
+            -- Note that this test will leave Pin 1 in the "open" state
+            let world = mockWorld [Pin 1]
+            in runSysfsMock testWritePinFailsOnInputPin world `shouldThrow` anyIOException
+
+     describe "togglePinValue" $
+       do it "toggles the pin's value" $
+            let world = mockWorld [Pin 1]
+                expectedResult = ((Low, High, High, Low, Low), world, [])
+            in runSysfsMock testTogglePinValue world `shouldReturn` expectedResult
+
+     describe "invalid handles throw exceptions" $
+       do it "in getPinDirection" $
+            let world = mockWorld []
+            in runSysfsMock (invalidHandle getPinDirection) world `shouldThrow` anyIOException
+
+          it "in setPinDirection" $
+            let world = mockWorld [Pin 1]
+            in runSysfsMock (invalidHandle (\d -> setPinDirection d Out)) world `shouldThrow` anyIOException
+
+          it "in readPin" $
+            let world = mockWorld [Pin 1]
+            in runSysfsMock (invalidHandle readPin) world `shouldThrow` anyIOException
+
+          it "in writePin" $
+             let world = mockWorld [Pin 1]
+             in runSysfsMock (invalidHandle (\d -> writePin d High)) world `shouldThrow` anyIOException
+
+     describe "withPin" $
+       do it "opens and closes the pin as expected" $
+            let world = MockWorld (Map.fromList $ zip [Pin 1] [MockState True Out High]) Map.empty
+                expectedResult = (High, world, [])
+            in runSysfsMock testWithPin (mockWorld [Pin 1]) `shouldReturn` expectedResult
+
+          it "throws an exception when the pin doesn't exist" $
+            runSysfsMock testWithPin (mockWorld [Pin 2]) `shouldThrow` anyIOException
+
+          it "can nest" $
+            let world = MockWorld {unexported = Map.fromList [(Pin 1,MockState {hasUserDirection = True, direction = Out, value = High}),(Pin 2,MockState {hasUserDirection = True, direction = Out, value = Low})], exported = Map.empty}
+                expectedResult = ((High, Low), world, [])
+            in runSysfsMock testNestedWithPin world `shouldReturn` expectedResult
+
+          it "fails properly when nested" $
+            do runSysfsMock testNestedWithPin (mockWorld [Pin 1]) `shouldThrow` anyIOException
+               runSysfsMock testNestedWithPinError (mockWorld [Pin 1, Pin 2]) `shouldThrow` anyIOException
