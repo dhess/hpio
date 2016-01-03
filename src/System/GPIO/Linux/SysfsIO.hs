@@ -3,7 +3,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module System.GPIO.Linux.SysfsIO
-         ( -- * 'SysfsIOT' transformer
+         ( -- * SysfsIOT transformer
            SysfsIOT(..)
          , SysfsIO
          , runSysfsIO

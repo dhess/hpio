@@ -1,5 +1,5 @@
 -- | A "mock" 'MonadSysfs' instance for testing
--- "System.GPIO.Free.GpioF" programs in a faux-Linux environment.
+-- 'System.GPIO.Free.GpioF' programs in a faux-Linux environment.
 --
 -- The 'SysfsMockT' transformer makes a best-effort attempt to emulate
 -- an actual Linux sysfs GPIO environment, including but not limited
@@ -28,14 +28,14 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 
 module System.GPIO.Linux.SysfsMock
-       ( -- * The 'SysfsMock' monad
+       ( -- * The SysfsMock monad
          SysfsMockT(..)
        , SysfsMock
        , runSysfsMockT
        , runSysfsMock
        , runSysfsMock'
        , runSysfsMockSafe
-         -- * 'SysfsMock' types
+         -- * SysfsMock types
        , MockState(..)
        , defaultState
        , MockStateMap
@@ -64,7 +64,7 @@ import System.GPIO.Linux.Sysfs
 import System.IO.Error (mkIOError, ioeSetErrorString)
 
 -- | Keep track of the state of mock pins. In real Linux 'sysfs', pins
--- state even after they're unexported.
+-- keep their state even after they're unexported.
 data MockState =
   MockState { hasUserDirection :: !Bool -- is direction visible to the user?
             , direction :: !PinDirection

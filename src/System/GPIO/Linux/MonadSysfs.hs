@@ -66,8 +66,9 @@ pinValueFileName p = pinDirName p </> "value"
 --
 -- The purpose of this typeclass is to abstract the low-level
 -- mechanisms from the interface, chiefly so that a "mock"
--- implementation can be used for testing 'GpioF' programs as if they
--- were running on an actual Linux system with a working 'sysfs'.
+-- implementation can be used for testing 'System.GPIO.Free.GpioF'
+-- programs as if they were running on an actual Linux system with a
+-- working 'sysfs'.
 class (Monad m) => MonadSysfs m where
   sysfsIsPresent :: m Bool
   pinIsExported :: Pin -> m Bool

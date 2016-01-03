@@ -23,8 +23,10 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module System.GPIO.Free
-       ( -- * The abstract GPIO eDSL
-         GpioF(..)
+       ( -- * The GpioT monad transformer
+         GpioT
+         -- * The abstract GPIO eDSL
+       , GpioF(..)
        , pins
        , openPin
        , openPinWithValue
@@ -36,8 +38,6 @@ module System.GPIO.Free
        , writePin
        , togglePinValue
        , withPin
-         -- * The GpioT monad transformer
-       , GpioT
          -- * GPIO types
        , Pin(..)
        , PinDirection(..)
@@ -105,16 +105,17 @@ type GpioT e h m = FreeT (GpioF e h m)
 -- returned by this function.
 makeFreeCon 'Pins
 
--- | Open a pin for use. If the pin can be opened, the function returns
--- a pin handle, which is used to operate on the pin. If the pin
--- cannot be opened (e.g., due to a permissions failure), the function
--- returns an error value.
+-- | Open a pin for use. If the pin can be opened, the function
+-- returns 'Right' 'h', a handle which is used to operate on the pin.
+-- If the pin cannot be opened (e.g., due to a permissions failure),
+-- the function returns an error value as 'Left' 'e'.
 makeFreeCon 'OpenPin
 
--- | Open a pin with an initial 'PinValue'. This implies that the pin's
--- 'PinDirection' will be set to 'Out', as well. If the pin cannot be
--- opened, or if it cannot be configured as an output pin, the
--- function returns an error value.
+-- | Open a pin with an initial 'PinValue' and return a handle for the
+-- pin as 'Right' 'h'. This implies that the pin's 'PinDirection' will
+-- be set to 'Out', as well. If the pin cannot be opened, or if it
+-- cannot be configured as an output pin, the function returns an
+-- error value as 'Left' 'e'.
 --
 -- Note that on some platforms (e.g., Linux sysfs), the pin's
 -- direction and value can be set atomically to ensure "glitch-free"
@@ -138,8 +139,9 @@ makeFreeCon 'GetPinDirection
 -- | Set the pin's 'PinDirection'.
 --
 -- As some pins' direction cannot be changed, you should first call
--- 'getPinDirection' to make sure this particular pin's direction is
--- configurable.
+-- 'getPinDirection' on the pin handle to make sure this particular
+-- pin's direction is configurable. It is an error to call this
+-- function if the pin's direction cannot be changed.
 makeFreeCon 'SetPinDirection
 
 -- | Toggle the pin's 'PinDirection'.
@@ -155,7 +157,8 @@ makeFreeCon 'ReadPin
 -- the pin is not configured for output.
 makeFreeCon 'WritePin
 
--- | Toggle the pin's 'PinValue'.
+-- | Toggle the pin's 'PinValue'. It is an error to call this function
+-- when the pin is not configured for output.
 makeFreeCon 'TogglePinValue
 
 -- | Exception-safe pin management.
