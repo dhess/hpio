@@ -30,6 +30,8 @@ import System.GPIO.Linux.Sysfs
 import qualified System.IO as IO (writeFile)
 import qualified System.IO.Strict as IOS (readFile)
 
+-- | A monad transformer which adds Linux 'sysfs' GPIO computations to
+-- an inner monad 'm'.
 newtype SysfsIOT m a =
   SysfsIOT { runSysfsIOT :: m a }
   deriving (Alternative,Applicative,Functor,Monad,MonadIO)
