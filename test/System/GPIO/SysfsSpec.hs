@@ -211,26 +211,19 @@ myIsInvalidArgumentErrorType _ = False
 spec :: Spec
 spec =
   do describe "pins" $
-       let unexportedPinList = [Pin 1, Pin 8]
-           unexportedPinState = repeat defaultState
-           unexportedPins = Map.fromList $ zip unexportedPinList unexportedPinState
-           exportedPins = Map.empty
-           world = MockWorld unexportedPins exportedPins
-           expectedResult = (unexportedPinList, world, [])
+       let pinList = [Pin 1, Pin 8]
+           world = mockWorld pinList
+           expectedResult = (pinList, world, [])
        in
          it "returns the list of available pins" $
              runSysfsMock pins world `shouldReturn` expectedResult
 
      describe "openPin and closePin" $
-       let unexportedPinState = repeat defaultState
-           unexportedPinList1 = [Pin 1]
-           unexportedPins1 = Map.fromList $ zip unexportedPinList1 unexportedPinState
-           unexportedPinList2 = [Pin 2]
-           unexportedPins2 = Map.fromList $ zip unexportedPinList2 unexportedPinState
-           exportedPins = Map.empty
-           world1 = MockWorld unexportedPins1 exportedPins
+       let pinList1 = [Pin 1]
+           pinList2 = [Pin 2]
+           world1 = mockWorld pinList1
+           world2 = mockWorld pinList2
            expectedResult1 = ((), world1, [])
-           world2 = MockWorld unexportedPins2 exportedPins
            expectedResult2 = ((), world2, [])
        in
          do it "succeeds when the pin is available" $

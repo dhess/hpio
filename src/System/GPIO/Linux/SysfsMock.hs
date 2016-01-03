@@ -37,9 +37,10 @@ module System.GPIO.Linux.SysfsMock
        , runSysfsMockSafe
          -- * 'SysfsMock' types
        , MockState(..)
+       , defaultState
        , MockStateMap
        , MockWorld(..)
-       , defaultState
+       , mockWorld
        ) where
 
 import Control.Applicative
@@ -70,6 +71,10 @@ data MockState =
             , value :: !PinValue
             } deriving (Show, Eq)
 
+-- | Default initial state of mock pins.
+defaultState :: MockState
+defaultState = MockState True Out Low
+
 -- | Maps pins to their state
 type MockStateMap = Map Pin MockState
 
@@ -78,9 +83,12 @@ data MockWorld =
   MockWorld { unexported :: MockStateMap
             , exported :: MockStateMap } deriving (Show, Eq)
 
--- | Default initial state of mock pins.
-defaultState :: MockState
-defaultState = MockState True Out Low
+-- | Construct a 'MockWorld' where each 'Pin' in the provided list is
+-- available, unexported, and set to the 'defaultState'.
+mockWorld :: [Pin] -> MockWorld
+mockWorld pins =
+  let unexp = Map.fromList $ zip pins (repeat defaultState)
+  in MockWorld unexp Map.empty
 
 -- | A monad transformer which adds mock sysfs computations to an
 -- inner monad 'm'.
