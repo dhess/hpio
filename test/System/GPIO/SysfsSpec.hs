@@ -33,16 +33,16 @@ testSetDirection =
          do (Just dir1) <- getPinDirection d
             case dir1 of
               In ->
-                do void $ setPinDirection d Out
+                do setPinDirection d Out
                    (Just dir2) <- getPinDirection d
-                   void $ setPinDirection d In
+                   setPinDirection d In
                    (Just dir3) <- getPinDirection d
                    closePin d
                    return (dir1, dir2, dir3)
               Out ->
-                do void $ setPinDirection d In
+                do setPinDirection d In
                    (Just dir2) <- getPinDirection d
-                   void $ setPinDirection d Out
+                   setPinDirection d Out
                    (Just dir3) <- getPinDirection d
                    closePin d
                    return (dir1, dir2, dir3)
@@ -56,12 +56,12 @@ testSetDirectionIdempotent =
          do (Just dir1) <- getPinDirection d
             case dir1 of
               In ->
-                do void $ setPinDirection d In
+                do setPinDirection d In
                    (Just dir2) <- getPinDirection d
                    closePin d
                    return (dir1, dir2)
               Out ->
-                do void $ setPinDirection d Out
+                do setPinDirection d Out
                    (Just dir2) <- getPinDirection d
                    closePin d
                    return (dir1, dir2)
@@ -86,20 +86,20 @@ testReadWritePin =
      case handle of
        Left e -> throwError e
        Right d ->
-         do void $ setPinDirection d Out
+         do setPinDirection d Out
             val1 <- readPin d
             case val1 of
               Low ->
-                do void $ writePin d High
+                do writePin d High
                    val2 <- readPin d
-                   void $ writePin d Low
+                   writePin d Low
                    val3 <- readPin d
                    closePin d
                    return (val1, val2, val3)
               High ->
-                do void $ writePin d Low
+                do writePin d Low
                    val2 <- readPin d
-                   void $ writePin d High
+                   writePin d High
                    val3 <- readPin d
                    closePin d
                    return (val1, val2, val3)
@@ -110,16 +110,16 @@ testReadWritePinIdempotent =
      case handle of
        Left e -> throwError e
        Right d ->
-         do void $ setPinDirection d Out
+         do setPinDirection d Out
             val1 <- readPin d
             case val1 of
               Low ->
-                do void $ writePin d Low
+                do writePin d Low
                    val2 <- readPin d
                    closePin d
                    return (val1, val2)
               High ->
-                do void $ writePin d High
+                do writePin d High
                    val2 <- readPin d
                    closePin d
                    return (val1, val2)
@@ -130,8 +130,8 @@ testWritePinFailsOnInputPin =
      case handle of
        Left e -> throwError e
        Right d ->
-         do void $ setPinDirection d In
-            void $ writePin d High
+         do setPinDirection d In
+            writePin d High
             closePin d
 
 testWritePin' :: (MonadError e m) => GpioT e h m m (PinValue, PinValue, Maybe PinDirection, Maybe PinDirection)
@@ -175,7 +175,7 @@ testTogglePinValue =
      case handle of
        Left e -> throwError e
        Right d ->
-         do void $ setPinDirection d Out
+         do setPinDirection d Out
             val1 <- readPin d
             val2 <- togglePinValue d
             val3 <- readPin d
@@ -195,8 +195,8 @@ invalidHandle action =
 
 testWithPin :: (MonadError e m) => GpioT e h m m PinValue
 testWithPin = withPin (Pin 1) $ \h ->
-  do void $ setPinDirection h Out
-     void $ writePin h High
+  do setPinDirection h Out
+     writePin h High
      val <- readPin h
      return val
 
@@ -204,10 +204,10 @@ testNestedWithPin :: (MonadError e m) => GpioT e h m m (PinValue, PinValue)
 testNestedWithPin =
   withPin (Pin 1) $ \h1 ->
     withPin (Pin 2) $ \h2 ->
-      do void $ setPinDirection h1 Out
-         void $ setPinDirection h2 Out
-         void $ writePin h1 High
-         void $ writePin h2 Low
+      do setPinDirection h1 Out
+         setPinDirection h2 Out
+         writePin h1 High
+         writePin h2 Low
          val1 <- readPin h1
          val2 <- readPin h2
          return (val1, val2)
@@ -216,10 +216,10 @@ testNestedWithPinError :: (MonadError e m) => GpioT e h m m (PinValue, PinValue)
 testNestedWithPinError =
   withPin (Pin 1) $ \h1 ->
     withPin (Pin 2) $ \h2 ->
-      do void $ setPinDirection h1 Out
-         void $ setPinDirection h2 In
-         void $ writePin h1 High
-         void $ writePin h2 Low -- should fail
+      do setPinDirection h1 Out
+         setPinDirection h2 In
+         writePin h1 High
+         writePin h2 Low -- should fail
          val1 <- readPin h1
          val2 <- readPin h2
          return (val1, val2)
