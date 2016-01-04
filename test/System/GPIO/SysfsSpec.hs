@@ -360,6 +360,14 @@ spec =
           it "returns IO errors as IOException" $
             runSysfsMock' testOpenClose (mockWorld []) `shouldThrow` anyIOException
 
+          it "works with withPin on success" $
+            let world = MockWorld (Map.fromList $ zip [Pin 1] [MockState True Out High]) Map.empty
+                expectedResult = (Right High, world)
+            in runSysfsMock' testWithPin (mockWorld [Pin 1]) `shouldReturn` expectedResult
+
+          it "works with withPin on failure" $
+             runSysfsMock testWithPin (mockWorld [Pin 2]) `shouldThrow` anyIOException
+
      describe "runSysfsMockSafe" $
        do it "returns results as Right a" $
             let world = mockWorld [Pin 1]
@@ -375,3 +383,11 @@ spec =
             let world = mockWorld []
                 expectedResult = Left "/sys/class/gpio/export: hClose: invalid argument (Invalid argument)"
             in runSysfsMockSafe testOpenClose world `shouldReturn` expectedResult
+
+          it "works with withPin on success" $
+            let world = MockWorld (Map.fromList $ zip [Pin 1] [MockState True Out High]) Map.empty
+                expectedResult = Right (High, world)
+            in runSysfsMockSafe testWithPin (mockWorld [Pin 1]) `shouldReturn` expectedResult
+
+          it "works with withPin on failure" $
+            runSysfsMockSafe testWithPin (mockWorld [Pin 2]) `shouldReturn` Left "/sys/class/gpio/export: hClose: invalid argument (Invalid argument)"
