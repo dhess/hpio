@@ -5,12 +5,12 @@
 module Main where
 
 import Control.Error.Util (errLn)
-import Control.Monad (void, when)
+import Control.Monad (when)
 import Control.Monad.Except (MonadError, runExceptT, throwError)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import System.Exit (exitFailure)
 import System.GPIO.Free
-import System.GPIO.Linux.Sysfs (runSysfsSafe)
+import System.GPIO.Linux.SysfsIO (runSysfsIOSafe)
 
 output :: (MonadIO m) => String -> m ()
 output = liftIO . putStrLn
@@ -39,14 +39,14 @@ example =
               do output $ "Pin direction is " ++ show dir
                  when (dir == In) $
                    do output $ "Setting pin direction to " ++ show Out
-                      void $ setPinDirection h Out
+                      setPinDirection h Out
                  newValue <- togglePinValue h
                  output $ "Setting pin value to " ++ show newValue
-                 void $ writePin h newValue
+                 writePin h newValue
 
 main :: IO ()
 main =
-  do result <- runSysfsSafe example
+  do result <- runSysfsIOSafe example
      case result of
        Left e ->
          do errLn $ "Error: " ++ e
