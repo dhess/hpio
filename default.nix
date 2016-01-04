@@ -4,7 +4,7 @@
 }:
 mkDerivation {
   pname = "gpio";
-  version = "0.4";
+  version = "0.5";
   src = ./.;
   libraryHaskellDepends = [
     base cond containers directory errors exceptions filepath free mtl
