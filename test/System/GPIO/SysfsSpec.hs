@@ -134,6 +134,41 @@ testWritePinFailsOnInputPin =
             void $ writePin d High
             closePin d
 
+testWritePin' :: (MonadError e m) => GpioT e h m m (PinValue, PinValue, Maybe PinDirection, Maybe PinDirection)
+testWritePin' =
+  do handle1 <- openPin (Pin 1)
+     handle2 <- openPin (Pin 2)
+     case (handle1, handle2) of
+       (Left e, _) -> throwError e
+       (_, Left e) -> throwError e
+       (Right d1, Right d2) ->
+         do writePin' d1 High
+            val1 <- readPin d1
+            writePin' d2 Low
+            val2 <- readPin d2
+            dir1 <- getPinDirection d1
+            dir2 <- getPinDirection d2
+            closePin d1
+            closePin d2
+            return (val1, val2, dir1, dir2)
+
+testWritePinIdempotent' :: (MonadError e m) => GpioT e h m m (PinValue, PinValue, PinValue, PinValue)
+testWritePinIdempotent' =
+  do handle <- openPin (Pin 1)
+     case handle of
+       Left e -> throwError e
+       Right d ->
+         do writePin' d High
+            val1 <- readPin d
+            writePin' d High
+            val2 <- readPin d
+            writePin' d Low
+            val3 <- readPin d
+            writePin' d Low
+            val4 <- readPin d
+            closePin d
+            return (val1, val2, val3, val4)
+
 testTogglePinValue :: (MonadError e m) => GpioT e h m m (PinValue, PinValue, PinValue, PinValue, PinValue)
 testTogglePinValue =
   do handle <- openPin (Pin 1)
@@ -189,15 +224,14 @@ testNestedWithPinError =
          val2 <- readPin h2
          return (val1, val2)
 
-testOpenPinWithValue :: (MonadError e m) => PinValue -> GpioT e h m m PinValue
-testOpenPinWithValue iv =
-  do handle <- openPinWithValue (Pin 1) iv
+testErrorInComputation :: (MonadError String m) => GpioT e h m m h
+testErrorInComputation =
+  do handle <- openPin (Pin 1)
      case handle of
-       Left e -> throwError e
+       Left _ -> throwError "openPin failed"
        Right h ->
-         do v <- readPin h
-            void $ closePin h
-            return v
+         do closePin h
+            throwError "Expected error"
 
 spec :: Spec
 spec =
@@ -219,16 +253,6 @@ spec =
             it "fails when the pin is unavailable" $
               do runSysfsMock testOpenClose world2 `shouldThrow` anyIOException
 
-     describe "openPinWithValue" $
-       do it "opens the pin, sets the direction to Out and sets the proper value" $
-            let world1 = mockWorld [Pin 1]
-                world2 = MockWorld (Map.fromList $ zip [Pin 1] [MockState True Out High]) Map.empty
-                expectedResult1 = (Low, world1)
-                expectedResult2 = (High, world2)
-            in
-              do runSysfsMock (testOpenPinWithValue Low) world1 `shouldReturn` expectedResult1
-                 runSysfsMock (testOpenPinWithValue High) world1 `shouldReturn` expectedResult2
-
      describe "setPinDirection" $
        do it "sets the pin direction" $
             let world = mockWorld [Pin 1]
@@ -239,6 +263,10 @@ spec =
             let world = mockWorld [Pin 1]
                 expectedResult = ((Out, Out), world)
             in runSysfsMock testSetDirectionIdempotent world `shouldReturn` expectedResult
+
+          it "fails when the pin's direction is not settable" $
+            let world = MockWorld {unexported = Map.fromList [(Pin 1,MockState {hasUserDirection = False, direction = Out, value = High}),(Pin 2,MockState {hasUserDirection = True, direction = Out, value = Low})], exported = Map.empty}
+            in runSysfsMock testSetDirection world `shouldThrow` anyIOException
 
      describe "togglePinDirection" $
        do it "toggles pin direction" $
@@ -261,6 +289,21 @@ spec =
             -- Note that this test will leave Pin 1 in the "open" state
             let world = mockWorld [Pin 1]
             in runSysfsMock testWritePinFailsOnInputPin world `shouldThrow` anyIOException
+
+     describe "writePin'" $
+       do it "sets the pin value and direction" $
+            let world = MockWorld {unexported = Map.fromList [(Pin 1,MockState {hasUserDirection = True, direction = In, value = Low}),(Pin 2,MockState {hasUserDirection = True, direction = Out, value = High})], exported = Map.empty}
+                expectedResult = ((High, Low, Just Out, Just Out), MockWorld {unexported = Map.fromList [(Pin 1,MockState {hasUserDirection = True, direction = Out, value = High}),(Pin 2,MockState {hasUserDirection = True, direction = Out, value = Low})], exported = Map.empty})
+            in runSysfsMock testWritePin' world `shouldReturn` expectedResult
+
+          it "is idempotent" $
+            let world = mockWorld [Pin 1]
+                expectedResult = ((High, High, Low, Low), world)
+            in runSysfsMock testWritePinIdempotent' world `shouldReturn` expectedResult
+
+          it "fails when the pin's direction is not settable" $
+            let world = MockWorld {unexported = Map.fromList [(Pin 1,MockState {hasUserDirection = False, direction = Out, value = High}),(Pin 2,MockState {hasUserDirection = True, direction = Out, value = Low})], exported = Map.empty}
+            in runSysfsMock testWritePin' world `shouldThrow` anyIOException
 
      describe "togglePinValue" $
        do it "toggles the pin's value" $
@@ -310,12 +353,12 @@ spec =
             in runSysfsMock' testSetDirection world `shouldReturn` expectedResult
 
           it "returns errors in the computation as Left String" $
-            let world = MockWorld {unexported = Map.fromList [(Pin 1, MockState False Out Low)], exported = Map.empty}
-                expectedResult = (Left "Can't configure Pin 1 for output", world)
-            in runSysfsMock' (testOpenPinWithValue Low) world `shouldReturn` expectedResult
+            let world = mockWorld [Pin 1]
+                expectedResult = (Left "Expected error", world)
+            in runSysfsMock' testErrorInComputation world `shouldReturn` expectedResult
 
           it "returns IO errors as IOException" $
-            runSysfsMock' (testOpenPinWithValue Low) (mockWorld []) `shouldThrow` anyIOException
+            runSysfsMock' testOpenClose (mockWorld []) `shouldThrow` anyIOException
 
      describe "runSysfsMockSafe" $
        do it "returns results as Right a" $
@@ -324,11 +367,11 @@ spec =
             in runSysfsMockSafe testSetDirection world `shouldReturn` expectedResult
 
           it "returns errors in the computation as Left String" $
-            let world = MockWorld {unexported = Map.fromList [(Pin 1, MockState False Out Low)], exported = Map.empty}
-                expectedResult = Left "user error (Can't configure Pin 1 for output)"
-            in runSysfsMockSafe (testOpenPinWithValue Low) world `shouldReturn` expectedResult
+            let world = mockWorld [Pin 1]
+                expectedResult = Left "user error (Expected error)"
+            in runSysfsMockSafe testErrorInComputation world `shouldReturn` expectedResult
 
           it "returns IO errors as Left String" $
             let world = mockWorld []
                 expectedResult = Left "/sys/class/gpio/export: hClose: invalid argument (Invalid argument)"
-            in runSysfsMockSafe (testOpenPinWithValue Low) world `shouldReturn` expectedResult
+            in runSysfsMockSafe testOpenClose world `shouldReturn` expectedResult

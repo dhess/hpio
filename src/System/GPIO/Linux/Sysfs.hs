@@ -70,20 +70,6 @@ runSysfsT = iterT run
                     do exportPin p
                        next (Right $ PinDescriptor p)
 
-    run (OpenPinWithValue p v next) =
-      do eitherHandle <- runSysfsT $ openPin p
-         case eitherHandle of
-           Left e -> next $ Left e
-           Right h ->
-             do settable <- pinHasDirection p
-                case settable of
-                  False ->
-                    do runSysfsT $ closePin h
-                       next (Left $ "Can't configure " ++ show p ++ " for output")
-                  True ->
-                    do writePinDirectionWithValue p v
-                       next $ Right h
-
     run (ClosePin d next) =
       do let p = pin d
          unexportPin p
@@ -126,6 +112,11 @@ runSysfsT = iterT run
     run (WritePin d v next) =
       do let p = pin d
          writePinValue p v
+         next
+
+    run (WritePin' d v next) =
+      do let p = pin d
+         writePinDirectionWithValue p v
          next
 
     run (TogglePinValue h next) =

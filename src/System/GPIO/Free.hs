@@ -29,13 +29,13 @@ module System.GPIO.Free
        , GpioF(..)
        , pins
        , openPin
-       , openPinWithValue
        , closePin
        , getPinDirection
        , setPinDirection
        , togglePinDirection
        , readPin
        , writePin
+       , writePin'
        , togglePinValue
        , withPin
          -- * GPIO types
@@ -64,26 +64,26 @@ data PinValue = Low | High deriving (Eq, Enum, Ord, Show, Generic)
 data GpioF e h m next where
   Pins :: ([Pin] -> next) -> GpioF e h m next
   OpenPin :: Pin -> (Either e h -> next) -> GpioF e h m next
-  OpenPinWithValue :: Pin -> PinValue -> (Either e h -> next) -> GpioF e h m next
   ClosePin :: h -> next -> GpioF e h m next
   GetPinDirection :: h -> (Maybe PinDirection -> next) -> GpioF e h m next
   SetPinDirection :: h -> PinDirection -> next -> GpioF e h m next
   TogglePinDirection :: h -> (Maybe PinDirection -> next) -> GpioF e h m next
   ReadPin :: h -> (PinValue -> next) -> GpioF e h m next
   WritePin :: h -> PinValue -> next -> GpioF e h m next
+  WritePin' :: h -> PinValue -> next -> GpioF e h m next
   TogglePinValue :: h -> (PinValue -> next) -> GpioF e h m next
   WithPin :: Pin -> (h -> GpioT e h m m a) -> (a -> next) -> GpioF e h m next
 
 instance Functor (GpioF e h m) where
   fmap f (Pins g) = Pins (f . g)
   fmap f (OpenPin p g) = OpenPin p (f . g)
-  fmap f (OpenPinWithValue p v g) = OpenPinWithValue p v (f . g)
   fmap f (ClosePin h x) = ClosePin h (f x)
   fmap f (GetPinDirection h g) = GetPinDirection h (f . g)
   fmap f (SetPinDirection h dir x) = SetPinDirection h dir (f x)
   fmap f (TogglePinDirection h g) = TogglePinDirection h (f . g)
   fmap f (ReadPin h g) = ReadPin h (f . g)
   fmap f (WritePin h v x) = WritePin h v (f x)
+  fmap f (WritePin' h v x) = WritePin' h v (f x)
   fmap f (TogglePinValue h g) = TogglePinValue h (f . g)
   fmap f (WithPin p block g) = WithPin p block (f . g)
 
@@ -110,18 +110,6 @@ makeFreeCon 'Pins
 -- If the pin cannot be opened (e.g., due to a permissions failure),
 -- the function returns an error value as 'Left' 'e'.
 makeFreeCon 'OpenPin
-
--- | Open a pin with an initial 'PinValue' and return a handle for the
--- pin as 'Right' 'h'. This implies that the pin's 'PinDirection' will
--- be set to 'Out', as well. If the pin cannot be opened, or if it
--- cannot be configured as an output pin, the function returns an
--- error value as 'Left' 'e'.
---
--- Note that on some platforms (e.g., Linux sysfs), the pin's
--- direction and value can be set atomically to ensure "glitch-free"
--- operation. Otherwise, it will be performed as 2 discrete
--- operations.
-makeFreeCon 'OpenPinWithValue
 
 -- | Close a pin; i.e., indicate to the system that you no longer
 -- intend to use the pin via the given handle.
@@ -156,6 +144,20 @@ makeFreeCon 'ReadPin
 -- | Set the pin's 'PinValue'. It is an error to call this function when
 -- the pin is not configured for output.
 makeFreeCon 'WritePin
+
+-- | Configure the pin for output and simultaneously set its
+-- 'PinValue'. As long as the pin can be configured for output, you
+-- can call this function regardless of the pin's current
+-- 'PinDirection'. If the pin cannot be configured for output, it is
+-- an error to call this function. (See 'getPinDirection' to determine
+-- safely whether the pin can be configured for output.)
+--
+-- On some platforms (e.g., Linux sysfs GPIO), this operation is
+-- atomic, permitting glitch-free operation when configuring an output
+-- pin's initial value. If the platform can't guarantee atomic
+-- operation, this command is performed as two separate steps (first
+-- setting the direction to 'Out', and then setting the 'PinValue').
+makeFreeCon 'WritePin'
 
 -- | Toggle the pin's 'PinValue'. It is an error to call this function
 -- when the pin is not configured for output.
