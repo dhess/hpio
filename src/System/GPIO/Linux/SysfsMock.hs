@@ -68,13 +68,13 @@ import System.IO.Error (mkIOError, ioeSetErrorString)
 data MockState =
   MockState { hasUserDirection :: !Bool -- is direction visible to the user?
             , direction :: !PinDirection
-            , value :: !PinValue
             , activeLow :: !Bool
+            , value :: !PinValue -- This is the line level
             } deriving (Show, Eq)
 
 -- | Default initial state of mock pins.
 defaultState :: MockState
-defaultState = MockState True Out Low False
+defaultState = MockState True Out False Low
 
 -- | Maps pins to their state
 type MockStateMap = Map Pin MockState
@@ -212,20 +212,21 @@ writePinDirectionWithValueMock :: (MonadIO m) => Pin -> PinValue -> SysfsMockT m
 writePinDirectionWithValueMock p v =
   guardedPinState p id hasUserDirection >>= \case
     Nothing -> liftIO $ ioError (writePinDirectionErrorNoSuchThing p)
-    Just s -> modifyExportedPinState p (s { direction = Out, value = v})
+    Just s -> modifyExportedPinState p (s { direction = Out, value = xor (activeLow s) v})
 
 readPinValueMock :: (MonadIO m) => Pin -> SysfsMockT m String
 readPinValueMock p =
-  checkedPinState p value (readPinValueErrorNoSuchThing p) >>= \case
-    Low -> return "0\n"
-    High -> return "1\n"
+  do s <- checkedPinState p id (readPinValueErrorNoSuchThing p)
+     case (xor (activeLow s) (value s)) of
+       Low -> return "0\n"
+       High -> return "1\n"
 
 writePinValueMock :: (MonadIO m) => Pin -> PinValue -> SysfsMockT m ()
 writePinValueMock p v =
   do s <- checkedPinState p id (writePinValueErrorNoSuchThing p)
      case (direction s) of
        In -> liftIO $ ioError (writePinValueErrorPermissionDenied p)
-       Out -> modifyExportedPinState p (s { value = v })
+       Out -> modifyExportedPinState p (s { value = xor (activeLow s) v })
 
 readPinActiveLowMock :: (MonadIO m) => Pin -> SysfsMockT m String
 readPinActiveLowMock p =
@@ -233,7 +234,7 @@ readPinActiveLowMock p =
     False -> return "0\n"
     True -> return "1\n"
 
-writePinActiveLowMock :: (MonadIO m) => Pin -> PinValue -> SysfsMockT m ()
+writePinActiveLowMock :: (MonadIO m) => Pin -> Bool -> SysfsMockT m ()
 writePinActiveLowMock p v =
   do s <- checkedPinState p id (writePinActiveLowErrorNoSuchThing p)
      modifyExportedPinState p (s { activeLow = v})
@@ -254,12 +255,11 @@ availablePinsMock =
 -- Convenience functions
 --
 
--- XXX dhess: this is an XOR, replace later.
-logicalValue :: PinValue -> PinValue -> PinValue
-logicalValue Low High = Low
-logicalValue Low High = High
-logicalValue Low High = High
-logicalValue Low High = Low
+xor :: Bool -> PinValue -> PinValue
+xor False Low = Low
+xor False High = High
+xor True Low = High
+xor True High = Low
 
 pinIsUnexported :: (Monad m) => Pin -> SysfsMockT m Bool
 pinIsUnexported p = unexportedPinState p >>= return . isJust

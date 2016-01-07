@@ -47,6 +47,9 @@ module System.GPIO.Free
          -- * Convenience functions
        , invertDirection
        , invertValue
+         -- * PinValue <-> Bool conversions
+       , valueToBool
+       , boolToValue
        ) where
 
 import Control.Monad.Trans.Free (FreeT, MonadFree, liftF)
@@ -206,3 +209,11 @@ invertDirection Out = In
 invertValue :: PinValue -> PinValue
 invertValue High = Low
 invertValue Low = High
+
+valueToBool :: PinValue -> Bool
+valueToBool Low  = False
+valueToBool High = True
+
+boolToValue :: Bool -> PinValue
+boolToValue False = Low
+boolToValue True  = High

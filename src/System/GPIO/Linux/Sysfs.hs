@@ -18,7 +18,7 @@ module System.GPIO.Linux.Sysfs
 import Control.Monad (void)
 import Control.Monad.Except (MonadError, catchError, throwError)
 import Control.Monad.Trans.Free (iterT)
-import System.GPIO.Free (GpioF(..), GpioT, PinDirection(..), Pin(..), PinValue(..), openPin, closePin, readPin, writePin, getPinDirection, setPinDirection, invertDirection, invertValue)
+import System.GPIO.Free (GpioF(..), GpioT, PinDirection(..), Pin(..), PinValue(..), openPin, closePin, readPin, writePin, getPinDirection, setPinDirection, invertDirection, invertValue, valueToBool)
 import System.GPIO.Linux.MonadSysfs (MonadSysfs(..))
 
 -- | The sysfs interpreter's pin handle type. Currently it's just a
@@ -135,7 +135,7 @@ runSysfsT = iterT run
 
     run (SetPinActiveLevel d v next) =
       do let p = pin d
-         writePinActiveLow p (invertValue v)
+         writePinActiveLow p $ valueToBool (invertValue v)
          next
 
     run (WithPin p block next) =

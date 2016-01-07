@@ -88,7 +88,7 @@ class (Monad m) => MonadSysfs m where
   readPinValue :: Pin -> m String
   writePinValue :: Pin -> PinValue -> m ()
   readPinActiveLow :: Pin -> m String
-  writePinActiveLow :: Pin -> PinValue -> m ()
+  writePinActiveLow :: Pin -> Bool -> m ()
   availablePins :: m [Pin]
 
 instance (MonadIO m, MonadSysfs m) => MonadSysfs (ContT r m) where

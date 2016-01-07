@@ -130,8 +130,8 @@ writePinValueIO p v = liftIO $ IO.writeFile (pinValueFileName p) (toSysfsPinValu
 readPinActiveLowIO :: (MonadIO m) => Pin -> m String
 readPinActiveLowIO p = liftIO $ IOS.readFile (pinActiveLowFileName p)
 
-writePinActiveLowIO :: (MonadIO m) => Pin -> PinValue -> m ()
-writePinActiveLowIO p v = liftIO $ IO.writeFile (pinActiveLowFileName p) (toSysfsPinValue v)
+writePinActiveLowIO :: (MonadIO m) => Pin -> Bool -> m ()
+writePinActiveLowIO p v = liftIO $ IO.writeFile (pinActiveLowFileName p) (toSysfsActiveLowValue v)
 
 availablePinsIO :: (MonadIO m) => m [Pin]
 availablePinsIO =
@@ -148,6 +148,10 @@ lowercase = fmap toLower
 toSysfsPinValue :: PinValue -> String
 toSysfsPinValue Low = "0"
 toSysfsPinValue High = "1"
+
+toSysfsActiveLowValue :: Bool -> String
+toSysfsActiveLowValue False = "0"
+toSysfsActiveLowValue True = "1"
 
 readFromFile :: (MonadIO m, Read a) => FilePath -> m a
 readFromFile f = liftIO (IOS.readFile f >>= readIO)
