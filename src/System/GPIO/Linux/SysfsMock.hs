@@ -57,9 +57,9 @@ import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 import Data.Maybe (isJust)
 import GHC.IO.Exception (IOErrorType(..))
-import System.GPIO.Free (PinDirection(..), Pin(..), PinValue(..))
 import System.GPIO.Linux.MonadSysfs
 import System.GPIO.Linux.Sysfs
+import System.GPIO.Types (PinDirection(..), Pin(..), PinValue(..))
 import System.IO.Error (mkIOError, ioeSetErrorString)
 
 -- | Keep track of the state of mock pins. In real Linux 'sysfs', pins

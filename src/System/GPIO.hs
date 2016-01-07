@@ -6,9 +6,11 @@
 -- "System.GPIO.Linux.SysfsMock".
 
 module System.GPIO
-       ( -- * The abstract GPIO eDSL
-         module System.GPIO.Free
-         -- * The Linux sysfs GPIO interpreter
+       ( -- * GPIO types
+         module System.GPIO.Types
+         -- * The abstract GPIO eDSL
+       , module System.GPIO.Free
+          -- * The Linux sysfs GPIO interpreter
        , module System.GPIO.Linux.Sysfs
          -- * The Linux sysfs GPIO monad.
        , module System.GPIO.Linux.SysfsIO
@@ -17,3 +19,4 @@ module System.GPIO
 import System.GPIO.Free
 import System.GPIO.Linux.Sysfs (MonadSysfs(..), SysfsF, SysfsT, runSysfsT)
 import System.GPIO.Linux.SysfsIO (SysfsIOT(..), SysfsIO, runSysfsIO, runSysfsIO', runSysfsIOSafe)
+import System.GPIO.Types

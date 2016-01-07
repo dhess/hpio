@@ -11,6 +11,7 @@ import Control.Monad.IO.Class (MonadIO, liftIO)
 import System.Exit (exitFailure)
 import System.GPIO.Free
 import System.GPIO.Linux.SysfsIO (runSysfsIOSafe)
+import System.GPIO.Types
 
 output :: (MonadIO m) => String -> m ()
 output = liftIO . putStrLn

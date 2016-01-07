@@ -40,30 +40,12 @@ module System.GPIO.Free
        , getPinActiveLevel
        , setPinActiveLevel
        , withPin
-         -- * GPIO types
-       , Pin(..)
-       , PinDirection(..)
-       , PinValue(..)
-         -- * Convenience functions
-       , invertDirection
-       , invertValue
-         -- * PinValue <-> Bool conversions
-       , valueToBool
-       , boolToValue
        ) where
+
+import System.GPIO.Types
 
 import Control.Monad.Trans.Free (FreeT, MonadFree, liftF)
 import Control.Monad.Free.TH (makeFreeCon)
-import GHC.Generics
-
--- | A GPIO pin, identified by pin number.
-data Pin = Pin Int deriving (Eq, Ord, Show, Generic)
-
--- | Pin direction (input/output).
-data PinDirection = In | Out deriving (Eq, Show, Generic)
-
--- | Pin value (high/low voltage).
-data PinValue = Low | High deriving (Eq, Enum, Ord, Show, Generic)
 
 -- | Commands for the GPIO eDSL.
 data GpioF e h m next where
@@ -199,21 +181,3 @@ makeFreeCon 'SetPinActiveLevel
 -- regardless of how that exception is then expressed to the caller by
 -- the implementation.
 makeFreeCon 'WithPin
-
--- | Invert a 'PinDirection' value.
-invertDirection :: PinDirection -> PinDirection
-invertDirection In = Out
-invertDirection Out = In
-
--- | Invert a 'PinValue'.
-invertValue :: PinValue -> PinValue
-invertValue High = Low
-invertValue Low = High
-
-valueToBool :: PinValue -> Bool
-valueToBool Low  = False
-valueToBool High = True
-
-boolToValue :: Bool -> PinValue
-boolToValue False = Low
-boolToValue True  = High

@@ -37,7 +37,8 @@ Library
                       , System.GPIO.Linux.MonadSysfs
                       , System.GPIO.Linux.Sysfs
                       , System.GPIO.Linux.SysfsIO
-                        System.GPIO.Linux.SysfsMock
+                      , System.GPIO.Linux.SysfsMock
+                      , System.GPIO.Types
   Other-Extensions:     DeriveGeneric
                       , FlexibleContexts
                       , GADTs
@@ -84,7 +85,8 @@ Test-Suite spec
                       , System.GPIO.Linux.MonadSysfs
                       , System.GPIO.Linux.Sysfs
                       , System.GPIO.Linux.SysfsIO
-                        System.GPIO.Linux.SysfsMock
+                      , System.GPIO.Linux.SysfsMock
+                      , System.GPIO.Types
 
 Source-Repository head
   Type:                 git

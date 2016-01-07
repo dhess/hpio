@@ -7,6 +7,7 @@ import Control.Monad.Except
 import qualified Data.Map.Strict as Map
 import System.GPIO.Free
 import System.GPIO.Linux.SysfsMock
+import System.GPIO.Types
 
 import Test.Hspec
 

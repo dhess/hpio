@@ -28,7 +28,7 @@ import qualified Control.Monad.Trans.State.Strict as StrictState (StateT)
 import qualified Control.Monad.Trans.Writer.Lazy as LazyWriter (WriterT)
 import qualified Control.Monad.Trans.Writer.Strict as StrictWriter (WriterT)
 import System.FilePath ((</>))
-import System.GPIO.Free (PinDirection(..), Pin(..), PinValue(..))
+import System.GPIO.Types (PinDirection(..), Pin(..), PinValue(..))
 
 -- | The base path to Linux's GPIO sysfs interface.
 sysfsPath :: FilePath
