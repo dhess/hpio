@@ -125,6 +125,19 @@ runSysfsT = iterT run
          void $ runSysfsT $ writePin h newVal
          next newVal
 
+    run (GetPinActiveLevel d next) =
+      do let p = pin d
+         value <- readPinActiveLow p
+         case value of
+           "0\n" -> next High
+           "1\n" -> next Low
+           _   -> throwError $ "Unexpected active_low value for " ++ show p
+
+    run (SetPinActiveLevel d v next) =
+      do let p = pin d
+         writePinActiveLow p (invertValue v)
+         next
+
     run (WithPin p block next) =
       do result <- runSysfsT $ openPin p
          case result of

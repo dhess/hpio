@@ -37,6 +37,8 @@ module System.GPIO.Free
        , writePin
        , writePin'
        , togglePinValue
+       , getPinActiveLevel
+       , setPinActiveLevel
        , withPin
          -- * GPIO types
        , Pin(..)
@@ -72,6 +74,8 @@ data GpioF e h m next where
   WritePin :: h -> PinValue -> next -> GpioF e h m next
   WritePin' :: h -> PinValue -> next -> GpioF e h m next
   TogglePinValue :: h -> (PinValue -> next) -> GpioF e h m next
+  GetPinActiveLevel :: h -> (PinValue -> next) -> GpioF e h m next
+  SetPinActiveLevel :: h -> PinValue -> next -> GpioF e h m next
   WithPin :: Pin -> (h -> GpioT e h m m a) -> (a -> next) -> GpioF e h m next
 
 instance Functor (GpioF e h m) where
@@ -85,6 +89,8 @@ instance Functor (GpioF e h m) where
   fmap f (WritePin h v x) = WritePin h v (f x)
   fmap f (WritePin' h v x) = WritePin' h v (f x)
   fmap f (TogglePinValue h g) = TogglePinValue h (f . g)
+  fmap f (GetPinActiveLevel h g) = GetPinActiveLevel h (f . g)
+  fmap f (SetPinActiveLevel h v x) = SetPinActiveLevel h v (f x)
   fmap f (WithPin p block g) = WithPin p block (f . g)
 
 -- | A transformer which adds GPIO programs to a monad stack. The 'e'
@@ -138,11 +144,13 @@ makeFreeCon 'SetPinDirection
 -- 'Nothing'. Otherwise, it returns the new direction.
 makeFreeCon 'TogglePinDirection
 
--- | Read the pin's 'PinValue'.
+-- | Read the pin's /logical/ 'PinValue'. Note that the pin's
+-- /physical/ line level is the inverse of the returned value when the
+-- pin's active level is 'Low'. (See 'getPinActiveLevel'.)
 makeFreeCon 'ReadPin
 
--- | Set the pin's 'PinValue'. It is an error to call this function when
--- the pin is not configured for output.
+-- | Set the pin's /logical/ 'PinValue'. It is an error to call this
+-- function when the pin is not configured for output.
 makeFreeCon 'WritePin
 
 -- | Configure the pin for output and simultaneously set its
@@ -162,6 +170,14 @@ makeFreeCon 'WritePin'
 -- | Toggle the pin's 'PinValue'. It is an error to call this function
 -- when the pin is not configured for output.
 makeFreeCon 'TogglePinValue
+
+-- | Get the pin's "active" level: 'Low' means the pin is configured
+-- to be active low, and 'High' means the pin is configured to be
+-- active high.
+makeFreeCon 'GetPinActiveLevel
+
+-- | Set the pin's "active" level, 'Low' or 'High'.
+makeFreeCon 'SetPinActiveLevel
 
 -- | Exception-safe pin management.
 --

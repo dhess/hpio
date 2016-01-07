@@ -9,6 +9,7 @@ module System.GPIO.Linux.MonadSysfs
        , exportFileName
        , unexportFileName
        , pinDirName
+       , pinActiveLowFileName
        , pinDirectionFileName
        , pinValueFileName
        ) where
@@ -48,6 +49,11 @@ unexportFileName = sysfsPath </> "unexport"
 pinDirName :: Pin -> FilePath
 pinDirName (Pin n) = sysfsPath </> ("gpio" ++ show n)
 
+-- | The name of the control file used to read and write the pin's
+-- "active low" value.
+pinActiveLowFileName :: Pin -> FilePath
+pinActiveLowFileName p = pinDirName p </> "active_low"
+
 -- | Pins whose direction can be controlled via sysfs provide a
 -- control file. 'pinDirectionFileName' gives the name of that file
 -- for a given pin number. Note that some pins' direction cannot be
@@ -60,6 +66,7 @@ pinDirectionFileName p = pinDirName p </> "direction"
 -- value.
 pinValueFileName :: Pin -> FilePath
 pinValueFileName p = pinDirName p </> "value"
+
 
 -- | Monads in which low-level Linux 'sysfs' GPIO-like operations may be
 -- embedded.
@@ -80,6 +87,8 @@ class (Monad m) => MonadSysfs m where
   writePinDirectionWithValue :: Pin -> PinValue -> m ()
   readPinValue :: Pin -> m String
   writePinValue :: Pin -> PinValue -> m ()
+  readPinActiveLow :: Pin -> m String
+  writePinActiveLow :: Pin -> PinValue -> m ()
   availablePins :: m [Pin]
 
 instance (MonadIO m, MonadSysfs m) => MonadSysfs (ContT r m) where
@@ -93,6 +102,8 @@ instance (MonadIO m, MonadSysfs m) => MonadSysfs (ContT r m) where
   writePinDirectionWithValue h v = lift $ writePinDirectionWithValue h v
   readPinValue = lift . readPinValue
   writePinValue h v = lift $ writePinValue h v
+  readPinActiveLow = lift . readPinActiveLow
+  writePinActiveLow h v = lift $ writePinActiveLow h v
   availablePins = lift availablePins
 
 instance (MonadIO m, MonadSysfs m) => MonadSysfs (ExceptT e m) where
@@ -106,6 +117,8 @@ instance (MonadIO m, MonadSysfs m) => MonadSysfs (ExceptT e m) where
   writePinDirectionWithValue h v = lift $ writePinDirectionWithValue h v
   readPinValue = lift . readPinValue
   writePinValue h v = lift $ writePinValue h v
+  readPinActiveLow = lift . readPinActiveLow
+  writePinActiveLow h v = lift $ writePinActiveLow h v
   availablePins = lift availablePins
 
 instance (MonadIO m, MonadSysfs m) => MonadSysfs (ListT m) where
@@ -119,6 +132,8 @@ instance (MonadIO m, MonadSysfs m) => MonadSysfs (ListT m) where
   writePinDirectionWithValue h v = lift $ writePinDirectionWithValue h v
   readPinValue = lift . readPinValue
   writePinValue h v = lift $ writePinValue h v
+  readPinActiveLow = lift . readPinActiveLow
+  writePinActiveLow h v = lift $ writePinActiveLow h v
   availablePins = lift availablePins
 
 instance (MonadIO m, MonadSysfs m) => MonadSysfs (MaybeT m) where
@@ -132,6 +147,8 @@ instance (MonadIO m, MonadSysfs m) => MonadSysfs (MaybeT m) where
   writePinDirectionWithValue h v = lift $ writePinDirectionWithValue h v
   readPinValue = lift . readPinValue
   writePinValue h v = lift $ writePinValue h v
+  readPinActiveLow = lift . readPinActiveLow
+  writePinActiveLow h v = lift $ writePinActiveLow h v
   availablePins = lift availablePins
 
 instance (MonadIO m, MonadSysfs m) => MonadSysfs (ReaderT r m) where
@@ -145,6 +162,8 @@ instance (MonadIO m, MonadSysfs m) => MonadSysfs (ReaderT r m) where
   writePinDirectionWithValue h v = lift $ writePinDirectionWithValue h v
   readPinValue = lift . readPinValue
   writePinValue h v = lift $ writePinValue h v
+  readPinActiveLow = lift . readPinActiveLow
+  writePinActiveLow h v = lift $ writePinActiveLow h v
   availablePins = lift availablePins
 
 instance (MonadIO m, MonadSysfs m, Monoid w) => MonadSysfs (LazyRWS.RWST r w s m) where
@@ -158,6 +177,8 @@ instance (MonadIO m, MonadSysfs m, Monoid w) => MonadSysfs (LazyRWS.RWST r w s m
   writePinDirectionWithValue h v = lift $ writePinDirectionWithValue h v
   readPinValue = lift . readPinValue
   writePinValue h v = lift $ writePinValue h v
+  readPinActiveLow = lift . readPinActiveLow
+  writePinActiveLow h v = lift $ writePinActiveLow h v
   availablePins = lift availablePins
 
 instance (MonadIO m, MonadSysfs m, Monoid w) => MonadSysfs (StrictRWS.RWST r w s m) where
@@ -171,6 +192,8 @@ instance (MonadIO m, MonadSysfs m, Monoid w) => MonadSysfs (StrictRWS.RWST r w s
   writePinDirectionWithValue h v = lift $ writePinDirectionWithValue h v
   readPinValue = lift . readPinValue
   writePinValue h v = lift $ writePinValue h v
+  readPinActiveLow = lift . readPinActiveLow
+  writePinActiveLow h v = lift $ writePinActiveLow h v
   availablePins = lift availablePins
 
 instance (MonadIO m, MonadSysfs m) => MonadSysfs (LazyState.StateT s m) where
@@ -184,6 +207,8 @@ instance (MonadIO m, MonadSysfs m) => MonadSysfs (LazyState.StateT s m) where
   writePinDirectionWithValue h v = lift $ writePinDirectionWithValue h v
   readPinValue = lift . readPinValue
   writePinValue h v = lift $ writePinValue h v
+  readPinActiveLow = lift . readPinActiveLow
+  writePinActiveLow h v = lift $ writePinActiveLow h v
   availablePins = lift availablePins
 
 instance (MonadIO m, MonadSysfs m) => MonadSysfs (StrictState.StateT s m) where
@@ -197,6 +222,8 @@ instance (MonadIO m, MonadSysfs m) => MonadSysfs (StrictState.StateT s m) where
   writePinDirectionWithValue h v = lift $ writePinDirectionWithValue h v
   readPinValue = lift . readPinValue
   writePinValue h v = lift $ writePinValue h v
+  readPinActiveLow = lift . readPinActiveLow
+  writePinActiveLow h v = lift $ writePinActiveLow h v
   availablePins = lift availablePins
 
 instance (MonadIO m, MonadSysfs m, Monoid w) => MonadSysfs (LazyWriter.WriterT w m) where
@@ -210,6 +237,8 @@ instance (MonadIO m, MonadSysfs m, Monoid w) => MonadSysfs (LazyWriter.WriterT w
   writePinDirectionWithValue h v = lift $ writePinDirectionWithValue h v
   readPinValue = lift . readPinValue
   writePinValue h v = lift $ writePinValue h v
+  readPinActiveLow = lift . readPinActiveLow
+  writePinActiveLow h v = lift $ writePinActiveLow h v
   availablePins = lift availablePins
 
 instance (MonadIO m, MonadSysfs m, Monoid w) => MonadSysfs (StrictWriter.WriterT w m) where
@@ -223,5 +252,6 @@ instance (MonadIO m, MonadSysfs m, Monoid w) => MonadSysfs (StrictWriter.WriterT
   writePinDirectionWithValue h v = lift $ writePinDirectionWithValue h v
   readPinValue = lift . readPinValue
   writePinValue h v = lift $ writePinValue h v
+  readPinActiveLow = lift . readPinActiveLow
+  writePinActiveLow h v = lift $ writePinActiveLow h v
   availablePins = lift availablePins
-

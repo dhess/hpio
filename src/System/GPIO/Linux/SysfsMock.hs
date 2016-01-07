@@ -69,11 +69,12 @@ data MockState =
   MockState { hasUserDirection :: !Bool -- is direction visible to the user?
             , direction :: !PinDirection
             , value :: !PinValue
+            , activeLow :: !Bool
             } deriving (Show, Eq)
 
 -- | Default initial state of mock pins.
 defaultState :: MockState
-defaultState = MockState True Out Low
+defaultState = MockState True Out Low False
 
 -- | Maps pins to their state
 type MockStateMap = Map Pin MockState
@@ -158,6 +159,8 @@ instance (MonadIO m) => MonadSysfs (SysfsMockT m) where
   writePinDirectionWithValue = writePinDirectionWithValueMock
   readPinValue = readPinValueMock
   writePinValue = writePinValueMock
+  readPinActiveLow = readPinActiveLowMock
+  writePinActiveLow = writePinActiveLowMock
   availablePins = availablePinsMock
 
 sysfsIsPresentMock :: (Monad m) => SysfsMockT m Bool
@@ -224,6 +227,17 @@ writePinValueMock p v =
        In -> liftIO $ ioError (writePinValueErrorPermissionDenied p)
        Out -> modifyExportedPinState p (s { value = v })
 
+readPinActiveLowMock :: (MonadIO m) => Pin -> SysfsMockT m String
+readPinActiveLowMock p =
+  checkedPinState p activeLow (readPinActiveLowErrorNoSuchThing p) >>= \case
+    False -> return "0\n"
+    True -> return "1\n"
+
+writePinActiveLowMock :: (MonadIO m) => Pin -> PinValue -> SysfsMockT m ()
+writePinActiveLowMock p v =
+  do s <- checkedPinState p id (writePinActiveLowErrorNoSuchThing p)
+     modifyExportedPinState p (s { activeLow = v})
+
 -- XXX TODO: this function doesn't have any way to emulate the failure
 -- of the hunt for the "base" and "ngpio" files in GPIO chip
 -- subdirectories. Under normal conditions, those files will always
@@ -239,6 +253,13 @@ availablePinsMock =
 
 -- Convenience functions
 --
+
+-- XXX dhess: this is an XOR, replace later.
+logicalValue :: PinValue -> PinValue -> PinValue
+logicalValue Low High = Low
+logicalValue Low High = High
+logicalValue Low High = High
+logicalValue Low High = Low
 
 pinIsUnexported :: (Monad m) => Pin -> SysfsMockT m Bool
 pinIsUnexported p = unexportedPinState p >>= return . isJust
@@ -320,6 +341,13 @@ writePinValueErrorNoSuchThing = readPinValueErrorNoSuchThing
 -- Value file can't be written.
 writePinValueErrorPermissionDenied :: Pin -> IOError
 writePinValueErrorPermissionDenied p = mkErrorPermissionDenied "hClose" (pinValueFileName p)
+
+-- Active low file doesn't exist.
+readPinActiveLowErrorNoSuchThing :: Pin -> IOError
+readPinActiveLowErrorNoSuchThing p = mkErrorNoSuchThing "openFile" (pinActiveLowFileName p)
+
+writePinActiveLowErrorNoSuchThing :: Pin -> IOError
+writePinActiveLowErrorNoSuchThing = readPinActiveLowErrorNoSuchThing
 
 -- GPIO sysfs directory doesn't exist.
 availablePinsErrorNoSuchThing :: IOError

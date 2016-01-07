@@ -89,6 +89,8 @@ instance (MonadIO m) => MonadSysfs (SysfsIOT m) where
   writePinDirectionWithValue = writePinDirectionWithValueIO
   readPinValue = readPinValueIO
   writePinValue = writePinValueIO
+  readPinActiveLow = readPinActiveLowIO
+  writePinActiveLow = writePinActiveLowIO
   availablePins = availablePinsIO
 
 
@@ -124,6 +126,12 @@ readPinValueIO p = liftIO $ IOS.readFile (pinValueFileName p)
 
 writePinValueIO :: (MonadIO m) => Pin -> PinValue -> m ()
 writePinValueIO p v = liftIO $ IO.writeFile (pinValueFileName p) (toSysfsPinValue v)
+
+readPinActiveLowIO :: (MonadIO m) => Pin -> m String
+readPinActiveLowIO p = liftIO $ IOS.readFile (pinActiveLowFileName p)
+
+writePinActiveLowIO :: (MonadIO m) => Pin -> PinValue -> m ()
+writePinActiveLowIO p v = liftIO $ IO.writeFile (pinActiveLowFileName p) (toSysfsPinValue v)
 
 availablePinsIO :: (MonadIO m) => m [Pin]
 availablePinsIO =
