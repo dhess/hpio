@@ -186,12 +186,8 @@ exportPinMock p =
 
 unexportPinMock :: (MonadIO m) => Pin -> SysfsMockT m ()
 unexportPinMock p =
-  pinState p >>= \case
-    Nothing -> ioErr unexportErrorInvalidArgument
-    Just s ->
-      if (exported s)
-         then updatePinState p $ s { exported = False }
-         else ioErr unexportErrorInvalidArgument
+  do s <- checkedPinState p id unexportErrorInvalidArgument
+     updatePinState p $ s { exported = False }
 
 readPinDirectionMock :: (MonadIO m) => Pin -> SysfsMockT m String
 readPinDirectionMock p =
@@ -210,12 +206,12 @@ writePinDirectionWithValueMock :: (MonadIO m) => Pin -> PinValue -> SysfsMockT m
 writePinDirectionWithValueMock p v =
   guardedPinState p id hasUserDirection >>= \case
     Nothing -> ioErr (writePinDirectionErrorNoSuchThing p)
-    Just s -> updatePinState p (s { direction = Out, value = xor (activeLow s) v})
+    Just s -> updatePinState p (s { direction = Out, value = logicalLevel (activeLow s) v})
 
 readPinValueMock :: (MonadIO m) => Pin -> SysfsMockT m String
 readPinValueMock p =
   do s <- checkedPinState p id (readPinValueErrorNoSuchThing p)
-     case (xor (activeLow s) (value s)) of
+     case (logicalLevel (activeLow s) (value s)) of
        Low -> return "0\n"
        High -> return "1\n"
 
@@ -224,7 +220,7 @@ writePinValueMock p v =
   do s <- checkedPinState p id (writePinValueErrorNoSuchThing p)
      case (direction s) of
        In -> ioErr (writePinValueErrorPermissionDenied p)
-       Out -> updatePinState p (s { value = xor (activeLow s) v })
+       Out -> updatePinState p (s { value = logicalLevel (activeLow s) v })
 
 readPinActiveLowMock :: (MonadIO m) => Pin -> SysfsMockT m String
 readPinActiveLowMock p =
@@ -264,23 +260,29 @@ updatePinState p s = modify' $ \world ->
 ioErr :: (MonadIO m) => IOError -> SysfsMockT m a
 ioErr e = liftIO $ ioError e
 
-xor :: Bool -> PinValue -> PinValue
-xor False Low = Low
-xor False High = High
-xor True Low = High
-xor True High = Low
+logicalLevel :: Bool -> PinValue -> PinValue
+logicalLevel False Low = Low
+logicalLevel False High = High
+logicalLevel True Low = High
+logicalLevel True High = Low
 
+-- If the 'Pin' is not exported, throw the given 'IOError'. Otherwise,
+-- apply 'f' to its 'MockState' and return the result.
 checkedPinState :: (MonadIO m) => Pin -> (MockState -> a) -> IOError -> SysfsMockT m a
 checkedPinState p f e =
-  guardedPinState p f (\_ -> True) >>= \case
+  guardedPinState p f (const True) >>= \case
     Nothing -> ioErr e
     Just s -> return s
 
+-- If the 'Pin' is neither exported nor satisfies the given predicate,
+-- return Nothing. Otherwise, apply 'f' to its 'MockState' and return
+-- the result as 'Just' 'a'.
 guardedPinState :: (Monad m) => Pin -> (MockState -> a) -> (MockState -> Bool) -> SysfsMockT m (Maybe a)
 guardedPinState p f predicate =
   do pins <- get
      return $ guardedPinState' p pins f predicate
 
+-- Pure version of 'guardedPinState'.
 guardedPinState' :: Pin -> MockWorld -> (MockState -> a) -> (MockState -> Bool) -> Maybe a
 guardedPinState' p stateMap f predicate =
   do s <- Map.lookup p stateMap
@@ -288,6 +290,8 @@ guardedPinState' p stateMap f predicate =
      guard $ predicate s
      return $ f s
 
+-- If the pin is exported and its "direction" attribute exists, return
+-- the pin's direction in a 'Just'. Otherwise, return 'Nothing'.
 userVisibleDirection :: (Monad m) => Pin -> SysfsMockT m (Maybe PinDirection)
 userVisibleDirection p = guardedPinState p direction hasUserDirection
 

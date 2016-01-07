@@ -253,6 +253,23 @@ spec =
             it "fails when the pin is unavailable" $
               do runSysfsMock testOpenClose world2 `shouldThrow` anyIOException
 
+     describe "getPinDirection" $
+       do it "gets the pin's direction" $
+            let world1 = mockWorld [Pin 1]
+                world2 =
+                  Map.fromList [(Pin 1, defaultState {direction = In})]
+                expectedResult1 = (Just Out, world1)
+                expectedResult2 = (Just In, world2)
+            in
+              do runSysfsMock (withPin (Pin 1) (\h -> getPinDirection h >>= return)) world1 `shouldReturn` expectedResult1
+                 runSysfsMock (withPin (Pin 1) (\h -> getPinDirection h >>= return)) world2 `shouldReturn` expectedResult2
+
+          it "returns Nothing when the pin direction is not settable" $
+            let world =
+                  Map.fromList [(Pin 1, defaultState {hasUserDirection = False})]
+                expectedResult = (Nothing, world)
+            in runSysfsMock (withPin (Pin 1) (\h -> getPinDirection h >>= return)) world `shouldReturn` expectedResult
+
      describe "setPinDirection" $
        do it "sets the pin direction" $
             let world = mockWorld [Pin 1]
