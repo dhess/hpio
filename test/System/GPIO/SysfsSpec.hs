@@ -265,7 +265,9 @@ spec =
             in runSysfsMock testSetDirectionIdempotent world `shouldReturn` expectedResult
 
           it "fails when the pin's direction is not settable" $
-            let world = MockWorld {unexported = Map.fromList [(Pin 1,MockState {hasUserDirection = False, direction = Out, activeLow = False, value = High}),(Pin 2,MockState {hasUserDirection = True, direction = Out, activeLow = False, value = Low})], exported = Map.empty}
+            let world =
+                  Map.fromList [(Pin 1, defaultState {hasUserDirection = False, value = High})
+                               ,(Pin 2, defaultState)]
             in runSysfsMock testSetDirection world `shouldThrow` anyIOException
 
      describe "togglePinDirection" $
@@ -292,8 +294,13 @@ spec =
 
      describe "writePin'" $
        do it "sets the pin value and direction" $
-            let world = MockWorld {unexported = Map.fromList [(Pin 1,MockState {hasUserDirection = True, direction = In, activeLow = False, value = Low}),(Pin 2,MockState {hasUserDirection = True, direction = Out, activeLow = False, value = High})], exported = Map.empty}
-                expectedResult = ((High, Low, Just Out, Just Out), MockWorld {unexported = Map.fromList [(Pin 1,MockState {hasUserDirection = True, direction = Out, activeLow = False, value = High}),(Pin 2,MockState {hasUserDirection = True, direction = Out, activeLow = False, value = Low})], exported = Map.empty})
+            let world =
+                  Map.fromList [(Pin 1, defaultState {direction = In})
+                               ,(Pin 2, defaultState {value = High})]
+                expectedResult =
+                  ((High, Low, Just Out, Just Out),
+                   Map.fromList [(Pin 1, defaultState {value = High})
+                                ,(Pin 2, defaultState)])
             in runSysfsMock testWritePin' world `shouldReturn` expectedResult
 
           it "is idempotent" $
@@ -302,7 +309,9 @@ spec =
             in runSysfsMock testWritePinIdempotent' world `shouldReturn` expectedResult
 
           it "fails when the pin's direction is not settable" $
-            let world = MockWorld {unexported = Map.fromList [(Pin 1,MockState {hasUserDirection = False, direction = Out, activeLow = False, value = High}),(Pin 2,MockState {hasUserDirection = True, direction = Out, activeLow = False, value = Low})], exported = Map.empty}
+            let world =
+                  Map.fromList [(Pin 1, defaultState {hasUserDirection = False, value = High})
+                               ,(Pin 2, defaultState)]
             in runSysfsMock testWritePin' world `shouldThrow` anyIOException
 
      describe "togglePinValue" $
@@ -330,7 +339,8 @@ spec =
 
      describe "withPin" $
        do it "opens and closes the pin as expected" $
-            let world = MockWorld (Map.fromList $ zip [Pin 1] [MockState True Out False High]) Map.empty
+            let world =
+                  Map.fromList [(Pin 1, defaultState {value = High})]
                 expectedResult = (High, world)
             in runSysfsMock testWithPin (mockWorld [Pin 1]) `shouldReturn` expectedResult
 
@@ -338,7 +348,9 @@ spec =
             runSysfsMock testWithPin (mockWorld [Pin 2]) `shouldThrow` anyIOException
 
           it "can nest" $
-            let world = MockWorld {unexported = Map.fromList [(Pin 1,MockState {hasUserDirection = True, direction = Out, activeLow = False, value = High}),(Pin 2,MockState {hasUserDirection = True, direction = Out, activeLow = False, value = Low})], exported = Map.empty}
+            let world =
+                   Map.fromList [(Pin 1, defaultState {value = High})
+                                ,(Pin 2, defaultState)]
                 expectedResult = ((High, Low), world)
             in runSysfsMock testNestedWithPin world `shouldReturn` expectedResult
 
@@ -361,7 +373,8 @@ spec =
             runSysfsMock' testOpenClose (mockWorld []) `shouldThrow` anyIOException
 
           it "works with withPin on success" $
-            let world = MockWorld (Map.fromList $ zip [Pin 1] [MockState True Out False High]) Map.empty
+            let world =
+                  Map.fromList [(Pin 1, defaultState {value = High})]
                 expectedResult = (Right High, world)
             in runSysfsMock' testWithPin (mockWorld [Pin 1]) `shouldReturn` expectedResult
 
@@ -385,7 +398,8 @@ spec =
             in runSysfsMockSafe testOpenClose world `shouldReturn` expectedResult
 
           it "works with withPin on success" $
-            let world = MockWorld (Map.fromList $ zip [Pin 1] [MockState True Out False High]) Map.empty
+            let world =
+                  Map.fromList [(Pin 1, defaultState {value = High})]
                 expectedResult = Right (High, world)
             in runSysfsMockSafe testWithPin (mockWorld [Pin 1]) `shouldReturn` expectedResult
 

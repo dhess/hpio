@@ -38,13 +38,12 @@ module System.GPIO.Linux.SysfsMock
          -- * SysfsMock types
        , MockState(..)
        , defaultState
-       , MockStateMap
-       , MockWorld(..)
+       , MockWorld
        , mockWorld
        ) where
 
 import Control.Applicative
-import Control.Conditional (ifM, whenM, unlessM)
+import Control.Conditional (unlessM)
 import Control.Error.Script (scriptIO)
 import Control.Monad.Except (ExceptT, runExceptT)
 import Control.Monad
@@ -66,7 +65,8 @@ import System.IO.Error (mkIOError, ioeSetErrorString)
 -- | Keep track of the state of mock pins. In real Linux 'sysfs', pins
 -- keep their state even after they're unexported.
 data MockState =
-  MockState { hasUserDirection :: !Bool -- is direction visible to the user?
+  MockState { exported :: !Bool
+            , hasUserDirection :: !Bool -- is direction visible to the user?
             , direction :: !PinDirection
             , activeLow :: !Bool
             , value :: !PinValue -- This is the line level
@@ -74,22 +74,20 @@ data MockState =
 
 -- | Default initial state of mock pins.
 defaultState :: MockState
-defaultState = MockState True Out False Low
+defaultState = MockState { exported = False
+                         , hasUserDirection = True
+                         , direction = Out
+                         , activeLow = False
+                         , value = Low
+                         }
 
 -- | Maps pins to their state
-type MockStateMap = Map Pin MockState
-
--- | The 'MockWorld' keeps track of exported/unexported status.
-data MockWorld =
-  MockWorld { unexported :: MockStateMap
-            , exported :: MockStateMap } deriving (Show, Eq)
+type MockWorld = Map Pin MockState
 
 -- | Construct a 'MockWorld' where each 'Pin' in the provided list is
 -- available, unexported, and set to the 'defaultState'.
 mockWorld :: [Pin] -> MockWorld
-mockWorld pins =
-  let unexp = Map.fromList $ zip pins (repeat defaultState)
-  in MockWorld unexp Map.empty
+mockWorld pins = Map.fromList $ zip pins (repeat defaultState)
 
 -- | A monad transformer which adds mock sysfs computations to an
 -- inner monad 'm'.
@@ -167,7 +165,9 @@ sysfsIsPresentMock :: (Monad m) => SysfsMockT m Bool
 sysfsIsPresentMock = return True
 
 pinIsExportedMock :: (Monad m) => Pin -> SysfsMockT m Bool
-pinIsExportedMock p = exportedPinState p >>= return . isJust
+pinIsExportedMock p =
+  do s <- pinState p
+     return $ maybe False exported s
 
 -- The way this is implemented in 'MonadSysfs' is, if the pin is not
 -- exported, or if the pin does not have a user-visible direction
@@ -177,42 +177,40 @@ pinHasDirectionMock p = userVisibleDirection p >>= return . isJust
 
 exportPinMock :: (MonadIO m) => Pin -> SysfsMockT m ()
 exportPinMock p =
-  do whenM (pinIsExportedMock p) $
-       liftIO $ ioError exportErrorResourceBusy
-     ifM (pinIsUnexported p)
-       (do unexportedPins <- gets unexported
-           exportedPins <- gets exported
-           let (newUnexp, newExp) = movePin p unexportedPins exportedPins
-           put $ MockWorld newUnexp newExp)
-       (liftIO $ ioError exportErrorInvalidArgument)
+  pinState p >>= \case
+    Nothing -> ioErr exportErrorInvalidArgument
+    Just s ->
+      if (exported s)
+         then ioErr exportErrorResourceBusy
+         else updatePinState p (s { exported = True })
 
 unexportPinMock :: (MonadIO m) => Pin -> SysfsMockT m ()
 unexportPinMock p =
-  ifM (pinIsExportedMock p)
-    (do exportedPins <- gets exported
-        unexportedPins <- gets unexported
-        let (newExp, newUnexp) = movePin p exportedPins unexportedPins
-        put $ MockWorld newUnexp newExp)
-    (liftIO $ ioError unexportErrorInvalidArgument)
+  pinState p >>= \case
+    Nothing -> ioErr unexportErrorInvalidArgument
+    Just s ->
+      if (exported s)
+         then updatePinState p $ s { exported = False }
+         else ioErr unexportErrorInvalidArgument
 
 readPinDirectionMock :: (MonadIO m) => Pin -> SysfsMockT m String
 readPinDirectionMock p =
   userVisibleDirection p >>= \case
-    Nothing -> liftIO $ ioError (readPinDirectionErrorNoSuchThing p)
+    Nothing -> ioErr (readPinDirectionErrorNoSuchThing p)
     Just In -> return "in\n"
     Just Out -> return "out\n"
 
 writePinDirectionMock :: (MonadIO m) => Pin -> PinDirection -> SysfsMockT m ()
 writePinDirectionMock p dir =
   guardedPinState p id hasUserDirection >>= \case
-    Nothing -> liftIO $ ioError (writePinDirectionErrorNoSuchThing p)
-    Just s -> modifyExportedPinState p (s { direction = dir })
+    Nothing -> ioErr (writePinDirectionErrorNoSuchThing p)
+    Just s -> updatePinState p (s { direction = dir })
 
 writePinDirectionWithValueMock :: (MonadIO m) => Pin -> PinValue -> SysfsMockT m ()
 writePinDirectionWithValueMock p v =
   guardedPinState p id hasUserDirection >>= \case
-    Nothing -> liftIO $ ioError (writePinDirectionErrorNoSuchThing p)
-    Just s -> modifyExportedPinState p (s { direction = Out, value = xor (activeLow s) v})
+    Nothing -> ioErr (writePinDirectionErrorNoSuchThing p)
+    Just s -> updatePinState p (s { direction = Out, value = xor (activeLow s) v})
 
 readPinValueMock :: (MonadIO m) => Pin -> SysfsMockT m String
 readPinValueMock p =
@@ -225,8 +223,8 @@ writePinValueMock :: (MonadIO m) => Pin -> PinValue -> SysfsMockT m ()
 writePinValueMock p v =
   do s <- checkedPinState p id (writePinValueErrorNoSuchThing p)
      case (direction s) of
-       In -> liftIO $ ioError (writePinValueErrorPermissionDenied p)
-       Out -> modifyExportedPinState p (s { value = xor (activeLow s) v })
+       In -> ioErr (writePinValueErrorPermissionDenied p)
+       Out -> updatePinState p (s { value = xor (activeLow s) v })
 
 readPinActiveLowMock :: (MonadIO m) => Pin -> SysfsMockT m String
 readPinActiveLowMock p =
@@ -237,7 +235,7 @@ readPinActiveLowMock p =
 writePinActiveLowMock :: (MonadIO m) => Pin -> Bool -> SysfsMockT m ()
 writePinActiveLowMock p v =
   do s <- checkedPinState p id (writePinActiveLowErrorNoSuchThing p)
-     modifyExportedPinState p (s { activeLow = v})
+     updatePinState p (s { activeLow = v})
 
 -- XXX TODO: this function doesn't have any way to emulate the failure
 -- of the hunt for the "base" and "ngpio" files in GPIO chip
@@ -246,14 +244,25 @@ writePinActiveLowMock p v =
 availablePinsMock :: (MonadIO m) => SysfsMockT m [Pin]
 availablePinsMock =
   do unlessM sysfsIsPresentMock $
-       liftIO $ ioError availablePinsErrorNoSuchThing
-     exportedPins <- gets (Map.keys . exported)
-     unexportedPins <- gets (Map.keys . unexported)
-     return $ sort $ exportedPins ++ unexportedPins
+       ioErr availablePinsErrorNoSuchThing
+     pins <- gets Map.keys
+     return $ sort pins
 
 
 -- Convenience functions
 --
+
+pinState :: (Monad m) => Pin -> SysfsMockT m (Maybe MockState)
+pinState p =
+  do pins <- get
+     return $ Map.lookup p pins
+
+updatePinState :: (Monad m) => Pin -> MockState -> SysfsMockT m ()
+updatePinState p s = modify' $ \world ->
+  Map.insert p s world
+
+ioErr :: (MonadIO m) => IOError -> SysfsMockT m a
+ioErr e = liftIO $ ioError e
 
 xor :: Bool -> PinValue -> PinValue
 xor False Low = Low
@@ -261,51 +270,26 @@ xor False High = High
 xor True Low = High
 xor True High = Low
 
-pinIsUnexported :: (Monad m) => Pin -> SysfsMockT m Bool
-pinIsUnexported p = unexportedPinState p >>= return . isJust
-
--- Note: if 'p' is not in 'src' then 'src' and 'dst' will be unchanged.
-movePin :: Pin -> MockStateMap -> MockStateMap -> (MockStateMap, MockStateMap)
-movePin p src dst =
-  case (Map.lookup p src) of
-    Nothing -> (src, dst)
-    Just s -> (Map.delete p src, Map.insert p s dst)
-
-modifyExportedPinState :: (Monad m) => Pin -> MockState -> SysfsMockT m ()
-modifyExportedPinState p newState = modify $ \world ->
-  let exportedPins = exported world
-      newExported = Map.insert p newState exportedPins
-  in world { exported = newExported }
-
 checkedPinState :: (MonadIO m) => Pin -> (MockState -> a) -> IOError -> SysfsMockT m a
-checkedPinState p f ioe =
-  exportedPinState p >>= \case
-    Nothing -> liftIO $ ioError ioe
-    Just s -> return $ f s
+checkedPinState p f e =
+  guardedPinState p f (\_ -> True) >>= \case
+    Nothing -> ioErr e
+    Just s -> return s
 
 guardedPinState :: (Monad m) => Pin -> (MockState -> a) -> (MockState -> Bool) -> SysfsMockT m (Maybe a)
 guardedPinState p f predicate =
-  do exportedPins <- gets exported
-     return $ guardedPinState' p exportedPins f predicate
+  do pins <- get
+     return $ guardedPinState' p pins f predicate
 
-guardedPinState' :: Pin -> MockStateMap -> (MockState -> a) -> (MockState -> Bool) -> Maybe a
+guardedPinState' :: Pin -> MockWorld -> (MockState -> a) -> (MockState -> Bool) -> Maybe a
 guardedPinState' p stateMap f predicate =
-  do pinState <- Map.lookup p stateMap
-     guard $ predicate pinState
-     return $ f pinState
+  do s <- Map.lookup p stateMap
+     guard $ exported s
+     guard $ predicate s
+     return $ f s
 
 userVisibleDirection :: (Monad m) => Pin -> SysfsMockT m (Maybe PinDirection)
 userVisibleDirection p = guardedPinState p direction hasUserDirection
-
-exportedPinState :: (Monad m) => Pin -> SysfsMockT m (Maybe MockState)
-exportedPinState p =
-  do exportedPins <- gets exported
-     return $ Map.lookup p exportedPins
-
-unexportedPinState :: (Monad m) => Pin -> SysfsMockT m (Maybe MockState)
-unexportedPinState p =
-  do unexportedPins <- gets unexported
-     return $ Map.lookup p unexportedPins
 
 
 -- Mock 'IOError's. We make these as close to the real thing as is
