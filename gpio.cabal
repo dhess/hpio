@@ -52,6 +52,7 @@ Library
                       , filepath
                       , free
                       , mtl
+                      , QuickCheck
                       , strict
                       , text
                       , transformers
@@ -77,6 +78,7 @@ Test-Suite spec
                       , free
                       , hspec
                       , mtl
+                      , QuickCheck
                       , strict
                       , text
                       , transformers
