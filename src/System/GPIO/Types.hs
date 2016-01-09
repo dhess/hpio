@@ -9,6 +9,7 @@ module System.GPIO.Types
          Pin(..)
        , PinDirection(..)
        , PinValue(..)
+       , PinReadTrigger(..)
          -- * Convenience functions
        , pinNumber
        , invertDirection
@@ -99,6 +100,14 @@ instance FiniteBits PinValue where
 instance Arbitrary PinValue where
   arbitrary = arbitraryBoundedEnum
   shrink = genericShrink
+
+-- | Pins can be configured so that reading the pin's value blocks
+-- until an edge- or level-triggered event is detected.
+data PinReadTrigger
+  = RisingEdge
+  | FallingEdge
+  | Level
+  deriving (Bounded,Enum,Eq,Data,Ord,Read,Show,Generic)
 
 -- | Invert a 'PinDirection' value.
 invertDirection :: PinDirection -> PinDirection
