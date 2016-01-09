@@ -18,7 +18,7 @@ module System.GPIO.Linux.Sysfs
 import Control.Monad (void)
 import Control.Monad.Except (MonadError, catchError, throwError)
 import Control.Monad.Trans.Free (iterT)
-import System.GPIO.Free (GpioF(..), GpioT, openPin, closePin, readPin, writePin, getPinDirection, setPinDirection)
+import System.GPIO.Free (GpioF(..), GpioT, openPin, closePin, samplePin, writePin, getPinDirection, setPinDirection)
 import System.GPIO.Linux.MonadSysfs (MonadSysfs(..))
 import System.GPIO.Types (PinDirection(..), Pin(..), PinValue(..), invertDirection, invertValue, valueToBool)
 
@@ -102,7 +102,7 @@ runSysfsT = iterT run
                 void $ runSysfsT $ setPinDirection d newDir
                 next $ Just newDir
 
-    run (ReadPin d next) =
+    run (SamplePin d next) =
       do let p = pin d
          value <- readPinValue p
          case value of
@@ -121,7 +121,7 @@ runSysfsT = iterT run
          next
 
     run (TogglePinValue h next) =
-      do val <- runSysfsT $ readPin h
+      do val <- runSysfsT $ samplePin h
          let newVal = invertValue val
          void $ runSysfsT $ writePin h newVal
          next newVal

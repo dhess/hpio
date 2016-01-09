@@ -88,20 +88,20 @@ testReadWritePin =
        Left e -> throwError e
        Right d ->
          do setPinDirection d Out
-            val1 <- readPin d
+            val1 <- samplePin d
             case val1 of
               Low ->
                 do writePin d High
-                   val2 <- readPin d
+                   val2 <- samplePin d
                    writePin d Low
-                   val3 <- readPin d
+                   val3 <- samplePin d
                    closePin d
                    return (val1, val2, val3)
               High ->
                 do writePin d Low
-                   val2 <- readPin d
+                   val2 <- samplePin d
                    writePin d High
-                   val3 <- readPin d
+                   val3 <- samplePin d
                    closePin d
                    return (val1, val2, val3)
 
@@ -112,16 +112,16 @@ testReadWritePinIdempotent =
        Left e -> throwError e
        Right d ->
          do setPinDirection d Out
-            val1 <- readPin d
+            val1 <- samplePin d
             case val1 of
               Low ->
                 do writePin d Low
-                   val2 <- readPin d
+                   val2 <- samplePin d
                    closePin d
                    return (val1, val2)
               High ->
                 do writePin d High
-                   val2 <- readPin d
+                   val2 <- samplePin d
                    closePin d
                    return (val1, val2)
 
@@ -144,9 +144,9 @@ testWritePin' =
        (_, Left e) -> throwError e
        (Right d1, Right d2) ->
          do writePin' d1 High
-            val1 <- readPin d1
+            val1 <- samplePin d1
             writePin' d2 Low
-            val2 <- readPin d2
+            val2 <- samplePin d2
             dir1 <- getPinDirection d1
             dir2 <- getPinDirection d2
             closePin d1
@@ -160,13 +160,13 @@ testWritePinIdempotent' =
        Left e -> throwError e
        Right d ->
          do writePin' d High
-            val1 <- readPin d
+            val1 <- samplePin d
             writePin' d High
-            val2 <- readPin d
+            val2 <- samplePin d
             writePin' d Low
-            val3 <- readPin d
+            val3 <- samplePin d
             writePin' d Low
-            val4 <- readPin d
+            val4 <- samplePin d
             closePin d
             return (val1, val2, val3, val4)
 
@@ -177,11 +177,11 @@ testTogglePinValue =
        Left e -> throwError e
        Right d ->
          do setPinDirection d Out
-            val1 <- readPin d
+            val1 <- samplePin d
             val2 <- togglePinValue d
-            val3 <- readPin d
+            val3 <- samplePin d
             val4 <- togglePinValue d
-            val5 <- readPin d
+            val5 <- samplePin d
             closePin d
             return (val1, val2, val3, val4, val5)
 
@@ -198,7 +198,7 @@ testWithPin :: (MonadError e m) => GpioT e h m m PinValue
 testWithPin = withPin (Pin 1) $ \h ->
   do setPinDirection h Out
      writePin h High
-     val <- readPin h
+     val <- samplePin h
      return val
 
 testNestedWithPin :: (MonadError e m) => GpioT e h m m (PinValue, PinValue)
@@ -209,8 +209,8 @@ testNestedWithPin =
          setPinDirection h2 Out
          writePin h1 High
          writePin h2 Low
-         val1 <- readPin h1
-         val2 <- readPin h2
+         val1 <- samplePin h1
+         val2 <- samplePin h2
          return (val1, val2)
 
 testNestedWithPinError :: (MonadError e m) => GpioT e h m m (PinValue, PinValue)
@@ -221,8 +221,8 @@ testNestedWithPinError =
          setPinDirection h2 In
          writePin h1 High
          writePin h2 Low -- should fail
-         val1 <- readPin h1
-         val2 <- readPin h2
+         val1 <- samplePin h1
+         val2 <- samplePin h2
          return (val1, val2)
 
 testErrorInComputation :: (MonadError String m) => GpioT e h m m h
@@ -347,9 +347,9 @@ spec =
             let world = mockWorld [Pin 1]
             in runSysfsMock (invalidHandle (\d -> setPinDirection d Out)) world `shouldThrow` anyIOException
 
-          it "in readPin" $
+          it "in samplePin" $
             let world = mockWorld [Pin 1]
-            in runSysfsMock (invalidHandle readPin) world `shouldThrow` anyIOException
+            in runSysfsMock (invalidHandle samplePin) world `shouldThrow` anyIOException
 
           it "in writePin" $
              let world = mockWorld [Pin 1]
