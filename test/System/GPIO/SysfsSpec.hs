@@ -48,6 +48,36 @@ testSetDirection =
                    closePin d
                    return (dir1, dir2, dir3)
 
+testSetReadTrigger :: (MonadError e m) => GpioT e h m m (Maybe PinReadTrigger, Maybe PinReadTrigger, Maybe PinReadTrigger, Maybe PinReadTrigger)
+testSetReadTrigger =
+  do handle <- openPin (Pin 1)
+     case handle of
+       Left e -> throwError e
+       Right d ->
+         do setPinReadTrigger d None
+            t1 <- getPinReadTrigger d
+            setPinReadTrigger d RisingEdge
+            t2 <- getPinReadTrigger d
+            setPinReadTrigger d FallingEdge
+            t3 <- getPinReadTrigger d
+            setPinReadTrigger d Level
+            t4 <- getPinReadTrigger d
+            closePin d
+            return (t1, t2, t3, t4)
+
+testSetReadTriggerIdempotent :: (MonadError e m) => GpioT e h m m (Maybe PinReadTrigger, Maybe PinReadTrigger)
+testSetReadTriggerIdempotent =
+  do handle <- openPin (Pin 1)
+     case handle of
+       Left e -> throwError e
+       Right d ->
+         do setPinReadTrigger d FallingEdge
+            t1 <- getPinReadTrigger d
+            setPinReadTrigger d FallingEdge
+            t2 <- getPinReadTrigger d
+            closePin d
+            return (t1, t2)
+
 testSetDirectionIdempotent :: (MonadError e m) => GpioT e h m m (PinDirection, PinDirection)
 testSetDirectionIdempotent =
   do handle <- openPin (Pin 1)
@@ -293,6 +323,39 @@ spec =
             let world = mockWorld [Pin 1]
                 expectedResult = ((Out, In, In, Out, Out), world)
             in runSysfsMock testTogglePinDirection world `shouldReturn` expectedResult
+
+     describe "getPinReadTrigger" $
+       do it "gets the pin's read trigger" $
+            let world1 = mockWorld [Pin 1]
+                world2 =
+                  Map.fromList [(Pin 1, defaultState {edge = Just FallingEdge})]
+                expectedResult1 = (Just None, world1)
+                expectedResult2 = (Just FallingEdge, world2)
+            in
+              do runSysfsMock (withPin (Pin 1) (\h -> getPinReadTrigger h >>= return)) world1 `shouldReturn` expectedResult1
+                 runSysfsMock (withPin (Pin 1) (\h -> getPinReadTrigger h >>= return)) world2 `shouldReturn` expectedResult2
+          it "returns Nothing when the pin's read trigger is not settable" $
+            let world =
+                  Map.fromList [(Pin 1, defaultState {edge = Nothing})]
+                expectedResult = (Nothing, world)
+            in runSysfsMock (withPin (Pin 1) (\h -> getPinReadTrigger h >>= return)) world `shouldReturn` expectedResult
+
+     describe "setPinReadTrigger" $
+       do it "sets the pin's read trigger" $
+            let world = mockWorld [Pin 1]
+                expectedResult = ((Just None, Just RisingEdge, Just FallingEdge, Just Level),
+                                  Map.fromList [(Pin 1, defaultState {edge = Just Level})])
+            in runSysfsMock testSetReadTrigger world `shouldReturn` expectedResult
+          it "is idempotent" $
+            let world = mockWorld [Pin 1]
+                expectedResult = ((Just FallingEdge, Just FallingEdge),
+                                 Map.fromList [(Pin 1, defaultState {edge = Just FallingEdge})])
+            in runSysfsMock testSetReadTriggerIdempotent world `shouldReturn` expectedResult
+          it "fails when the pin's direction is not settable" $
+            let world =
+                  Map.fromList [(Pin 1, defaultState {edge = Nothing})
+                               ,(Pin 2, defaultState)]
+            in runSysfsMock testSetReadTrigger world `shouldThrow` anyIOException
 
      describe "writePin" $
        do it "sets the pin value" $
