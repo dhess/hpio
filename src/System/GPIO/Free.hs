@@ -58,6 +58,7 @@ data GpioF e h m next where
   SetPinDirection :: h -> PinDirection -> next -> GpioF e h m next
   TogglePinDirection :: h -> (Maybe PinDirection -> next) -> GpioF e h m next
   SamplePin :: h -> (PinValue -> next) -> GpioF e h m next
+  ReadPin :: h -> (PinValue -> next) -> GpioF e h m next
   WritePin :: h -> PinValue -> next -> GpioF e h m next
   WritePin' :: h -> PinValue -> next -> GpioF e h m next
   TogglePinValue :: h -> (PinValue -> next) -> GpioF e h m next
@@ -75,6 +76,7 @@ instance Functor (GpioF e h m) where
   fmap f (SetPinDirection h dir x) = SetPinDirection h dir (f x)
   fmap f (TogglePinDirection h g) = TogglePinDirection h (f . g)
   fmap f (SamplePin h g) = SamplePin h (f . g)
+  fmap f (ReadPin h g) = ReadPin h (f . g)
   fmap f (WritePin h v x) = WritePin h v (f x)
   fmap f (WritePin' h v x) = WritePin' h v (f x)
   fmap f (TogglePinValue h g) = TogglePinValue h (f . g)
@@ -140,6 +142,18 @@ makeFreeCon 'TogglePinDirection
 -- inverse of the returned value when the pin's active level is 'Low'.
 -- (See 'getPinActiveLevel'.)
 makeFreeCon 'SamplePin
+
+-- | Read the pin's /logical/ 'PinValue', potentially blocking the
+-- current thread until an event corresponding to the pin's
+-- 'PinReadTrigger' occurs. (If the pin does not support blocking
+-- reads, or if the pin's 'PinReadTrigger' is 'None', then this
+-- function behaves like 'samplePin' and returns the pin's logical
+-- value without blocking.)
+--
+-- (Note: this function only works correctly in GHC. In some
+-- interpreters, if the pin's state is modified while this function is
+-- blocking, this function may raise an error.)
+makeFreeCon 'ReadPin
 
 -- | Set the pin's /logical/ 'PinValue'. It is an error to call this
 -- function when the pin is not configured for output.
