@@ -37,6 +37,8 @@ module System.GPIO.Free
        , writePin
        , writePin'
        , togglePinValue
+       , getPinReadTrigger
+       , setPinReadTrigger
        , getPinActiveLevel
        , setPinActiveLevel
        , withPin
@@ -59,6 +61,8 @@ data GpioF e h m next where
   WritePin :: h -> PinValue -> next -> GpioF e h m next
   WritePin' :: h -> PinValue -> next -> GpioF e h m next
   TogglePinValue :: h -> (PinValue -> next) -> GpioF e h m next
+  GetPinReadTrigger :: h -> (Maybe PinReadTrigger -> next) -> GpioF e h m next
+  SetPinReadTrigger :: h -> PinReadTrigger -> next -> GpioF e h m next
   GetPinActiveLevel :: h -> (PinValue -> next) -> GpioF e h m next
   SetPinActiveLevel :: h -> PinValue -> next -> GpioF e h m next
   WithPin :: Pin -> (h -> GpioT e h m m a) -> (a -> next) -> GpioF e h m next
@@ -74,6 +78,8 @@ instance Functor (GpioF e h m) where
   fmap f (WritePin h v x) = WritePin h v (f x)
   fmap f (WritePin' h v x) = WritePin' h v (f x)
   fmap f (TogglePinValue h g) = TogglePinValue h (f . g)
+  fmap f (GetPinReadTrigger h g) = GetPinReadTrigger h (f . g)
+  fmap f (SetPinReadTrigger h t x) = SetPinReadTrigger h t (f x)
   fmap f (GetPinActiveLevel h g) = GetPinActiveLevel h (f . g)
   fmap f (SetPinActiveLevel h v x) = SetPinActiveLevel h v (f x)
   fmap f (WithPin p block g) = WithPin p block (f . g)
@@ -156,6 +162,25 @@ makeFreeCon 'WritePin'
 -- | Toggle the pin's 'PinValue'. It is an error to call this function
 -- when the pin is not configured for output.
 makeFreeCon 'TogglePinValue
+
+-- | Get the pin's 'PinReadTrigger' mode.
+--
+-- Some pins (or GPIO platforms) may not support edge- or
+-- level-triggered blocking reads. In such cases, this function
+-- returns 'Nothing'.
+--
+-- Note that if this function returns 'Just' 'None', this means that,
+-- while the pin does support blocking reads, it is currently not
+-- configured to do so.
+makeFreeCon 'GetPinReadTrigger
+
+-- | Set the pin's 'PinReadTrigger' mode.
+--
+-- Some pins (or GPIO platforms) may not support edge- or
+-- level-triggered blocking reads. In such cases, it is an error to
+-- call this function. To determine whether a pin supports blocking
+-- reads, call 'getReadPinTrigger' on the pin.
+makeFreeCon 'SetPinReadTrigger
 
 -- | Get the pin's "active" level: 'Low' means the pin is configured
 -- to be active low, and 'High' means the pin is configured to be

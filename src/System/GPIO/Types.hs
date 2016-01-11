@@ -103,8 +103,13 @@ instance Arbitrary PinValue where
 
 -- | Pins can be configured so that reading the pin's value blocks
 -- until an edge- or level-triggered event is detected.
+--
+-- Note that the 'None' value means that, while the pin can be
+-- configured for blocking reads, it is currently not configured to do
+-- so.
 data PinReadTrigger
-  = RisingEdge
+  = None
+  | RisingEdge
   | FallingEdge
   | Level
   deriving (Bounded,Enum,Eq,Data,Ord,Read,Show,Generic)

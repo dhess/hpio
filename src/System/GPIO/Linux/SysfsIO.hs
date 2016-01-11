@@ -26,7 +26,7 @@ import System.Directory (doesDirectoryExist, doesFileExist, getDirectoryContents
 import System.FilePath ((</>), takeFileName)
 import System.GPIO.Linux.MonadSysfs
 import System.GPIO.Linux.Sysfs
-import System.GPIO.Types (PinDirection(..), Pin(..), PinValue(..))
+import System.GPIO.Types
 import qualified System.IO as IO (writeFile)
 import qualified System.IO.Strict as IOS (readFile)
 
@@ -82,6 +82,7 @@ instance (MonadIO m) => MonadSysfs (SysfsIOT m) where
   sysfsIsPresent = sysfsIsPresentIO
   pinIsExported = pinIsExportedIO
   pinHasDirection = pinHasDirectionIO
+  pinHasEdge = pinHasEdgeIO
   exportPin = exportPinIO
   unexportPin = unexportPinIO
   readPinDirection = readPinDirectionIO
@@ -89,6 +90,8 @@ instance (MonadIO m) => MonadSysfs (SysfsIOT m) where
   writePinDirectionWithValue = writePinDirectionWithValueIO
   readPinValue = readPinValueIO
   writePinValue = writePinValueIO
+  readPinEdge = readPinEdgeIO
+  writePinEdge = writePinEdgeIO
   readPinActiveLow = readPinActiveLowIO
   writePinActiveLow = writePinActiveLowIO
   availablePins = availablePinsIO
@@ -105,6 +108,9 @@ pinIsExportedIO p = liftIO $ doesDirectoryExist (pinDirName p)
 
 pinHasDirectionIO :: (MonadIO m) => Pin -> m Bool
 pinHasDirectionIO p = liftIO $ doesFileExist (pinDirectionFileName p)
+
+pinHasEdgeIO :: (MonadIO m) => Pin -> m Bool
+pinHasEdgeIO p = liftIO $ doesFileExist (pinEdgeFileName p)
 
 exportPinIO :: (MonadIO m) => Pin -> m ()
 exportPinIO (Pin n) = liftIO $ IO.writeFile exportFileName (show n)
@@ -127,6 +133,12 @@ readPinValueIO p = liftIO $ IOS.readFile (pinValueFileName p)
 writePinValueIO :: (MonadIO m) => Pin -> PinValue -> m ()
 writePinValueIO p v = liftIO $ IO.writeFile (pinValueFileName p) (toSysfsPinValue v)
 
+readPinEdgeIO :: (MonadIO m) => Pin -> m String
+readPinEdgeIO p = liftIO $ IOS.readFile (pinEdgeFileName p)
+
+writePinEdgeIO :: (MonadIO m) => Pin -> PinReadTrigger -> m ()
+writePinEdgeIO p v = liftIO $ IO.writeFile (pinEdgeFileName p) (toSysfsPinEdge v)
+
 readPinActiveLowIO :: (MonadIO m) => Pin -> m String
 readPinActiveLowIO p = liftIO $ IOS.readFile (pinActiveLowFileName p)
 
@@ -144,6 +156,12 @@ availablePinsIO =
 
 lowercase :: String -> String
 lowercase = fmap toLower
+
+toSysfsPinEdge :: PinReadTrigger -> String
+toSysfsPinEdge None = "none"
+toSysfsPinEdge RisingEdge = "rising"
+toSysfsPinEdge FallingEdge = "falling"
+toSysfsPinEdge Level = "both"
 
 toSysfsPinValue :: PinValue -> String
 toSysfsPinValue Low = "0"

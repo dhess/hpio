@@ -59,7 +59,7 @@ import Data.Maybe (isJust)
 import GHC.IO.Exception (IOErrorType(..))
 import System.GPIO.Linux.MonadSysfs
 import System.GPIO.Linux.Sysfs
-import System.GPIO.Types (PinDirection(..), Pin(..), PinValue(..))
+import System.GPIO.Types
 import System.IO.Error (mkIOError, ioeSetErrorString)
 
 -- | Keep track of the state of mock pins. In real Linux 'sysfs', pins
@@ -70,6 +70,7 @@ data MockState =
             , direction :: !PinDirection
             , activeLow :: !Bool
             , value :: !PinValue -- This is the line level
+            , edge :: Maybe PinReadTrigger
             } deriving (Show, Eq)
 
 -- | Default initial state of mock pins.
@@ -79,6 +80,7 @@ defaultState = MockState { exported = False
                          , direction = Out
                          , activeLow = False
                          , value = Low
+                         , edge = Just None
                          }
 
 -- | Maps pins to their state
@@ -150,6 +152,7 @@ instance (MonadIO m) => MonadSysfs (SysfsMockT m) where
   sysfsIsPresent = sysfsIsPresentMock
   pinIsExported = pinIsExportedMock
   pinHasDirection = pinHasDirectionMock
+  pinHasEdge = pinHasEdgeMock
   exportPin = exportPinMock
   unexportPin = unexportPinMock
   readPinDirection = readPinDirectionMock
@@ -157,6 +160,8 @@ instance (MonadIO m) => MonadSysfs (SysfsMockT m) where
   writePinDirectionWithValue = writePinDirectionWithValueMock
   readPinValue = readPinValueMock
   writePinValue = writePinValueMock
+  readPinEdge = readPinEdgeMock
+  writePinEdge = writePinEdgeMock
   readPinActiveLow = readPinActiveLowMock
   writePinActiveLow = writePinActiveLowMock
   availablePins = availablePinsMock
@@ -174,6 +179,13 @@ pinIsExportedMock p =
 -- attribute, it's 'False', otherwise 'True'.
 pinHasDirectionMock :: (Monad m) => Pin -> SysfsMockT m Bool
 pinHasDirectionMock p = userVisibleDirection p >>= return . isJust
+
+-- The way this is implemented in 'MonadSysfs' is, if the pin is not
+-- exported, or if the pin does not have an edge attribute, it's
+-- 'False', otherwise 'True'.
+pinHasEdgeMock :: (Monad m) => Pin -> SysfsMockT m Bool
+pinHasEdgeMock p =
+  guardedPinState p edge (isJust . edge) >>= return . isJust
 
 exportPinMock :: (MonadIO m) => Pin -> SysfsMockT m ()
 exportPinMock p =
@@ -221,6 +233,22 @@ writePinValueMock p v =
      case (direction s) of
        In -> ioErr (writePinValueErrorPermissionDenied p)
        Out -> updatePinState p (s { value = logicalLevel (activeLow s) v })
+
+readPinEdgeMock :: (MonadIO m) => Pin -> SysfsMockT m String
+readPinEdgeMock p =
+  checkedPinState p edge (readPinEdgeErrorNoSuchThing p) >>= \case
+    Nothing -> ioErr (readPinEdgeErrorNoSuchThing p)
+    Just None -> return "none\n"
+    Just RisingEdge -> return "rising\n"
+    Just FallingEdge -> return "falling\n"
+    Just Level -> return "both\n"
+
+writePinEdgeMock :: (MonadIO m) => Pin -> PinReadTrigger -> SysfsMockT m ()
+writePinEdgeMock p t =
+  do s <- checkedPinState p id (writePinEdgeErrorNoSuchThing p)
+     case (edge s) of
+       Nothing -> ioErr (writePinEdgeErrorNoSuchThing p)
+       Just _ -> updatePinState p (s { edge = Just t })
 
 readPinActiveLowMock :: (MonadIO m) => Pin -> SysfsMockT m String
 readPinActiveLowMock p =
@@ -318,6 +346,13 @@ readPinDirectionErrorNoSuchThing p = mkErrorNoSuchThing "openFile" (pinDirection
 
 writePinDirectionErrorNoSuchThing :: Pin -> IOError
 writePinDirectionErrorNoSuchThing = readPinDirectionErrorNoSuchThing
+
+-- Edge file doesn't exist.
+readPinEdgeErrorNoSuchThing :: Pin -> IOError
+readPinEdgeErrorNoSuchThing p = mkErrorNoSuchThing "openFile" (pinEdgeFileName p)
+
+writePinEdgeErrorNoSuchThing :: Pin -> IOError
+writePinEdgeErrorNoSuchThing = readPinEdgeErrorNoSuchThing
 
 -- Value file doesn't exist.
 readPinValueErrorNoSuchThing :: Pin -> IOError

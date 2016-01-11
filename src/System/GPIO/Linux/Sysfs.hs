@@ -20,7 +20,7 @@ import Control.Monad.Except (MonadError, catchError, throwError)
 import Control.Monad.Trans.Free (iterT)
 import System.GPIO.Free (GpioF(..), GpioT, openPin, closePin, samplePin, writePin, getPinDirection, setPinDirection)
 import System.GPIO.Linux.MonadSysfs (MonadSysfs(..))
-import System.GPIO.Types (PinDirection(..), Pin(..), PinValue(..), invertDirection, invertValue, valueToBool)
+import System.GPIO.Types
 
 -- | The sysfs interpreter's pin handle type. Currently it's just a
 -- newtype wrapper around a 'Pin'. The constructor is exported for
@@ -125,6 +125,25 @@ runSysfsT = iterT run
          let newVal = invertValue val
          void $ runSysfsT $ writePin h newVal
          next newVal
+
+    run (GetPinReadTrigger d next) =
+      do let p = pin d
+         hasEdge <- pinHasEdge p
+         case hasEdge of
+           False -> next Nothing
+           True ->
+             do edge <- readPinEdge p
+                case edge of
+                  "none\n"  -> next $ Just None
+                  "rising\n" -> next $ Just RisingEdge
+                  "falling\n" -> next $ Just FallingEdge
+                  "both\n" -> next $ Just Level
+                  _     -> throwError $ "Unexpected edge value for " ++ show p
+
+    run (SetPinReadTrigger d trigger next) =
+      do let p = pin d
+         writePinEdge p trigger
+         next
 
     run (GetPinActiveLevel d next) =
       do let p = pin d

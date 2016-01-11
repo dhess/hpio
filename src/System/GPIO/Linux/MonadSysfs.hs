@@ -11,6 +11,7 @@ module System.GPIO.Linux.MonadSysfs
        , pinDirName
        , pinActiveLowFileName
        , pinDirectionFileName
+       , pinEdgeFileName
        , pinValueFileName
        ) where
 
@@ -28,7 +29,7 @@ import qualified Control.Monad.Trans.State.Strict as StrictState (StateT)
 import qualified Control.Monad.Trans.Writer.Lazy as LazyWriter (WriterT)
 import qualified Control.Monad.Trans.Writer.Strict as StrictWriter (WriterT)
 import System.FilePath ((</>))
-import System.GPIO.Types (PinDirection(..), Pin(..), PinValue(..))
+import System.GPIO.Types
 
 -- | The base path to Linux's GPIO sysfs interface.
 sysfsPath :: FilePath
@@ -62,6 +63,14 @@ pinActiveLowFileName p = pinDirName p </> "active_low"
 pinDirectionFileName :: Pin -> FilePath
 pinDirectionFileName p = pinDirName p </> "direction"
 
+-- | Pins that can be configured as interrupt-generating inputs
+-- provide a control file. 'pinEdgeFileName' gives the name of that
+-- file for a given pin number. Note that some pins' trigger
+-- configuration cannot be set. In these cases, the file named by this
+-- function does not actually exist.
+pinEdgeFileName :: Pin -> FilePath
+pinEdgeFileName p = pinDirName p </> "edge"
+
 -- | The name of the control file used to read and write the pin's
 -- value.
 pinValueFileName :: Pin -> FilePath
@@ -87,6 +96,9 @@ class (Monad m) => MonadSysfs m where
   writePinDirectionWithValue :: Pin -> PinValue -> m ()
   readPinValue :: Pin -> m String
   writePinValue :: Pin -> PinValue -> m ()
+  pinHasEdge :: Pin -> m Bool
+  readPinEdge :: Pin -> m String
+  writePinEdge :: Pin -> PinReadTrigger -> m ()
   readPinActiveLow :: Pin -> m String
   writePinActiveLow :: Pin -> Bool -> m ()
   availablePins :: m [Pin]
@@ -95,6 +107,7 @@ instance (MonadIO m, MonadSysfs m) => MonadSysfs (ContT r m) where
   sysfsIsPresent = lift sysfsIsPresent
   pinIsExported = lift . pinIsExported
   pinHasDirection = lift . pinHasDirection
+  pinHasEdge = lift . pinHasEdge
   exportPin = lift . exportPin
   unexportPin = lift . unexportPin
   readPinDirection = lift . readPinDirection
@@ -102,6 +115,8 @@ instance (MonadIO m, MonadSysfs m) => MonadSysfs (ContT r m) where
   writePinDirectionWithValue h v = lift $ writePinDirectionWithValue h v
   readPinValue = lift . readPinValue
   writePinValue h v = lift $ writePinValue h v
+  readPinEdge = lift . readPinEdge
+  writePinEdge h x = lift $ writePinEdge h x
   readPinActiveLow = lift . readPinActiveLow
   writePinActiveLow h v = lift $ writePinActiveLow h v
   availablePins = lift availablePins
@@ -110,6 +125,7 @@ instance (MonadIO m, MonadSysfs m) => MonadSysfs (ExceptT e m) where
   sysfsIsPresent = lift sysfsIsPresent
   pinIsExported = lift . pinIsExported
   pinHasDirection = lift . pinHasDirection
+  pinHasEdge = lift . pinHasEdge
   exportPin = lift . exportPin
   unexportPin = lift . unexportPin
   readPinDirection = lift . readPinDirection
@@ -117,6 +133,8 @@ instance (MonadIO m, MonadSysfs m) => MonadSysfs (ExceptT e m) where
   writePinDirectionWithValue h v = lift $ writePinDirectionWithValue h v
   readPinValue = lift . readPinValue
   writePinValue h v = lift $ writePinValue h v
+  readPinEdge = lift . readPinEdge
+  writePinEdge h x = lift $ writePinEdge h x
   readPinActiveLow = lift . readPinActiveLow
   writePinActiveLow h v = lift $ writePinActiveLow h v
   availablePins = lift availablePins
@@ -125,6 +143,7 @@ instance (MonadIO m, MonadSysfs m) => MonadSysfs (ListT m) where
   sysfsIsPresent = lift sysfsIsPresent
   pinIsExported = lift . pinIsExported
   pinHasDirection = lift . pinHasDirection
+  pinHasEdge = lift . pinHasEdge
   exportPin = lift . exportPin
   unexportPin = lift . unexportPin
   readPinDirection = lift . readPinDirection
@@ -132,6 +151,8 @@ instance (MonadIO m, MonadSysfs m) => MonadSysfs (ListT m) where
   writePinDirectionWithValue h v = lift $ writePinDirectionWithValue h v
   readPinValue = lift . readPinValue
   writePinValue h v = lift $ writePinValue h v
+  readPinEdge = lift . readPinEdge
+  writePinEdge h x = lift $ writePinEdge h x
   readPinActiveLow = lift . readPinActiveLow
   writePinActiveLow h v = lift $ writePinActiveLow h v
   availablePins = lift availablePins
@@ -140,6 +161,7 @@ instance (MonadIO m, MonadSysfs m) => MonadSysfs (MaybeT m) where
   sysfsIsPresent = lift sysfsIsPresent
   pinIsExported = lift . pinIsExported
   pinHasDirection = lift . pinHasDirection
+  pinHasEdge = lift . pinHasEdge
   exportPin = lift . exportPin
   unexportPin = lift . unexportPin
   readPinDirection = lift . readPinDirection
@@ -147,6 +169,8 @@ instance (MonadIO m, MonadSysfs m) => MonadSysfs (MaybeT m) where
   writePinDirectionWithValue h v = lift $ writePinDirectionWithValue h v
   readPinValue = lift . readPinValue
   writePinValue h v = lift $ writePinValue h v
+  readPinEdge = lift . readPinEdge
+  writePinEdge h x = lift $ writePinEdge h x
   readPinActiveLow = lift . readPinActiveLow
   writePinActiveLow h v = lift $ writePinActiveLow h v
   availablePins = lift availablePins
@@ -155,6 +179,7 @@ instance (MonadIO m, MonadSysfs m) => MonadSysfs (ReaderT r m) where
   sysfsIsPresent = lift sysfsIsPresent
   pinIsExported = lift . pinIsExported
   pinHasDirection = lift . pinHasDirection
+  pinHasEdge = lift . pinHasEdge
   exportPin = lift . exportPin
   unexportPin = lift . unexportPin
   readPinDirection = lift . readPinDirection
@@ -162,6 +187,8 @@ instance (MonadIO m, MonadSysfs m) => MonadSysfs (ReaderT r m) where
   writePinDirectionWithValue h v = lift $ writePinDirectionWithValue h v
   readPinValue = lift . readPinValue
   writePinValue h v = lift $ writePinValue h v
+  readPinEdge = lift . readPinEdge
+  writePinEdge h x = lift $ writePinEdge h x
   readPinActiveLow = lift . readPinActiveLow
   writePinActiveLow h v = lift $ writePinActiveLow h v
   availablePins = lift availablePins
@@ -170,6 +197,7 @@ instance (MonadIO m, MonadSysfs m, Monoid w) => MonadSysfs (LazyRWS.RWST r w s m
   sysfsIsPresent = lift sysfsIsPresent
   pinIsExported = lift . pinIsExported
   pinHasDirection = lift . pinHasDirection
+  pinHasEdge = lift . pinHasEdge
   exportPin = lift . exportPin
   unexportPin = lift . unexportPin
   readPinDirection = lift . readPinDirection
@@ -177,6 +205,8 @@ instance (MonadIO m, MonadSysfs m, Monoid w) => MonadSysfs (LazyRWS.RWST r w s m
   writePinDirectionWithValue h v = lift $ writePinDirectionWithValue h v
   readPinValue = lift . readPinValue
   writePinValue h v = lift $ writePinValue h v
+  readPinEdge = lift . readPinEdge
+  writePinEdge h x = lift $ writePinEdge h x
   readPinActiveLow = lift . readPinActiveLow
   writePinActiveLow h v = lift $ writePinActiveLow h v
   availablePins = lift availablePins
@@ -185,6 +215,7 @@ instance (MonadIO m, MonadSysfs m, Monoid w) => MonadSysfs (StrictRWS.RWST r w s
   sysfsIsPresent = lift sysfsIsPresent
   pinIsExported = lift . pinIsExported
   pinHasDirection = lift . pinHasDirection
+  pinHasEdge = lift . pinHasEdge
   exportPin = lift . exportPin
   unexportPin = lift . unexportPin
   readPinDirection = lift . readPinDirection
@@ -192,6 +223,8 @@ instance (MonadIO m, MonadSysfs m, Monoid w) => MonadSysfs (StrictRWS.RWST r w s
   writePinDirectionWithValue h v = lift $ writePinDirectionWithValue h v
   readPinValue = lift . readPinValue
   writePinValue h v = lift $ writePinValue h v
+  readPinEdge = lift . readPinEdge
+  writePinEdge h x = lift $ writePinEdge h x
   readPinActiveLow = lift . readPinActiveLow
   writePinActiveLow h v = lift $ writePinActiveLow h v
   availablePins = lift availablePins
@@ -200,6 +233,7 @@ instance (MonadIO m, MonadSysfs m) => MonadSysfs (LazyState.StateT s m) where
   sysfsIsPresent = lift sysfsIsPresent
   pinIsExported = lift . pinIsExported
   pinHasDirection = lift . pinHasDirection
+  pinHasEdge = lift . pinHasEdge
   exportPin = lift . exportPin
   unexportPin = lift . unexportPin
   readPinDirection = lift . readPinDirection
@@ -207,6 +241,8 @@ instance (MonadIO m, MonadSysfs m) => MonadSysfs (LazyState.StateT s m) where
   writePinDirectionWithValue h v = lift $ writePinDirectionWithValue h v
   readPinValue = lift . readPinValue
   writePinValue h v = lift $ writePinValue h v
+  readPinEdge = lift . readPinEdge
+  writePinEdge h x = lift $ writePinEdge h x
   readPinActiveLow = lift . readPinActiveLow
   writePinActiveLow h v = lift $ writePinActiveLow h v
   availablePins = lift availablePins
@@ -215,6 +251,7 @@ instance (MonadIO m, MonadSysfs m) => MonadSysfs (StrictState.StateT s m) where
   sysfsIsPresent = lift sysfsIsPresent
   pinIsExported = lift . pinIsExported
   pinHasDirection = lift . pinHasDirection
+  pinHasEdge = lift . pinHasEdge
   exportPin = lift . exportPin
   unexportPin = lift . unexportPin
   readPinDirection = lift . readPinDirection
@@ -222,6 +259,8 @@ instance (MonadIO m, MonadSysfs m) => MonadSysfs (StrictState.StateT s m) where
   writePinDirectionWithValue h v = lift $ writePinDirectionWithValue h v
   readPinValue = lift . readPinValue
   writePinValue h v = lift $ writePinValue h v
+  readPinEdge = lift . readPinEdge
+  writePinEdge h x = lift $ writePinEdge h x
   readPinActiveLow = lift . readPinActiveLow
   writePinActiveLow h v = lift $ writePinActiveLow h v
   availablePins = lift availablePins
@@ -230,6 +269,7 @@ instance (MonadIO m, MonadSysfs m, Monoid w) => MonadSysfs (LazyWriter.WriterT w
   sysfsIsPresent = lift sysfsIsPresent
   pinIsExported = lift . pinIsExported
   pinHasDirection = lift . pinHasDirection
+  pinHasEdge = lift . pinHasEdge
   exportPin = lift . exportPin
   unexportPin = lift . unexportPin
   readPinDirection = lift . readPinDirection
@@ -237,6 +277,8 @@ instance (MonadIO m, MonadSysfs m, Monoid w) => MonadSysfs (LazyWriter.WriterT w
   writePinDirectionWithValue h v = lift $ writePinDirectionWithValue h v
   readPinValue = lift . readPinValue
   writePinValue h v = lift $ writePinValue h v
+  readPinEdge = lift . readPinEdge
+  writePinEdge h x = lift $ writePinEdge h x
   readPinActiveLow = lift . readPinActiveLow
   writePinActiveLow h v = lift $ writePinActiveLow h v
   availablePins = lift availablePins
@@ -245,6 +287,7 @@ instance (MonadIO m, MonadSysfs m, Monoid w) => MonadSysfs (StrictWriter.WriterT
   sysfsIsPresent = lift sysfsIsPresent
   pinIsExported = lift . pinIsExported
   pinHasDirection = lift . pinHasDirection
+  pinHasEdge = lift . pinHasEdge
   exportPin = lift . exportPin
   unexportPin = lift . unexportPin
   readPinDirection = lift . readPinDirection
@@ -252,6 +295,8 @@ instance (MonadIO m, MonadSysfs m, Monoid w) => MonadSysfs (StrictWriter.WriterT
   writePinDirectionWithValue h v = lift $ writePinDirectionWithValue h v
   readPinValue = lift . readPinValue
   writePinValue h v = lift $ writePinValue h v
+  readPinEdge = lift . readPinEdge
+  writePinEdge h x = lift $ writePinEdge h x
   readPinActiveLow = lift . readPinActiveLow
   writePinActiveLow h v = lift $ writePinActiveLow h v
   availablePins = lift availablePins
