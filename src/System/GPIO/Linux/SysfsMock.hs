@@ -43,7 +43,6 @@ module System.GPIO.Linux.SysfsMock
        ) where
 
 import Control.Applicative
-import Control.Conditional (unlessM)
 import Control.Error.Script (scriptIO)
 import Control.Monad.Except (ExceptT, runExceptT)
 import Control.Monad
@@ -267,7 +266,8 @@ writePinActiveLowMock p v =
 -- exist, but....
 availablePinsMock :: (MonadIO m) => SysfsMockT m [Pin]
 availablePinsMock =
-  do unlessM sysfsIsPresentMock $
+  do hasSysfs <- sysfsIsPresentMock
+     unless hasSysfs $
        ioErr availablePinsErrorNoSuchThing
      pins <- gets Map.keys
      return $ sort pins
