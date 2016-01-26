@@ -5,8 +5,8 @@ let
   inherit (nixpkgs) pkgs;
 
   f = { mkDerivation, base, containers, directory, errors
-      , exceptions, filepath, free, hspec, mtl, QuickCheck, stdenv
-      , strict, text, transformers
+      , exceptions, filepath, free, hspec, mtl, optparse-applicative
+      , QuickCheck, stdenv, strict, text, transformers
       }:
       mkDerivation {
         pname = "gpio";
@@ -18,7 +18,9 @@ let
           base containers directory errors exceptions filepath free mtl
           QuickCheck strict text transformers
         ];
-        executableHaskellDepends = [ base errors mtl transformers ];
+        executableHaskellDepends = [
+          base errors mtl optparse-applicative transformers
+        ];
         testHaskellDepends = [
           base containers directory errors exceptions filepath free hspec mtl
           QuickCheck strict text transformers

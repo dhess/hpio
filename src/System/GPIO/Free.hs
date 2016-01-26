@@ -34,6 +34,7 @@ module System.GPIO.Free
        , setPinDirection
        , togglePinDirection
        , samplePin
+       , readPin
        , writePin
        , writePin'
        , togglePinValue

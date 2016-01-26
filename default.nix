@@ -1,6 +1,6 @@
 { mkDerivation, base, containers, directory, errors, exceptions
-, filepath, free, hspec, mtl, QuickCheck, stdenv, strict, text
-, transformers
+, filepath, free, hspec, mtl, optparse-applicative, QuickCheck
+, stdenv, strict, text, transformers
 }:
 mkDerivation {
   pname = "gpio";
@@ -12,7 +12,9 @@ mkDerivation {
     base containers directory errors exceptions filepath free mtl
     QuickCheck strict text transformers
   ];
-  executableHaskellDepends = [ base errors mtl transformers ];
+  executableHaskellDepends = [
+    base errors mtl optparse-applicative transformers
+  ];
   testHaskellDepends = [
     base containers directory errors exceptions filepath free hspec mtl
     QuickCheck strict text transformers
