@@ -11,3 +11,6 @@ cabal-dev
 .cabal-sandbox/
 cabal.sandbox.config
 .stack-work/*
+
+# For inline-c
+*.c

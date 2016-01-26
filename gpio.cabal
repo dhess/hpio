@@ -50,11 +50,15 @@ Library
                       , exceptions
                       , filepath
                       , free
+                      , inline-c
                       , mtl
                       , QuickCheck
                       , strict
                       , text
                       , transformers
+                      , unix
+  C-Sources:            src/System/GPIO/Linux/SysfsIO.c
+  CC-Options:           -Wall -std=c11
 
 Executable gpio-sysfs-example
   Main-Is:              Sysfs.hs
@@ -65,6 +69,7 @@ Executable gpio-sysfs-example
                       , mtl
                       , transformers
   Default-Language:     Haskell2010
+  Ghc-Options:          -Wall -threaded
 
 Executable gpio-edgeread-example
   Main-Is:              EdgeRead.hs
@@ -76,6 +81,7 @@ Executable gpio-edgeread-example
                       , optparse-applicative
                       , transformers
   Default-Language:     Haskell2010
+  Ghc-Options:          -Wall -threaded
 
 Test-Suite spec
   Type:                 exitcode-stdio-1.0
@@ -96,11 +102,13 @@ Test-Suite spec
                       , filepath
                       , free
                       , hspec
+                      , inline-c
                       , mtl
                       , QuickCheck
                       , strict
                       , text
                       , transformers
+                      , unix
   Other-modules:        System.GPIO
                       , System.GPIO.Free
                       , System.GPIO.Linux.MonadSysfs

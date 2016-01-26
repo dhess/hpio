@@ -110,6 +110,14 @@ runSysfsT = iterT run
            "1\n" -> next High
            _   -> throwError $ "Unexpected pin value for " ++ show p
 
+    run (ReadPin d next) =
+      do let p = pin d
+         value <- threadWaitReadPinValue p
+         case value of
+           "0\n" -> next Low
+           "1\n" -> next High
+           _   -> throwError $ "Unexpected pin value for " ++ show p
+
     run (WritePin d v next) =
       do let p = pin d
          writePinValue p v

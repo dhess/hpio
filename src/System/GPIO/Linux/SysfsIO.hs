@@ -1,6 +1,8 @@
 -- | The actual Linux 'sysfs' GPIO implementation.
 
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module System.GPIO.Linux.SysfsIO
          ( -- * SysfsIOT transformer
@@ -22,6 +24,10 @@ import Control.Monad.Trans.Maybe (MaybeT, runMaybeT)
 import Data.Char (toLower)
 import Data.List (isPrefixOf, sort)
 import Data.Maybe (catMaybes)
+import Foreign.C.Error (throwErrnoIfMinus1Retry_)
+import Foreign.C.Types (CInt(..))
+import qualified Language.C.Inline as C (include)
+import qualified Language.C.Inline.Interruptible as CI
 import System.Directory (doesDirectoryExist, doesFileExist, getDirectoryContents)
 import System.FilePath ((</>), takeFileName)
 import System.GPIO.Linux.MonadSysfs
@@ -29,6 +35,71 @@ import System.GPIO.Linux.Sysfs
 import System.GPIO.Types
 import qualified System.IO as IO (writeFile)
 import qualified System.IO.Strict as IOS (readFile)
+import System.Posix.IO (OpenMode(ReadOnly), closeFd, defaultFileFlags, openFd)
+import System.Posix.Types (Fd)
+
+-- Our poll(2) wrapper.
+--
+-- Because it may block, we use the 'interruptible' variant of the C
+-- FFI. This means we need to check for EINTR and try again when it
+-- occurs.
+--
+-- We assume that 'Language.C.Inline.Interruptible' preserves errno
+-- when returning from the FFI call!
+
+C.include "<errno.h>"
+C.include "<poll.h>"
+C.include "<stdint.h>"
+C.include "<unistd.h>"
+
+-- Using poll(2) to wait for GPIO interrupts is a bit flaky:
+--
+-- On certain combinations of kernels+hardware, a "dummy read(2)" is
+-- needed before the poll(2) operation. As read(2) on a GPIO sysfs
+-- pin's "value" file doesn't block, it doesn't hurt to do this in all
+-- cases, anyway.
+--
+-- The Linux man page for poll(2) states that setting POLLERR in the
+-- 'events' field is meaningless. However, the kernel GPIO
+-- documentation states: "If you use poll(2), set the events POLLPRI
+-- and POLLERR." Here we do what the kernel documentation says.
+--
+-- When poll(2) returns, an lseek(2) is needed before read(2), per the
+-- Linux kernel documentation.
+--
+-- It appears that poll(2) on the GPIO sysfs pin's "value" file always
+-- returns POLLERR in 'revents', even if there is no error. (This is
+-- supposedly true for all sysfs files, not just for GPIO.) We simply
+-- ignore that bit and only consider the return value of poll(2) to
+-- determine whether an error has occurred. (Presumably, if POLLERR is
+-- set and poll(2) returns no error, then the subsequent lseek(2) or
+-- read(2) will fail.)
+--
+-- Ref:
+-- https://e2e.ti.com/support/dsp/davinci_digital_media_processors/f/716/t/182883
+-- http://www.spinics.net/lists/linux-gpio/msg03848.html
+-- https://www.kernel.org/doc/Documentation/gpio/sysfs.txt
+-- http://stackoverflow.com/questions/16442935/why-doesnt-this-call-to-poll-block-correctly-on-a-sysfs-device-attribute-file
+ -- http://stackoverflow.com/questions/27411013/poll-returns-both-pollpri-pollerr
+pollSysfs :: Fd -> IO CInt
+pollSysfs fd =
+  let cfd = fromIntegral fd
+  in
+    [CI.block| int {
+         uint8_t dummy;
+         if (read($(int cfd), &dummy, 1) == -1) {
+             return -1;
+         }
+
+         struct pollfd fds = { .fd = $(int cfd), .events = POLLPRI|POLLERR, .revents = 0 };
+         if (poll(&fds, 1, -1) == -1)  {
+             return -1;
+         }
+         if (lseek(fds.fd, 0, SEEK_SET) == -1) {
+             return -1;
+         }
+         return 0;
+     } |]
 
 -- | A monad transformer which adds Linux 'sysfs' GPIO computations to
 -- an inner monad 'm'.
@@ -89,6 +160,7 @@ instance (MonadIO m) => MonadSysfs (SysfsIOT m) where
   writePinDirection = writePinDirectionIO
   writePinDirectionWithValue = writePinDirectionWithValueIO
   readPinValue = readPinValueIO
+  threadWaitReadPinValue = threadWaitReadPinValueIO
   writePinValue = writePinValueIO
   readPinEdge = readPinEdgeIO
   writePinEdge = writePinEdgeIO
@@ -129,6 +201,17 @@ writePinDirectionWithValueIO p v = liftIO $ IO.writeFile (pinDirectionFileName p
 
 readPinValueIO :: (MonadIO m) => Pin -> m String
 readPinValueIO p = liftIO $ IOS.readFile (pinValueFileName p)
+
+threadWaitReadPinValueIO :: (MonadIO m) => Pin -> m String
+threadWaitReadPinValueIO p = liftIO $
+  do fd <- openFd (pinValueFileName p) ReadOnly Nothing defaultFileFlags
+     throwErrnoIfMinus1Retry_ "pollSysfs" $ pollSysfs fd
+     -- Could use fdRead here and handle EAGAIN, but it's easier to
+     -- close the fd and use nice handle-based IO, instead. If this
+     -- becomes a performance problem... we probably need a
+     -- non-sysfs-based interpreter in that case, anyway.
+     closeFd fd
+     readPinValueIO p
 
 writePinValueIO :: (MonadIO m) => Pin -> PinValue -> m ()
 writePinValueIO p v = liftIO $ IO.writeFile (pinValueFileName p) (toSysfsPinValue v)

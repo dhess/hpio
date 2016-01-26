@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleContexts #-}
 
 module Main where
@@ -14,7 +15,9 @@ import System.GPIO.Linux.SysfsIO (runSysfsIOSafe)
 import System.GPIO.Types
 
 data GlobalOptions =
-  GlobalOptions { cmd :: Command }
+  GlobalOptions {_delay :: Int
+                ,_trigger :: PinReadTrigger
+                ,_cmd :: Command}
 
 data Command
   = Sysfs SysfsOptions
@@ -35,32 +38,44 @@ sysfsOptions =
 cmds :: Parser GlobalOptions
 cmds =
   GlobalOptions <$>
+  option auto (long "delay" <>
+               short 'd' <>
+               metavar "DELAY" <>
+               value 1 <>
+               showDefault <>
+               help "Delay between output toggles (in seconds)") <*>
+  option auto (long "trigger" <>
+               short 't' <>
+               metavar "TRIGGER" <>
+               value Level <>
+               showDefault <>
+               help "Event on which to trigger (None, RisingEdge, FallingEdge, or Level)") <*>
   hsubparser
     (command "sysfs" (info sysfsCmd (progDesc "Use the Linux sysfs interpreter to drive INPIN using OUTPIN. (Make sure the pins are connected!")))
 
 run :: GlobalOptions -> IO (Either String ())
-run (GlobalOptions (Sysfs (SysfsOptions inputPin outputPin))) =
-  do void $ forkIO (void $ runSysfsIOSafe $ edgeRead inputPin)
-     runSysfsIOSafe $ driveOutput outputPin
+run (GlobalOptions delay trigger (Sysfs (SysfsOptions inputPin outputPin))) =
+  do void $ forkIO (void $ runSysfsIOSafe $ edgeRead inputPin trigger)
+     runSysfsIOSafe $ driveOutput outputPin delay
 
 output :: (MonadIO m) => String -> m ()
 output = liftIO . putStrLn
 
-edgeRead :: (MonadIO m, MonadError e m) => Pin -> GpioT e h m m ()
-edgeRead p =
+edgeRead :: (MonadIO m, MonadError e m) => Pin -> PinReadTrigger -> GpioT e h m m ()
+edgeRead p trigger =
   withPin p $ \h ->
     do setPinDirection h In
-       setPinReadTrigger h Level
+       setPinReadTrigger h trigger
        forever $
          do v <- readPin h
             output ("Input: " ++ show v)
 
-driveOutput :: (MonadIO m, MonadError e m) => Pin -> GpioT e h m m ()
-driveOutput p =
+driveOutput :: (MonadIO m, MonadError e m) => Pin -> Int -> GpioT e h m m ()
+driveOutput p delay =
   withPin p $ \h ->
     do setPinDirection h Out
        forever $
-         do liftIO $ threadDelay 100000
+         do liftIO $ threadDelay (delay * 1000000)
             v <- togglePinValue h
             output ("Output: " ++ show v)
 
