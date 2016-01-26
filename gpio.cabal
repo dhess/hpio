@@ -56,6 +56,16 @@ Library
                       , text
                       , transformers
 
+Executable gpio-sysfs-example
+  Main-Is:              Sysfs.hs
+  HS-Source-Dirs:       examples
+  Build-Depends:        base >= 4 && < 5
+                      , errors
+                      , gpio
+                      , mtl
+                      , transformers
+  Default-Language:     Haskell2010
+
 Test-Suite spec
   Type:                 exitcode-stdio-1.0
   Default-Language:     Haskell2010

@@ -12,10 +12,13 @@ let
         pname = "gpio";
         version = "0.5.1";
         src = ./.;
+        isLibrary = true;
+        isExecutable = true;
         libraryHaskellDepends = [
           base containers directory errors exceptions filepath free mtl
           QuickCheck strict text transformers
         ];
+        executableHaskellDepends = [ base errors mtl transformers ];
         testHaskellDepends = [
           base containers directory errors exceptions filepath free hspec mtl
           QuickCheck strict text transformers
