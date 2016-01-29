@@ -11,7 +11,9 @@
 --
 -- The following exceptional states cannot yet be emulated:
 --
--- * sysfs is not present
+-- * The blocking behavior of 'System.GPIO.Free.readPin' is not implemented.
+--
+-- * sysfs is not present.
 --
 -- * Insufficient permissions.
 --
@@ -158,7 +160,7 @@ instance (MonadIO m) => MonadSysfs (SysfsMockT m) where
   writePinDirection = writePinDirectionMock
   writePinDirectionWithValue = writePinDirectionWithValueMock
   readPinValue = readPinValueMock
-  threadWaitReadPinValue = undefined -- XXX dhess: add later
+  threadWaitReadPinValue = readPinValueMock -- XXX dhess: hack.
   writePinValue = writePinValueMock
   readPinEdge = readPinEdgeMock
   writePinEdge = writePinEdgeMock

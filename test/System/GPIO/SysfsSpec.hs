@@ -111,8 +111,8 @@ testTogglePinDirection =
             closePin d
             return (dir1, dir2, dir3, dir4, dir5)
 
-testReadWritePin :: (MonadError e m) => GpioT e h m m (PinValue, PinValue, PinValue)
-testReadWritePin =
+testSampleWritePin :: (MonadError e m) => GpioT e h m m (PinValue, PinValue, PinValue)
+testSampleWritePin =
   do handle <- openPin (Pin 1)
      case handle of
        Left e -> throwError e
@@ -135,8 +135,8 @@ testReadWritePin =
                    closePin d
                    return (val1, val2, val3)
 
-testReadWritePinIdempotent :: (MonadError e m) => GpioT e h m m (PinValue, PinValue)
-testReadWritePinIdempotent =
+testSampleWritePinIdempotent :: (MonadError e m) => GpioT e h m m (PinValue, PinValue)
+testSampleWritePinIdempotent =
   do handle <- openPin (Pin 1)
      case handle of
        Left e -> throwError e
@@ -357,16 +357,23 @@ spec =
                                ,(Pin 2, defaultState)]
             in runSysfsMock testSetReadTrigger world `shouldThrow` anyIOException
 
+     describe "readPin" $
+       do it "waits for the specified trigger and returns the pin's value" $
+            pendingWith "need to implement this in SysfsMock"
+
+          it "blocks when the read trigger is Disabled, until it is changed" $
+            pendingWith "need to implement this in SysfsMock"
+
      describe "writePin" $
        do it "sets the pin value" $
             let world = mockWorld [Pin 1]
                 expectedResult = ((Low, High, Low), world)
-            in runSysfsMock testReadWritePin world `shouldReturn` expectedResult
+            in runSysfsMock testSampleWritePin world `shouldReturn` expectedResult
 
           it "is idempotent" $
             let world = mockWorld [Pin 1]
                 expectedResult = ((Low, Low), world)
-            in runSysfsMock testReadWritePinIdempotent world `shouldReturn` expectedResult
+            in runSysfsMock testSampleWritePinIdempotent world `shouldReturn` expectedResult
 
           it "fails when the pin direction is In" $
             -- Note that this test will leave Pin 1 in the "open" state
