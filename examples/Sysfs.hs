@@ -6,7 +6,7 @@ module Main where
 
 import Control.Error.Util (errLn)
 import Control.Monad (when)
-import Control.Monad.Except (MonadError, runExceptT, throwError)
+import Control.Monad.Except (MonadError)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import System.Exit (exitFailure)
 import System.GPIO.Free

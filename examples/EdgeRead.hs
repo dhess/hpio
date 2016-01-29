@@ -5,8 +5,8 @@ module Main where
 
 import Control.Concurrent (forkIO, threadDelay)
 import Control.Error.Util (errLn)
-import Control.Monad (forever, void, when)
-import Control.Monad.Except (MonadError, runExceptT, throwError)
+import Control.Monad (forever, void)
+import Control.Monad.Except (MonadError)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Options.Applicative
 import System.Exit (exitFailure)
