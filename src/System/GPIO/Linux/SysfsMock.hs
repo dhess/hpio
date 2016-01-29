@@ -79,7 +79,7 @@ defaultState = MockState { exported = False
                          , direction = Out
                          , activeLow = False
                          , value = Low
-                         , edge = Just None
+                         , edge = Just Disabled
                          }
 
 -- | Maps pins to their state
@@ -238,7 +238,7 @@ readPinEdgeMock :: (MonadIO m) => Pin -> SysfsMockT m String
 readPinEdgeMock p =
   checkedPinState p edge (readPinEdgeErrorNoSuchThing p) >>= \case
     Nothing -> ioErr (readPinEdgeErrorNoSuchThing p)
-    Just None -> return "none\n"
+    Just Disabled -> return "none\n"
     Just RisingEdge -> return "rising\n"
     Just FallingEdge -> return "falling\n"
     Just Level -> return "both\n"

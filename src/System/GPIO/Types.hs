@@ -105,11 +105,11 @@ instance Arbitrary PinValue where
 -- until an edge- or level-triggered event is detected. In this way, a
 -- GPIO pin can be used as an edge- or level-triggered interrupt.
 --
--- When the pin's read trigger is set to 'None', reading the pin's
+-- When the pin's read trigger is set to 'Disabled', reading the pin's
 -- value will block indefinitely. (This is equivalent to
 -- masking/disabling interrupts on the pin.)
 data PinReadTrigger
-  = None
+  = Disabled
   | RisingEdge
   | FallingEdge
   | Level

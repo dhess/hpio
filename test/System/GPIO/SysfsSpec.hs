@@ -54,7 +54,7 @@ testSetReadTrigger =
      case handle of
        Left e -> throwError e
        Right d ->
-         do setPinReadTrigger d None
+         do setPinReadTrigger d Disabled
             t1 <- getPinReadTrigger d
             setPinReadTrigger d RisingEdge
             t2 <- getPinReadTrigger d
@@ -329,7 +329,7 @@ spec =
             let world1 = mockWorld [Pin 1]
                 world2 =
                   Map.fromList [(Pin 1, defaultState {edge = Just FallingEdge})]
-                expectedResult1 = (Just None, world1)
+                expectedResult1 = (Just Disabled, world1)
                 expectedResult2 = (Just FallingEdge, world2)
             in
               do runSysfsMock (withPin (Pin 1) (\h -> getPinReadTrigger h >>= return)) world1 `shouldReturn` expectedResult1
@@ -343,7 +343,7 @@ spec =
      describe "setPinReadTrigger" $
        do it "sets the pin's read trigger" $
             let world = mockWorld [Pin 1]
-                expectedResult = ((Just None, Just RisingEdge, Just FallingEdge, Just Level),
+                expectedResult = ((Just Disabled, Just RisingEdge, Just FallingEdge, Just Level),
                                   Map.fromList [(Pin 1, defaultState {edge = Just Level})])
             in runSysfsMock testSetReadTrigger world `shouldReturn` expectedResult
           it "is idempotent" $

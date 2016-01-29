@@ -142,7 +142,7 @@ runSysfsT = iterT run
            True ->
              do edge <- readPinEdge p
                 case edge of
-                  "none\n"  -> next $ Just None
+                  "none\n"  -> next $ Just Disabled
                   "rising\n" -> next $ Just RisingEdge
                   "falling\n" -> next $ Just FallingEdge
                   "both\n" -> next $ Just Level

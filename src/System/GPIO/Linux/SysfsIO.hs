@@ -261,7 +261,7 @@ lowercase :: String -> String
 lowercase = fmap toLower
 
 toSysfsPinEdge :: PinReadTrigger -> String
-toSysfsPinEdge None = "none"
+toSysfsPinEdge Disabled = "none"
 toSysfsPinEdge RisingEdge = "rising"
 toSysfsPinEdge FallingEdge = "falling"
 toSysfsPinEdge Level = "both"
