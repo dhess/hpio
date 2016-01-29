@@ -146,14 +146,15 @@ makeFreeCon 'SamplePin
 
 -- | Read the pin's /logical/ 'PinValue', potentially blocking the
 -- current thread until an event corresponding to the pin's
--- 'PinReadTrigger' occurs. (If the pin does not support blocking
--- reads, or if the pin's 'PinReadTrigger' is 'None', then this
--- function behaves like 'samplePin' and returns the pin's logical
--- value without blocking.)
+-- 'PinReadTrigger' occurs.
 --
--- (Note: this function only works correctly in GHC. In some
--- interpreters, if the pin's state is modified while this function is
--- blocking, this function may raise an error.)
+-- If the pin does not support blocking reads, then this function
+-- behaves like 'samplePin' and returns the pin's logical value
+-- without blocking.
+--
+-- Note: due to its interaction with the threading system, this
+-- function may behave differently across different implementations of
+-- Haskell. It has only been tested with GHC.
 makeFreeCon 'ReadPin
 
 -- | Set the pin's /logical/ 'PinValue'. It is an error to call this
@@ -183,10 +184,6 @@ makeFreeCon 'TogglePinValue
 -- Some pins (or GPIO platforms) may not support edge- or
 -- level-triggered blocking reads. In such cases, this function
 -- returns 'Nothing'.
---
--- Note that if this function returns 'Just' 'None', this means that,
--- while the pin does support blocking reads, it is currently not
--- configured to do so.
 makeFreeCon 'GetPinReadTrigger
 
 -- | Set the pin's 'PinReadTrigger' mode.

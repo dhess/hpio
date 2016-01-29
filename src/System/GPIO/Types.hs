@@ -102,11 +102,12 @@ instance Arbitrary PinValue where
   shrink = genericShrink
 
 -- | Pins can be configured so that reading the pin's value blocks
--- until an edge- or level-triggered event is detected.
+-- until an edge- or level-triggered event is detected. In this way, a
+-- GPIO pin can be used as an edge- or level-triggered interrupt.
 --
--- Note that the 'None' value means that, while the pin can be
--- configured for blocking reads, it is currently not configured to do
--- so.
+-- When the pin's read trigger is set to 'None', reading the pin's
+-- value will block indefinitely. (This is equivalent to
+-- masking/disabling interrupts on the pin.)
 data PinReadTrigger
   = None
   | RisingEdge
@@ -123,10 +124,12 @@ invertDirection Out = In
 invertValue :: PinValue -> PinValue
 invertValue = complement
 
+-- | Convert a 'PinValue' to its logical boolean equivalent.
 valueToBool :: PinValue -> Bool
 valueToBool Low  = False
 valueToBool High = True
 
+-- | Convert a 'Bool' to its logical 'PinValue' equivalent.
 boolToValue :: Bool -> PinValue
 boolToValue False = Low
 boolToValue True  = High
