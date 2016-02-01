@@ -30,10 +30,10 @@ newtype PinDescriptor = PinDescriptor { pin :: Pin } deriving (Show, Eq, Ord)
 
 -- | A monad transformer which adds Linux sysfs GPIO computations to
 -- other monads.
-type SysfsT m = GpioT String PinDescriptor m
+type SysfsT m = GpioT PinDescriptor m
 
 -- | The Linux sysfs GPIO DSL type.
-type SysfsF m = GpioF String PinDescriptor m
+type SysfsF m = GpioF PinDescriptor m
 
 -- | Run a 'SysfsT' computation embedded in monad 'm' and return the
 -- result. Errors that occur in the computation or in the interpreter
@@ -62,14 +62,14 @@ runSysfsT = iterT run
     run (OpenPin p next) =
       do hasSysfs <- sysfsIsPresent
          case hasSysfs of
-           False -> next (Left "sysfs GPIO is not present")
+           False -> throwError "sysfs GPIO is not present"
            True ->
              do exported <- pinIsExported p
                 case exported of
-                  True -> next (Right $ PinDescriptor p)
+                  True -> next $ PinDescriptor p
                   False ->
                     do exportPin p
-                       next (Right $ PinDescriptor p)
+                       next $ PinDescriptor p
 
     run (ClosePin d next) =
       do let p = pin d
@@ -167,14 +167,11 @@ runSysfsT = iterT run
          next
 
     run (WithPin p block next) =
-      do result <- runSysfsT $ openPin p
-         case result of
-           Left e -> throwError e
-           Right pd ->
-             catchError
-               (do a <- runSysfsT $ block pd
-                   runSysfsT $ closePin pd
-                   next a)
-               (\e ->
-                 do runSysfsT $ closePin pd
-                    throwError e)
+      do pd <- runSysfsT $ openPin p
+         catchError
+           (do a <- runSysfsT $ block pd
+               runSysfsT $ closePin pd
+               next a)
+           (\e ->
+             do runSysfsT $ closePin pd
+                throwError e)

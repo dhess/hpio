@@ -61,7 +61,7 @@ run (GlobalOptions delay trigger (Sysfs (SysfsOptions inputPin outputPin))) =
 output :: (MonadIO m) => String -> m ()
 output = liftIO . putStrLn
 
-edgeRead :: (MonadIO m, MonadError e m) => Pin -> PinReadTrigger -> GpioT e h m m ()
+edgeRead :: (MonadIO m, MonadError e m) => Pin -> PinReadTrigger -> GpioT h m m ()
 edgeRead p trigger =
   withPin p $ \h ->
     do setPinDirection h In
@@ -70,7 +70,7 @@ edgeRead p trigger =
          do v <- readPin h
             output ("Input: " ++ show v)
 
-driveOutput :: (MonadIO m, MonadError e m) => Pin -> Int -> GpioT e h m m ()
+driveOutput :: (MonadIO m, MonadError e m) => Pin -> Int -> GpioT h m m ()
 driveOutput p delay =
   withPin p $ \h ->
     do setPinDirection h Out

@@ -18,220 +18,181 @@ import Test.Hspec
 -- the platform we're developing on doesn't actually have GPIO
 -- functionality).
 
-testOpenClose :: (MonadError e m) => GpioT e h m m ()
+testOpenClose :: (MonadError e m) => GpioT h m m ()
 testOpenClose =
   do handle <- openPin (Pin 1)
-     case handle of
-       Left e -> throwError e
-       Right d -> closePin d
+     closePin handle
 
-testSetDirection :: (MonadError e m) => GpioT e h m m (PinDirection, PinDirection, PinDirection)
+testSetDirection :: (MonadError e m) => GpioT h m m (PinDirection, PinDirection, PinDirection)
 testSetDirection =
-  do handle <- openPin (Pin 1)
-     case handle of
-       Left e -> throwError e
-       Right d ->
-         do (Just dir1) <- getPinDirection d
-            case dir1 of
-              In ->
-                do setPinDirection d Out
-                   (Just dir2) <- getPinDirection d
-                   setPinDirection d In
-                   (Just dir3) <- getPinDirection d
-                   closePin d
-                   return (dir1, dir2, dir3)
-              Out ->
-                do setPinDirection d In
-                   (Just dir2) <- getPinDirection d
-                   setPinDirection d Out
-                   (Just dir3) <- getPinDirection d
-                   closePin d
-                   return (dir1, dir2, dir3)
-
-testSetReadTrigger :: (MonadError e m) => GpioT e h m m (Maybe PinReadTrigger, Maybe PinReadTrigger, Maybe PinReadTrigger, Maybe PinReadTrigger)
-testSetReadTrigger =
-  do handle <- openPin (Pin 1)
-     case handle of
-       Left e -> throwError e
-       Right d ->
-         do setPinReadTrigger d Disabled
-            t1 <- getPinReadTrigger d
-            setPinReadTrigger d RisingEdge
-            t2 <- getPinReadTrigger d
-            setPinReadTrigger d FallingEdge
-            t3 <- getPinReadTrigger d
-            setPinReadTrigger d Level
-            t4 <- getPinReadTrigger d
-            closePin d
-            return (t1, t2, t3, t4)
-
-testSetReadTriggerIdempotent :: (MonadError e m) => GpioT e h m m (Maybe PinReadTrigger, Maybe PinReadTrigger)
-testSetReadTriggerIdempotent =
-  do handle <- openPin (Pin 1)
-     case handle of
-       Left e -> throwError e
-       Right d ->
-         do setPinReadTrigger d FallingEdge
-            t1 <- getPinReadTrigger d
-            setPinReadTrigger d FallingEdge
-            t2 <- getPinReadTrigger d
-            closePin d
-            return (t1, t2)
-
-testSetDirectionIdempotent :: (MonadError e m) => GpioT e h m m (PinDirection, PinDirection)
-testSetDirectionIdempotent =
-  do handle <- openPin (Pin 1)
-     case handle of
-       Left e -> throwError e
-       Right d ->
-         do (Just dir1) <- getPinDirection d
-            case dir1 of
-              In ->
-                do setPinDirection d In
-                   (Just dir2) <- getPinDirection d
-                   closePin d
-                   return (dir1, dir2)
-              Out ->
-                do setPinDirection d Out
-                   (Just dir2) <- getPinDirection d
-                   closePin d
-                   return (dir1, dir2)
-
-testTogglePinDirection :: (MonadError e m) => GpioT e h m m (PinDirection, PinDirection, PinDirection, PinDirection, PinDirection)
-testTogglePinDirection =
-  do handle <- openPin (Pin 1)
-     case handle of
-       Left e -> throwError e
-       Right d ->
-         do (Just dir1) <- getPinDirection d
-            (Just dir2) <- togglePinDirection d
+  do d <- openPin (Pin 1)
+     (Just dir1) <- getPinDirection d
+     case dir1 of
+       In ->
+         do setPinDirection d Out
+            (Just dir2) <- getPinDirection d
+            setPinDirection d In
             (Just dir3) <- getPinDirection d
-            (Just dir4) <- togglePinDirection d
-            (Just dir5) <- getPinDirection d
             closePin d
-            return (dir1, dir2, dir3, dir4, dir5)
-
-testSampleWritePin :: (MonadError e m) => GpioT e h m m (PinValue, PinValue, PinValue)
-testSampleWritePin =
-  do handle <- openPin (Pin 1)
-     case handle of
-       Left e -> throwError e
-       Right d ->
-         do setPinDirection d Out
-            val1 <- samplePin d
-            case val1 of
-              Low ->
-                do writePin d High
-                   val2 <- samplePin d
-                   writePin d Low
-                   val3 <- samplePin d
-                   closePin d
-                   return (val1, val2, val3)
-              High ->
-                do writePin d Low
-                   val2 <- samplePin d
-                   writePin d High
-                   val3 <- samplePin d
-                   closePin d
-                   return (val1, val2, val3)
-
-testSampleWritePinIdempotent :: (MonadError e m) => GpioT e h m m (PinValue, PinValue)
-testSampleWritePinIdempotent =
-  do handle <- openPin (Pin 1)
-     case handle of
-       Left e -> throwError e
-       Right d ->
-         do setPinDirection d Out
-            val1 <- samplePin d
-            case val1 of
-              Low ->
-                do writePin d Low
-                   val2 <- samplePin d
-                   closePin d
-                   return (val1, val2)
-              High ->
-                do writePin d High
-                   val2 <- samplePin d
-                   closePin d
-                   return (val1, val2)
-
-testWritePinFailsOnInputPin :: (MonadError e m) => GpioT e h m m ()
-testWritePinFailsOnInputPin =
-  do handle <- openPin (Pin 1)
-     case handle of
-       Left e -> throwError e
-       Right d ->
+            return (dir1,dir2,dir3)
+       Out ->
          do setPinDirection d In
-            writePin d High
+            (Just dir2) <- getPinDirection d
+            setPinDirection d Out
+            (Just dir3) <- getPinDirection d
             closePin d
+            return (dir1,dir2,dir3)
 
-testWritePin' :: (MonadError e m) => GpioT e h m m (PinValue, PinValue, Maybe PinDirection, Maybe PinDirection)
-testWritePin' =
-  do handle1 <- openPin (Pin 1)
-     handle2 <- openPin (Pin 2)
-     case (handle1, handle2) of
-       (Left e, _) -> throwError e
-       (_, Left e) -> throwError e
-       (Right d1, Right d2) ->
-         do writePin' d1 High
-            val1 <- samplePin d1
-            writePin' d2 Low
-            val2 <- samplePin d2
-            dir1 <- getPinDirection d1
-            dir2 <- getPinDirection d2
-            closePin d1
-            closePin d2
-            return (val1, val2, dir1, dir2)
+testSetReadTrigger :: (MonadError e m) => GpioT h m m (Maybe PinReadTrigger, Maybe PinReadTrigger, Maybe PinReadTrigger, Maybe PinReadTrigger)
+testSetReadTrigger =
+  do d <- openPin (Pin 1)
+     setPinReadTrigger d Disabled
+     t1 <- getPinReadTrigger d
+     setPinReadTrigger d RisingEdge
+     t2 <- getPinReadTrigger d
+     setPinReadTrigger d FallingEdge
+     t3 <- getPinReadTrigger d
+     setPinReadTrigger d Level
+     t4 <- getPinReadTrigger d
+     closePin d
+     return (t1, t2, t3, t4)
 
-testWritePinIdempotent' :: (MonadError e m) => GpioT e h m m (PinValue, PinValue, PinValue, PinValue)
-testWritePinIdempotent' =
-  do handle <- openPin (Pin 1)
-     case handle of
-       Left e -> throwError e
-       Right d ->
-         do writePin' d High
-            val1 <- samplePin d
-            writePin' d High
-            val2 <- samplePin d
-            writePin' d Low
-            val3 <- samplePin d
-            writePin' d Low
-            val4 <- samplePin d
+testSetReadTriggerIdempotent :: (MonadError e m) => GpioT h m m (Maybe PinReadTrigger, Maybe PinReadTrigger)
+testSetReadTriggerIdempotent =
+  do d <- openPin (Pin 1)
+     setPinReadTrigger d FallingEdge
+     t1 <- getPinReadTrigger d
+     setPinReadTrigger d FallingEdge
+     t2 <- getPinReadTrigger d
+     closePin d
+     return (t1, t2)
+
+testSetDirectionIdempotent :: (MonadError e m) => GpioT h m m (PinDirection, PinDirection)
+testSetDirectionIdempotent =
+  do d <- openPin (Pin 1)
+     (Just dir1) <- getPinDirection d
+     case dir1 of
+       In ->
+         do setPinDirection d In
+            (Just dir2) <- getPinDirection d
             closePin d
-            return (val1, val2, val3, val4)
-
-testTogglePinValue :: (MonadError e m) => GpioT e h m m (PinValue, PinValue, PinValue, PinValue, PinValue)
-testTogglePinValue =
-  do handle <- openPin (Pin 1)
-     case handle of
-       Left e -> throwError e
-       Right d ->
+            return (dir1,dir2)
+       Out ->
          do setPinDirection d Out
-            val1 <- samplePin d
-            val2 <- togglePinValue d
-            val3 <- samplePin d
-            val4 <- togglePinValue d
-            val5 <- samplePin d
+            (Just dir2) <- getPinDirection d
             closePin d
-            return (val1, val2, val3, val4, val5)
+            return (dir1,dir2)
 
-invalidHandle :: (MonadError e m) => (h -> GpioT e h m m a) -> GpioT e h m m a
+testTogglePinDirection :: (MonadError e m) => GpioT h m m (PinDirection, PinDirection, PinDirection, PinDirection, PinDirection)
+testTogglePinDirection =
+  do d <- openPin (Pin 1)
+     (Just dir1) <- getPinDirection d
+     (Just dir2) <- togglePinDirection d
+     (Just dir3) <- getPinDirection d
+     (Just dir4) <- togglePinDirection d
+     (Just dir5) <- getPinDirection d
+     closePin d
+     return (dir1, dir2, dir3, dir4, dir5)
+
+testSampleWritePin :: (MonadError e m) => GpioT h m m (PinValue, PinValue, PinValue)
+testSampleWritePin =
+  do d <- openPin (Pin 1)
+     setPinDirection d Out
+     val1 <- samplePin d
+     case val1 of
+       Low ->
+         do writePin d High
+            val2 <- samplePin d
+            writePin d Low
+            val3 <- samplePin d
+            closePin d
+            return (val1,val2,val3)
+       High ->
+         do writePin d Low
+            val2 <- samplePin d
+            writePin d High
+            val3 <- samplePin d
+            closePin d
+            return (val1,val2,val3)
+
+testSampleWritePinIdempotent :: (MonadError e m) => GpioT h m m (PinValue, PinValue)
+testSampleWritePinIdempotent =
+  do d <- openPin (Pin 1)
+     setPinDirection d Out
+     val1 <- samplePin d
+     case val1 of
+       Low ->
+         do writePin d Low
+            val2 <- samplePin d
+            closePin d
+            return (val1,val2)
+       High ->
+         do writePin d High
+            val2 <- samplePin d
+            closePin d
+            return (val1,val2)
+
+testWritePinFailsOnInputPin :: (MonadError e m) => GpioT h m m ()
+testWritePinFailsOnInputPin =
+  do d <- openPin (Pin 1)
+     setPinDirection d In
+     writePin d High
+     closePin d
+
+testWritePin' :: (MonadError e m) => GpioT h m m (PinValue, PinValue, Maybe PinDirection, Maybe PinDirection)
+testWritePin' =
+  do d1 <- openPin (Pin 1)
+     d2 <- openPin (Pin 2)
+     writePin' d1 High
+     val1 <- samplePin d1
+     writePin' d2 Low
+     val2 <- samplePin d2
+     dir1 <- getPinDirection d1
+     dir2 <- getPinDirection d2
+     closePin d1
+     closePin d2
+     return (val1, val2, dir1, dir2)
+
+testWritePinIdempotent' :: (MonadError e m) => GpioT h m m (PinValue, PinValue, PinValue, PinValue)
+testWritePinIdempotent' =
+  do d <- openPin (Pin 1)
+     writePin' d High
+     val1 <- samplePin d
+     writePin' d High
+     val2 <- samplePin d
+     writePin' d Low
+     val3 <- samplePin d
+     writePin' d Low
+     val4 <- samplePin d
+     closePin d
+     return (val1, val2, val3, val4)
+
+testTogglePinValue :: (MonadError e m) => GpioT h m m (PinValue, PinValue, PinValue, PinValue, PinValue)
+testTogglePinValue =
+  do d <- openPin (Pin 1)
+     setPinDirection d Out
+     val1 <- samplePin d
+     val2 <- togglePinValue d
+     val3 <- samplePin d
+     val4 <- togglePinValue d
+     val5 <- samplePin d
+     closePin d
+     return (val1, val2, val3, val4, val5)
+
+invalidHandle :: (MonadError e m) => (h -> GpioT h m m a) -> GpioT h m m a
 invalidHandle action =
-  do handle <- openPin (Pin 1)
-     case handle of
-       Left e -> throwError e
-       Right d ->
-         do closePin d
-            action d
+  do d <- openPin (Pin 1)
+     closePin d
+     action d
 
-testWithPin :: (MonadError e m) => GpioT e h m m PinValue
+testWithPin :: (MonadError e m) => GpioT h m m PinValue
 testWithPin = withPin (Pin 1) $ \h ->
   do setPinDirection h Out
      writePin h High
      val <- samplePin h
      return val
 
-testNestedWithPin :: (MonadError e m) => GpioT e h m m (PinValue, PinValue)
+testNestedWithPin :: (MonadError e m) => GpioT h m m (PinValue, PinValue)
 testNestedWithPin =
   withPin (Pin 1) $ \h1 ->
     withPin (Pin 2) $ \h2 ->
@@ -243,7 +204,7 @@ testNestedWithPin =
          val2 <- samplePin h2
          return (val1, val2)
 
-testNestedWithPinError :: (MonadError e m) => GpioT e h m m (PinValue, PinValue)
+testNestedWithPinError :: (MonadError e m) => GpioT h m m (PinValue, PinValue)
 testNestedWithPinError =
   withPin (Pin 1) $ \h1 ->
     withPin (Pin 2) $ \h2 ->
@@ -255,14 +216,11 @@ testNestedWithPinError =
          val2 <- samplePin h2
          return (val1, val2)
 
-testErrorInComputation :: (MonadError String m) => GpioT e h m m h
+testErrorInComputation :: (MonadError String m) => GpioT h m m h
 testErrorInComputation =
-  do handle <- openPin (Pin 1)
-     case handle of
-       Left _ -> throwError "openPin failed"
-       Right h ->
-         do closePin h
-            throwError "Expected error"
+  do d <- openPin (Pin 1)
+     closePin d
+     throwError "Expected error"
 
 spec :: Spec
 spec =

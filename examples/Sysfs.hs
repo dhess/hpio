@@ -16,7 +16,7 @@ import System.GPIO.Types
 output :: (MonadIO m) => String -> m ()
 output = liftIO . putStrLn
 
-pickAPin :: (MonadIO m) => GpioT e h m m Pin
+pickAPin :: (MonadIO m) => GpioT h m m Pin
 pickAPin =
   do availablePins <- pins
      output ("GPIO pins available: " ++ show availablePins)
@@ -26,7 +26,7 @@ pickAPin =
             return $ Pin 0
        p:_ -> return p
 
-example :: (MonadIO m, MonadError e m) => GpioT e h m m ()
+example :: (MonadIO m, MonadError e m) => GpioT h m m ()
 example =
   do p <- pickAPin
      output ("Opening " ++ show p)

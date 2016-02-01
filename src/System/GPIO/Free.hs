@@ -2,19 +2,6 @@
 --
 -- To make it easier to use the eDSL in typical scenarios, the eDSL is
 -- implemented as a functor for the 'FreeT' transformer.
---
--- As the acronym implies, GPIO means performing I/O; therefore
--- unexpected errors may occur during program excecution. The 'GpioF'
--- eDSL makes allowances for "expected" failures (e.g., attempting to
--- open a pin may fail), but how unxpected failures are handled is a
--- detail left to each particular interpreter. The interpreters
--- included in the 'gpio' package strive to cleanly separate errors
--- which occur in the program itself (semantic errors, e.g., writing
--- to a pin that is configured for input), errors which occur in the
--- interpreter implementation (e.g., reading an unexpected value from
--- a sytem-level GPIO interface), and errors which occur during I/O
--- (e.g., while still in use by the program, a pin is unexpectedly
--- unexported by the system or by another program.)
 
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -51,25 +38,25 @@ import Control.Monad.Trans.Free (FreeT, MonadFree, liftF)
 import Control.Monad.Free.TH (makeFreeCon)
 
 -- | Commands for the GPIO eDSL.
-data GpioF e h m next where
-  Pins :: ([Pin] -> next) -> GpioF e h m next
-  OpenPin :: Pin -> (Either e h -> next) -> GpioF e h m next
-  ClosePin :: h -> next -> GpioF e h m next
-  GetPinDirection :: h -> (Maybe PinDirection -> next) -> GpioF e h m next
-  SetPinDirection :: h -> PinDirection -> next -> GpioF e h m next
-  TogglePinDirection :: h -> (Maybe PinDirection -> next) -> GpioF e h m next
-  SamplePin :: h -> (PinValue -> next) -> GpioF e h m next
-  ReadPin :: h -> (PinValue -> next) -> GpioF e h m next
-  WritePin :: h -> PinValue -> next -> GpioF e h m next
-  WritePin' :: h -> PinValue -> next -> GpioF e h m next
-  TogglePinValue :: h -> (PinValue -> next) -> GpioF e h m next
-  GetPinReadTrigger :: h -> (Maybe PinReadTrigger -> next) -> GpioF e h m next
-  SetPinReadTrigger :: h -> PinReadTrigger -> next -> GpioF e h m next
-  GetPinActiveLevel :: h -> (PinValue -> next) -> GpioF e h m next
-  SetPinActiveLevel :: h -> PinValue -> next -> GpioF e h m next
-  WithPin :: Pin -> (h -> GpioT e h m m a) -> (a -> next) -> GpioF e h m next
+data GpioF h m next where
+  Pins :: ([Pin] -> next) -> GpioF h m next
+  OpenPin :: Pin -> (h -> next) -> GpioF h m next
+  ClosePin :: h -> next -> GpioF h m next
+  GetPinDirection :: h -> (Maybe PinDirection -> next) -> GpioF h m next
+  SetPinDirection :: h -> PinDirection -> next -> GpioF h m next
+  TogglePinDirection :: h -> (Maybe PinDirection -> next) -> GpioF h m next
+  SamplePin :: h -> (PinValue -> next) -> GpioF h m next
+  ReadPin :: h -> (PinValue -> next) -> GpioF h m next
+  WritePin :: h -> PinValue -> next -> GpioF h m next
+  WritePin' :: h -> PinValue -> next -> GpioF h m next
+  TogglePinValue :: h -> (PinValue -> next) -> GpioF h m next
+  GetPinReadTrigger :: h -> (Maybe PinReadTrigger -> next) -> GpioF h m next
+  SetPinReadTrigger :: h -> PinReadTrigger -> next -> GpioF h m next
+  GetPinActiveLevel :: h -> (PinValue -> next) -> GpioF h m next
+  SetPinActiveLevel :: h -> PinValue -> next -> GpioF h m next
+  WithPin :: Pin -> (h -> GpioT h m m a) -> (a -> next) -> GpioF h m next
 
-instance Functor (GpioF e h m) where
+instance Functor (GpioF h m) where
   fmap f (Pins g) = Pins (f . g)
   fmap f (OpenPin p g) = OpenPin p (f . g)
   fmap f (ClosePin h x) = ClosePin h (f x)
@@ -88,14 +75,14 @@ instance Functor (GpioF e h m) where
   fmap f (WithPin p block g) = WithPin p block (f . g)
 
 -- | A transformer which adds GPIO programs to a monad stack. The 'e'
--- type parameter is an exception type for representing errors in the
+-- type parameter is anxception type for representingrrors in the
 -- program; 'h' is an abstract pin handle for operating on opened
 -- pins; and 'm' is the wrapped monad.
 --
 -- Note that the 'm' parameter is required in order to implement the
 -- 'WithPin' command, which runs programs within programs and is
 -- therefore dependent on the wrapped monad type.
-type GpioT e h m = FreeT (GpioF e h m)
+type GpioT h m = FreeT (GpioF h m)
 
 -- | Get a list of available GPIO pins on the system.
 --
@@ -105,10 +92,7 @@ type GpioT e h m = FreeT (GpioF e h m)
 -- returned by this function.
 makeFreeCon 'Pins
 
--- | Open a pin for use. If the pin can be opened, the function
--- returns 'Right' 'h', a handle which is used to operate on the pin.
--- If the pin cannot be opened (e.g., due to a permissions failure),
--- the function returns an error value as 'Left' 'e'.
+-- | Open a pin for use and return a handle to it.
 makeFreeCon 'OpenPin
 
 -- | Close a pin; i.e., indicate to the system that you no longer
