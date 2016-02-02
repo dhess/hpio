@@ -22,7 +22,7 @@ import Control.Monad.Catch (Exception, MonadMask(..), MonadThrow(..), bracket, t
 import Control.Monad.Trans.Free (iterT)
 import Data.Typeable (Typeable)
 import System.GPIO.Free (GpioF(..), GpioT, openPin, closePin, samplePin, writePin, getPinDirection, setPinDirection)
-import System.GPIO.Linux.MonadSysfs (MonadSysfs(..))
+import System.GPIO.Linux.MonadSysfs (MonadSysfs(..), toPinReadTrigger, toSysfsEdge)
 import System.GPIO.Types
 
 -- | Exceptions that can be thrown by 'SysfsT' computations.
@@ -140,11 +140,11 @@ runSysfsT = iterT run
            False -> next Nothing
            True ->
              do edge <- readPinEdge p
-                next $ Just edge
+                next $ Just (toPinReadTrigger edge)
 
     run (SetPinReadTrigger d trigger next) =
       do let p = pin d
-         writePinEdge p trigger
+         writePinEdge p $ toSysfsEdge trigger
          next
 
     -- N.B.: Linux's "active_low" is the opposite of the eDSL's

@@ -210,16 +210,16 @@ threadWaitReadPinValueIO p = liftIO $
 writePinValueIO :: (MonadIO m) => Pin -> PinValue -> m ()
 writePinValueIO p v = liftIO $ IO.writeFile (pinValueFileName p) (toSysfsPinValue v)
 
-readPinEdgeIO :: (MonadIO m) => Pin -> m PinReadTrigger
+readPinEdgeIO :: (MonadIO m) => Pin -> m SysfsEdge
 readPinEdgeIO p =
   liftIO $ IOS.readFile (pinEdgeFileName p) >>= \case
-    "none\n"  -> return Disabled
-    "rising\n" -> return RisingEdge
-    "falling\n" -> return FallingEdge
-    "both\n" -> return Level
+    "none\n"  -> return None
+    "rising\n" -> return Rising
+    "falling\n" -> return Falling
+    "both\n" -> return Both
     _     -> throwM $ UnexpectedEdge p
 
-writePinEdgeIO :: (MonadIO m) => Pin -> PinReadTrigger -> m ()
+writePinEdgeIO :: (MonadIO m) => Pin -> SysfsEdge -> m ()
 writePinEdgeIO p v = liftIO $ IO.writeFile (pinEdgeFileName p) (toSysfsPinEdge v)
 
 readPinActiveLowIO :: (MonadIO m) => Pin -> m Bool
@@ -244,11 +244,11 @@ availablePinsIO =
 lowercase :: String -> String
 lowercase = fmap toLower
 
-toSysfsPinEdge :: PinReadTrigger -> String
-toSysfsPinEdge Disabled = "none"
-toSysfsPinEdge RisingEdge = "rising"
-toSysfsPinEdge FallingEdge = "falling"
-toSysfsPinEdge Level = "both"
+toSysfsPinEdge :: SysfsEdge -> String
+toSysfsPinEdge None = "none"
+toSysfsPinEdge Rising = "rising"
+toSysfsPinEdge Falling = "falling"
+toSysfsPinEdge Both = "both"
 
 toSysfsPinValue :: PinValue -> String
 toSysfsPinValue Low = "0"

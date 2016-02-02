@@ -68,7 +68,7 @@ data MockState =
             , direction :: !PinDirection
             , activeLow :: !Bool
             , value :: !PinValue -- This is the line level
-            , edge :: Maybe PinReadTrigger
+            , edge :: Maybe SysfsEdge
             } deriving (Show, Eq)
 
 -- | Default initial state of mock pins.
@@ -78,7 +78,7 @@ defaultState = MockState { exported = False
                          , direction = Out
                          , activeLow = False
                          , value = Low
-                         , edge = Just Disabled
+                         , edge = Just None
                          }
 
 -- | Maps pins to their state
@@ -202,16 +202,13 @@ writePinValueMock p v =
        In -> ioErr (writePinValueErrorPermissionDenied p)
        Out -> updatePinState p (s { value = logicalLevel (activeLow s) v })
 
-readPinEdgeMock :: (MonadIO m) => Pin -> SysfsMockT m PinReadTrigger
+readPinEdgeMock :: (MonadIO m) => Pin -> SysfsMockT m SysfsEdge
 readPinEdgeMock p =
   checkedPinState p edge (readPinEdgeErrorNoSuchThing p) >>= \case
     Nothing -> ioErr (readPinEdgeErrorNoSuchThing p)
-    Just Disabled -> return Disabled
-    Just RisingEdge -> return RisingEdge
-    Just FallingEdge -> return FallingEdge
-    Just Level -> return Level
+    Just x -> return x
 
-writePinEdgeMock :: (MonadIO m) => Pin -> PinReadTrigger -> SysfsMockT m ()
+writePinEdgeMock :: (MonadIO m) => Pin -> SysfsEdge -> SysfsMockT m ()
 writePinEdgeMock p t =
   do s <- checkedPinState p id (writePinEdgeErrorNoSuchThing p)
      case (edge s) of

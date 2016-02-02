@@ -6,9 +6,16 @@
 -- 'Control.Monad.Trans.Free.FreeT' transformer, you can use this
 -- typeclass directly.
 
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric #-}
+
 module System.GPIO.Linux.MonadSysfs
        ( -- * MonadSysfs class
          MonadSysfs(..)
+         -- * 'sysfs'-specific types
+       , SysfsEdge(..)
+       , toPinReadTrigger
+       , toSysfsEdge
         -- * Convenience functions
        , sysfsPath
        , exportFileName
@@ -33,6 +40,8 @@ import qualified Control.Monad.Trans.State.Lazy as LazyState (StateT)
 import qualified Control.Monad.Trans.State.Strict as StrictState (StateT)
 import qualified Control.Monad.Trans.Writer.Lazy as LazyWriter (WriterT)
 import qualified Control.Monad.Trans.Writer.Strict as StrictWriter (WriterT)
+import Data.Data
+import GHC.Generics
 import System.FilePath ((</>))
 import System.GPIO.Types
 
@@ -82,6 +91,34 @@ pinEdgeFileName p = pinDirName p </> "edge"
 pinValueFileName :: Pin -> FilePath
 pinValueFileName p = pinDirName p </> "value"
 
+-- | In Linux, GPIO pins that can be configured to generate inputs
+-- have an "edge" attribute in the 'sysfs' GPIO filesystem. This type
+-- represents the values that the "edge" attribute can take.
+--
+-- This type is isomorphic to the 'PinReadTrigger' type in the
+-- 'System.GPIO.Free.GpioF' eDSL.
+data SysfsEdge
+  = None
+  | Rising
+  | Falling
+  | Both
+  deriving (Bounded,Enum,Eq,Data,Ord,Read,Show,Generic)
+
+-- | Convert a 'SysfsEdge' value to its equivalent 'PinReadTrigger'
+-- value.
+toPinReadTrigger :: SysfsEdge -> PinReadTrigger
+toPinReadTrigger None = Disabled
+toPinReadTrigger Rising = RisingEdge
+toPinReadTrigger Falling = FallingEdge
+toPinReadTrigger Both = Level
+
+-- | Convert a 'PinReadTrigger' value to its equivalent 'SysfsEdge'
+-- value.
+toSysfsEdge :: PinReadTrigger -> SysfsEdge
+toSysfsEdge Disabled = None
+toSysfsEdge RisingEdge = Rising
+toSysfsEdge FallingEdge = Falling
+toSysfsEdge Level = Both
 
 -- | Monads in which low-level Linux 'sysfs' GPIO-like operations may be
 -- embedded.
@@ -164,13 +201,13 @@ class (Monad m) => MonadSysfs m where
   --
   -- It is an error to call this function when the pin has no "edge"
   -- attribute.
-  readPinEdge :: Pin -> m PinReadTrigger
+  readPinEdge :: Pin -> m SysfsEdge
 
   -- | Write the given pin's "edge" 'sysfs' attribute.
   --
   -- It is an error to call this function when the pin has no "edge"
   -- attribute.
-  writePinEdge :: Pin -> PinReadTrigger -> m ()
+  writePinEdge :: Pin -> SysfsEdge -> m ()
 
   -- | Read the given pin's "active_low" 'sysfs' attribute.
   readPinActiveLow :: Pin -> m Bool

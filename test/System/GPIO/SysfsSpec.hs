@@ -5,6 +5,7 @@ module System.GPIO.SysfsSpec (spec) where
 
 import qualified Data.Map.Strict as Map
 import System.GPIO.Free
+import System.GPIO.Linux.MonadSysfs (SysfsEdge(..))
 import System.GPIO.Linux.SysfsMock
 import System.GPIO.Types
 
@@ -279,7 +280,7 @@ spec =
        do it "gets the pin's read trigger" $
             let world1 = mockWorld [Pin 1]
                 world2 =
-                  Map.fromList [(Pin 1, defaultState {edge = Just FallingEdge})]
+                  Map.fromList [(Pin 1, defaultState {edge = Just Falling})]
                 expectedResult1 = (Just Disabled, world1)
                 expectedResult2 = (Just FallingEdge, world2)
             in
@@ -295,12 +296,12 @@ spec =
        do it "sets the pin's read trigger" $
             let world = mockWorld [Pin 1]
                 expectedResult = ((Just Disabled, Just RisingEdge, Just FallingEdge, Just Level),
-                                  Map.fromList [(Pin 1, defaultState {edge = Just Level})])
+                                  Map.fromList [(Pin 1, defaultState {edge = Just Both})])
             in runSysfsMock testSetReadTrigger world `shouldReturn` expectedResult
           it "is idempotent" $
             let world = mockWorld [Pin 1]
                 expectedResult = ((Just FallingEdge, Just FallingEdge),
-                                 Map.fromList [(Pin 1, defaultState {edge = Just FallingEdge})])
+                                 Map.fromList [(Pin 1, defaultState {edge = Just Falling})])
             in runSysfsMock testSetReadTriggerIdempotent world `shouldReturn` expectedResult
           it "fails when the pin's direction is not settable" $
             let world =
