@@ -1,4 +1,4 @@
--- | A 'GpioF' interpreter for Linux GPIO via sysfs.
+-- | A 'GpioF' interpreter for Linux GPIO via 'sysfs'.
 
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -7,13 +7,13 @@
 module System.GPIO.Linux.Sysfs
        ( -- * MonadSysfs class
          MonadSysfs(..)
-         -- * The Linux sysfs GPIO interpreter
+         -- * The Linux 'sysfs' GPIO interpreter
        , SysfsF
        , SysfsT
        , runSysfsT
          -- * Exceptions
        , SysfsException(..)
-         -- * Linux sysfs GPIO types
+         -- * Linux 'sysfs' GPIO types
        , PinDescriptor(..)
        ) where
 
@@ -26,12 +26,13 @@ import System.GPIO.Linux.MonadSysfs (MonadSysfs(..), toPinReadTrigger, toSysfsEd
 import System.GPIO.Types
 
 -- | Exceptions that can be thrown by 'SysfsT' computations (in
--- addition to general 'System.IO.Error.IOError's). The "UnexpectedX"
+-- addition to general 'System.IO.Error.IOError's). The @UnexpectedX@
 -- values are truly exceptional and mean that, while the 'sysfs'
 -- attribute for the given pin exists, the contents of the attribute
 -- do not match any expected value for that attribute. (This would
 -- probably be indicative of a fundamental kernel-level GPIO change or
--- enhancement and the need for an updated 'SysfsT' interpreter.)
+-- enhancement, and the need for an updated 'SysfsT' interpreter to
+-- handle the new value(s).)
 data SysfsException
   = SysfsNotPresent
   | UnexpectedDirection Pin String
@@ -42,24 +43,24 @@ data SysfsException
 
 instance Exception SysfsException
 
--- | The sysfs interpreter's pin handle type. Currently it's just a
+-- | The 'sysfs' interpreter's pin handle type. Currently it's just a
 -- newtype wrapper around a 'Pin'. The constructor is exported for
 -- convenience, but note that the implementation may change in future
 -- versions of the package.
 newtype PinDescriptor = PinDescriptor { pin :: Pin } deriving (Show, Eq, Ord)
 
--- | A monad transformer which adds Linux sysfs GPIO computations to
+-- | A monad transformer which adds Linux 'sysfs' GPIO computations to
 -- other monads.
 type SysfsT m = GpioT PinDescriptor m
 
--- | The Linux sysfs GPIO DSL type.
+-- | The Linux 'sysfs' GPIO DSL type.
 type SysfsF m = GpioF PinDescriptor m
 
 -- | Run a 'SysfsT' computation embedded in monad 'm' and return the
 -- result. Errors that occur in the interpreter are thrown as
 -- 'SysfsException' values. (Errors that could occur in the
 -- interpreter are generally limited to reading unexpected results
--- from various sysfs GPIO control files.)
+-- from various 'sysfs' GPIO control files.)
 runSysfsT :: (MonadMask m, MonadThrow m, MonadSysfs m) => (SysfsT m) m a -> m a
 runSysfsT = iterT run
   where

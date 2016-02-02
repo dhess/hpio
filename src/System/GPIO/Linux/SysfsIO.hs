@@ -126,7 +126,7 @@ newtype SysfsIOT m a =
   SysfsIOT { runSysfsIOT :: m a }
   deriving (Alternative,Applicative,Functor,Monad,MonadIO,MonadThrow,MonadCatch,MonadMask)
 
--- | A convenient specialization of 'SysfsT' which runs GPIO
+-- | A convenient specialization of 'SysfsT' which runs GPIO eDSL
 -- computations in 'IO'.
 type SysfsIO a = SysfsT (SysfsIOT IO) (SysfsIOT IO) a
 
@@ -154,9 +154,7 @@ instance (MonadIO m, MonadThrow m) => MonadSysfs (SysfsIOT m) where
   writePinActiveLow = writePinActiveLowIO
   availablePins = availablePinsIO
 
-
--- Helper functions that aren't exported.
---
+-- 'MonadSysfs' implementation.
 
 sysfsIsPresentIO :: (MonadIO m) => m Bool
 sysfsIsPresentIO = liftIO $ doesDirectoryExist sysfsPath
@@ -240,6 +238,9 @@ availablePinsIO =
      let chipDirs = filter (\f -> isPrefixOf "gpiochip" $ takeFileName f) sysfsDirectories
      maybePins <- mapM (runMaybeT . pinRange) chipDirs
      return $ sort $ concat $ catMaybes maybePins
+
+-- Helper functions that aren't exported.
+--
 
 lowercase :: String -> String
 lowercase = fmap toLower

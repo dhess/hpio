@@ -13,14 +13,14 @@
 --
 -- * The blocking behavior of 'System.GPIO.Free.readPin' is not implemented.
 --
--- * sysfs is not present.
+-- * A "sysfs is not present" condition.
 --
 -- * Insufficient permissions.
 --
 -- * While the program is running, a pin is exported/unexported by a
 -- third party, or its direction changed.
 --
--- * Generally broken sysfs (e.g., files which are expected to be
+-- * Generally broken 'sysfs' (e.g., files which are expected to be
 -- present during standard operation are not).
 
 {-# LANGUAGE FlexibleContexts #-}
@@ -89,31 +89,25 @@ type MockWorld = Map Pin MockState
 mockWorld :: [Pin] -> MockWorld
 mockWorld pins = Map.fromList $ zip pins (repeat defaultState)
 
--- | A monad transformer which adds mock sysfs computations to an
+-- | A monad transformer which adds mock 'sysfs' computations to an
 -- inner monad 'm'.
 newtype SysfsMockT m a =
   SysfsMockT { unSysfsMockT :: StateT MockWorld m a }
   deriving (Alternative,Applicative,Functor,Monad,MonadState MockWorld,MonadReader r,MonadWriter w,MonadFix,MonadPlus,MonadIO,MonadCont,MonadTrans,MonadCatch,MonadThrow,MonadMask)
 
--- | Run a mock sysfs computation with the given 'MockWorld', and
+-- | Run a mock 'sysfs' computation with the given 'MockWorld', and
 -- return a tuple containing the final value and final 'MockWorld'
 -- state.
 runSysfsMockT :: (MonadIO m) => SysfsMockT m a -> MockWorld -> m (a, MockWorld)
 runSysfsMockT action world = runStateT (unSysfsMockT action) world
 
 -- | A convenient specialization of 'SysfsT' which runs GPIO
--- computations in the mock sysfs environment, and returns results as
--- 'Either' 'String' 'a'.
+-- computations in the mock 'sysfs' environment.
 type SysfsMock a = SysfsT (SysfsMockT IO) (SysfsMockT IO) a
 
--- | Run a 'SysfsT' computation in the mock syfs environment with the
--- given 'MockWorld', and return a tuple containing the final value
--- and final 'MockWorld' state. If an error occurs in the computation,
--- in the 'SysfsT' interpreter, or in the mock sysfs environment, it
--- will be thrown as an 'Control.Exception.Base.IOException'. In other
--- words, all errors will be expressed as
--- 'Control.Exception.Base.IOException's, just as a plain 'IO'
--- computation would do.
+-- | Run a 'SysfsMock' computation in the mock 'sysfs' environment
+-- with the given 'MockWorld', and return a tuple containing the final
+-- value and final 'MockWorld' state.
 runSysfsMock :: SysfsMock a -> MockWorld -> IO (a, MockWorld)
 runSysfsMock action world = runSysfsMockT (runSysfsT action) world
 
@@ -336,7 +330,7 @@ readPinActiveLowErrorNoSuchThing p = mkErrorNoSuchThing "openFile" (pinActiveLow
 writePinActiveLowErrorNoSuchThing :: Pin -> IOError
 writePinActiveLowErrorNoSuchThing = readPinActiveLowErrorNoSuchThing
 
--- GPIO sysfs directory doesn't exist.
+-- GPIO 'sysfs' directory doesn't exist.
 availablePinsErrorNoSuchThing :: IOError
 availablePinsErrorNoSuchThing = mkErrorNoSuchThing "getDirectoryContents" sysfsPath
 

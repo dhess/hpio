@@ -74,10 +74,9 @@ instance Functor (GpioF h m) where
   fmap f (SetPinActiveLevel h v x) = SetPinActiveLevel h v (f x)
   fmap f (WithPin p block g) = WithPin p block (f . g)
 
--- | A transformer which adds GPIO programs to a monad stack. The 'e'
--- type parameter is anxception type for representingrrors in the
--- program; 'h' is an abstract pin handle for operating on opened
--- pins; and 'm' is the wrapped monad.
+-- | A transformer which adds GPIO programs to a monad stack. 'h' is
+-- an abstract pin handle for operating on opened pins, and 'm' is the
+-- wrapped monad.
 --
 -- Note that the 'm' parameter is required in order to implement the
 -- 'WithPin' command, which runs programs within programs and is
@@ -122,10 +121,10 @@ makeFreeCon 'SetPinDirection
 -- 'Nothing'. Otherwise, it returns the new direction.
 makeFreeCon 'TogglePinDirection
 
--- | Sample the pin's /logical/ 'PinValue' (i.e., read the value
--- without blocking). Note that the pin's /physical/ line level is the
--- inverse of the returned value when the pin's active level is 'Low'.
--- (See 'getPinActiveLevel'.)
+-- | Sample the pin's /logical/ 'PinValue', where "sample" means "read
+-- the value without blocking." Note that the pin's /physical/ line
+-- level is the inverse of the returned value when the pin's active
+-- level is 'Low'. (See 'getPinActiveLevel'.)
 makeFreeCon 'SamplePin
 
 -- | Read the pin's /logical/ 'PinValue', potentially blocking the
@@ -152,7 +151,7 @@ makeFreeCon 'WritePin
 -- an error to call this function. (See 'getPinDirection' to determine
 -- safely whether the pin can be configured for output.)
 --
--- On some platforms (e.g., Linux sysfs GPIO), this operation is
+-- On some platforms (e.g., Linux 'sysfs' GPIO), this operation is
 -- atomic, permitting glitch-free operation when configuring an output
 -- pin's initial value. If the platform can't guarantee atomic
 -- operation, this command is performed as two separate steps (first
@@ -172,7 +171,7 @@ makeFreeCon 'GetPinReadTrigger
 
 -- | Set the pin's 'PinReadTrigger' mode.
 --
--- Some pins (or GPIO platforms) may not support edge- or
+-- Some pins (or entire platforms) may not support edge- or
 -- level-triggered blocking reads. In such cases, it is an error to
 -- call this function. To determine whether a pin supports blocking
 -- reads, call 'getReadPinTrigger' on the pin.

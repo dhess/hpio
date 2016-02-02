@@ -14,7 +14,7 @@ module System.GPIO.Types
        , pinNumber
        , invertDirection
        , invertValue
-         -- * PinValue <-> Bool conversions
+         -- * PinValue conversion to/from Bool
        , valueToBool
        , boolToValue
        ) where
@@ -26,6 +26,10 @@ import GHC.Generics
 import Test.QuickCheck
 
 -- | A GPIO pin, identified by pin number.
+--
+-- Note that GPIO pin numbering is platform- and runtime-dependent.
+-- See the documentation for each implementation for an explanation of
+-- how pin numbers are assigned to physical pins.
 newtype Pin =
   Pin Int
   deriving (Bounded,Enum,Eq,Data,Ord,Read,Ix,Show,Generic)

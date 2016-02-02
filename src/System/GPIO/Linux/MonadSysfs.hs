@@ -3,8 +3,24 @@
 --
 -- If you want to write low-level, Linux-specific GPIO programs
 -- without the overhead (and cross-platform portability!) of the
--- 'Control.Monad.Trans.Free.FreeT' transformer, you can use this
+-- 'Control.Monad.Trans.Free.FreeT'-based
+-- 'System.GPIO.Linux.Sysfs.SysfsT' interpreter, you can use this
 -- typeclass directly.
+--
+-- See the
+-- <https://www.kernel.org/doc/Documentation/gpio/sysfs.txt Linux kernel documentation>
+-- for the definitive description of the Linux 'sysfs'-based GPIO API
+-- and the terminology used in this module.
+--
+-- == Pin numbering
+--
+-- 'MonadSysfs' implementations use the same pin numbering scheme as
+-- the 'sysfs' GPIO filesystem. For example, 'Pin' 13 corresponds to
+-- @gpio13@ in the 'sysfs' filesystem. Note that the 'sysfs' pin
+-- numbering scheme is almost always different than the pin numbering
+-- scheme given by the platform/hardware documentation. Consult your
+-- platform documentation for the mapping of pin numbers between the
+-- two namespaces.
 
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
@@ -91,8 +107,8 @@ pinEdgeFileName p = pinDirName p </> "edge"
 pinValueFileName :: Pin -> FilePath
 pinValueFileName p = pinDirName p </> "value"
 
--- | In Linux, GPIO pins that can be configured to generate inputs
--- have an "edge" attribute in the 'sysfs' GPIO filesystem. This type
+-- | Linux GPIO pins that can be configured to generate inputs have an
+-- "edge" attribute in the 'sysfs' GPIO filesystem. This type
 -- represents the values that the "edge" attribute can take.
 --
 -- This type is isomorphic to the 'PinReadTrigger' type in the
@@ -179,11 +195,6 @@ class (Monad m) => MonadSysfs m where
   -- current "edge" attribute setting. (If the pin has no "edge"
   -- attribute, then this function will not block and will act like
   -- 'readPinValue'.)
-  --
-  -- This function is implemented via the C language FFI and is
-  -- annotated as @interruptible@. If your program is compiled with
-  -- GHC using the @-threaded@ option, this function will not block
-  -- other Haskell threads.
   threadWaitReadPinValue :: Pin -> m PinValue
 
   -- | Set the given pin's value.
