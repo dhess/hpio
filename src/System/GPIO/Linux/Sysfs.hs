@@ -25,13 +25,19 @@ import System.GPIO.Free (GpioF(..), GpioT, openPin, closePin, samplePin, writePi
 import System.GPIO.Linux.MonadSysfs (MonadSysfs(..), toPinReadTrigger, toSysfsEdge)
 import System.GPIO.Types
 
--- | Exceptions that can be thrown by 'SysfsT' computations.
+-- | Exceptions that can be thrown by 'SysfsT' computations (in
+-- addition to general 'System.IO.Error.IOError's). The "UnexpectedX"
+-- values are truly exceptional and mean that, while the 'sysfs'
+-- attribute for the given pin exists, the contents of the attribute
+-- do not match any expected value for that attribute. (This would
+-- probably be indicative of a fundamental kernel-level GPIO change or
+-- enhancement and the need for an updated 'SysfsT' interpreter.)
 data SysfsException
   = SysfsNotPresent
-  | UnexpectedDirection Pin
-  | UnexpectedValue Pin
-  | UnexpectedEdge Pin
-  | UnexpectedActiveLow Pin
+  | UnexpectedDirection Pin String
+  | UnexpectedValue Pin String
+  | UnexpectedEdge Pin String
+  | UnexpectedActiveLow Pin String
   deriving (Show,Typeable)
 
 instance Exception SysfsException

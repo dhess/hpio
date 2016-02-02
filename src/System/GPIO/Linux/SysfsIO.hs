@@ -181,7 +181,7 @@ readPinDirectionIO p =
   liftIO $ IOS.readFile (pinDirectionFileName p) >>= \case
     "in\n"  -> return In
     "out\n" -> return Out
-    _     -> throwM $ UnexpectedDirection p
+    x     -> throwM $ UnexpectedDirection p x
 
 writePinDirectionIO :: (MonadIO m) => Pin -> PinDirection -> m ()
 writePinDirectionIO p d = liftIO $ IO.writeFile (pinDirectionFileName p) (lowercase $ show d)
@@ -194,7 +194,7 @@ readPinValueIO p =
   liftIO $ IOS.readFile (pinValueFileName p) >>= \case
     "0\n" -> return Low
     "1\n" -> return High
-    _   -> throwM $ UnexpectedValue p
+    x   -> throwM $ UnexpectedValue p x
 
 threadWaitReadPinValueIO :: (MonadIO m) => Pin -> m PinValue
 threadWaitReadPinValueIO p = liftIO $
@@ -217,7 +217,7 @@ readPinEdgeIO p =
     "rising\n" -> return Rising
     "falling\n" -> return Falling
     "both\n" -> return Both
-    _     -> throwM $ UnexpectedEdge p
+    x     -> throwM $ UnexpectedEdge p x
 
 writePinEdgeIO :: (MonadIO m) => Pin -> SysfsEdge -> m ()
 writePinEdgeIO p v = liftIO $ IO.writeFile (pinEdgeFileName p) (toSysfsPinEdge v)
@@ -227,7 +227,7 @@ readPinActiveLowIO p =
   liftIO $ IOS.readFile (pinActiveLowFileName p) >>= \case
     "0\n" -> return False
     "1\n" -> return True
-    _   -> throwM $ UnexpectedActiveLow p
+    x   -> throwM $ UnexpectedActiveLow p x
 
 writePinActiveLowIO :: (MonadIO m) => Pin -> Bool -> m ()
 writePinActiveLowIO p v = liftIO $ IO.writeFile (pinActiveLowFileName p) (toSysfsActiveLowValue v)
