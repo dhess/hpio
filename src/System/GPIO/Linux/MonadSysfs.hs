@@ -42,7 +42,7 @@ module System.GPIO.Linux.MonadSysfs
        , pinEdgeFileName
        , pinValueFileName
          -- * Exceptions
-       , SomeSysfsException(..)
+       , SysfsException(..)
        ) where
 
 import Control.Monad.Catch (Exception)
@@ -118,7 +118,7 @@ pinValueFileName p = pinDirName p </> "value"
 -- would probably be indicative of a fundamental kernel-level GPIO
 -- change or enhancement, and the need for an updated 'SysfsT'
 -- interpreter to handle the new value(s).)
-data SomeSysfsException
+data SysfsException
   = SysfsNotPresent
   | UnexpectedDirection Pin String
   | UnexpectedValue Pin String
@@ -126,7 +126,7 @@ data SomeSysfsException
   | UnexpectedActiveLow Pin String
   deriving (Show,Typeable)
 
-instance Exception SomeSysfsException
+instance Exception SysfsException
 
 -- | Linux GPIO pins that can be configured to generate inputs have an
 -- "edge" attribute in the 'sysfs' GPIO filesystem. This type
