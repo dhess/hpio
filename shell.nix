@@ -27,7 +27,7 @@ let
           inline-c mtl QuickCheck strict text transformers unix
         ];
         homepage = "https://github.com/dhess/gpio";
-        description = "Control GPIO pins";
+        description = "Perform GPIO from Haskell";
         license = stdenv.lib.licenses.bsd3;
       };
 
