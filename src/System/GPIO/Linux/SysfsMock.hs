@@ -171,12 +171,12 @@ unexportPinMock p =
   do s <- checkedPinState p id unexportErrorInvalidArgument
      updatePinState p $ s { exported = False }
 
-readPinDirectionMock :: (MonadIO m) => Pin -> SysfsMockT m String
+readPinDirectionMock :: (MonadIO m) => Pin -> SysfsMockT m PinDirection
 readPinDirectionMock p =
   userVisibleDirection p >>= \case
     Nothing -> ioErr (readPinDirectionErrorNoSuchThing p)
-    Just In -> return "in\n"
-    Just Out -> return "out\n"
+    Just In -> return In
+    Just Out -> return Out
 
 writePinDirectionMock :: (MonadIO m) => Pin -> PinDirection -> SysfsMockT m ()
 writePinDirectionMock p dir =
@@ -190,12 +190,10 @@ writePinDirectionWithValueMock p v =
     Nothing -> ioErr (writePinDirectionErrorNoSuchThing p)
     Just s -> updatePinState p (s { direction = Out, value = logicalLevel (activeLow s) v})
 
-readPinValueMock :: (MonadIO m) => Pin -> SysfsMockT m String
+readPinValueMock :: (MonadIO m) => Pin -> SysfsMockT m PinValue
 readPinValueMock p =
   do s <- checkedPinState p id (readPinValueErrorNoSuchThing p)
-     case (logicalLevel (activeLow s) (value s)) of
-       Low -> return "0\n"
-       High -> return "1\n"
+     return (logicalLevel (activeLow s) (value s))
 
 writePinValueMock :: (MonadIO m) => Pin -> PinValue -> SysfsMockT m ()
 writePinValueMock p v =
@@ -204,14 +202,14 @@ writePinValueMock p v =
        In -> ioErr (writePinValueErrorPermissionDenied p)
        Out -> updatePinState p (s { value = logicalLevel (activeLow s) v })
 
-readPinEdgeMock :: (MonadIO m) => Pin -> SysfsMockT m String
+readPinEdgeMock :: (MonadIO m) => Pin -> SysfsMockT m PinReadTrigger
 readPinEdgeMock p =
   checkedPinState p edge (readPinEdgeErrorNoSuchThing p) >>= \case
     Nothing -> ioErr (readPinEdgeErrorNoSuchThing p)
-    Just Disabled -> return "none\n"
-    Just RisingEdge -> return "rising\n"
-    Just FallingEdge -> return "falling\n"
-    Just Level -> return "both\n"
+    Just Disabled -> return Disabled
+    Just RisingEdge -> return RisingEdge
+    Just FallingEdge -> return FallingEdge
+    Just Level -> return Level
 
 writePinEdgeMock :: (MonadIO m) => Pin -> PinReadTrigger -> SysfsMockT m ()
 writePinEdgeMock p t =
@@ -220,11 +218,9 @@ writePinEdgeMock p t =
        Nothing -> ioErr (writePinEdgeErrorNoSuchThing p)
        Just _ -> updatePinState p (s { edge = Just t })
 
-readPinActiveLowMock :: (MonadIO m) => Pin -> SysfsMockT m String
+readPinActiveLowMock :: (MonadIO m) => Pin -> SysfsMockT m Bool
 readPinActiveLowMock p =
-  checkedPinState p activeLow (readPinActiveLowErrorNoSuchThing p) >>= \case
-    False -> return "0\n"
-    True -> return "1\n"
+  checkedPinState p activeLow (readPinActiveLowErrorNoSuchThing p)
 
 writePinActiveLowMock :: (MonadIO m) => Pin -> Bool -> SysfsMockT m ()
 writePinActiveLowMock p v =

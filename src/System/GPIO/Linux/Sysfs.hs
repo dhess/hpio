@@ -12,7 +12,7 @@ module System.GPIO.Linux.Sysfs
        , SysfsT
        , runSysfsT
          -- * Exceptions
-       , SysfsException
+       , SysfsException(..)
          -- * Linux sysfs GPIO types
        , PinDescriptor(..)
        ) where
@@ -91,10 +91,7 @@ runSysfsT = iterT run
            False -> next Nothing
            True ->
              do dir <- readPinDirection p
-                case dir of
-                  "in\n"  -> next $ Just In
-                  "out\n" -> next $ Just Out
-                  _     -> throwM $ UnexpectedDirection p
+                next $ Just dir
 
     run (SetPinDirection d dir next) =
       do let p = pin d
@@ -113,18 +110,12 @@ runSysfsT = iterT run
     run (SamplePin d next) =
       do let p = pin d
          value <- readPinValue p
-         case value of
-           "0\n" -> next Low
-           "1\n" -> next High
-           _   -> throwM $ UnexpectedValue p
+         next value
 
     run (ReadPin d next) =
       do let p = pin d
          value <- threadWaitReadPinValue p
-         case value of
-           "0\n" -> next Low
-           "1\n" -> next High
-           _   -> throwM $ UnexpectedValue p
+         next value
 
     run (WritePin d v next) =
       do let p = pin d
@@ -149,26 +140,22 @@ runSysfsT = iterT run
            False -> next Nothing
            True ->
              do edge <- readPinEdge p
-                case edge of
-                  "none\n"  -> next $ Just Disabled
-                  "rising\n" -> next $ Just RisingEdge
-                  "falling\n" -> next $ Just FallingEdge
-                  "both\n" -> next $ Just Level
-                  _     -> throwM $ UnexpectedEdge p
+                next $ Just edge
 
     run (SetPinReadTrigger d trigger next) =
       do let p = pin d
          writePinEdge p trigger
          next
 
+    -- N.B.: Linux's "active_low" is the opposite of the eDSL's
+    -- "active level"!
     run (GetPinActiveLevel d next) =
       do let p = pin d
-         value <- readPinActiveLow p
-         case value of
-           "0\n" -> next High
-           "1\n" -> next Low
-           _   -> throwM $ UnexpectedActiveLow p
+         activeLow <- readPinActiveLow p
+         next $ boolToValue (not activeLow)
 
+    -- N.B.: Linux's "active_low" is the opposite of the eDSL's
+    -- "active level"!
     run (SetPinActiveLevel d v next) =
       do let p = pin d
          writePinActiveLow p $ valueToBool (invertValue v)

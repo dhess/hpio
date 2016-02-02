@@ -21,6 +21,7 @@
 -- threading system interacts with the C FFI.)
 
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
@@ -134,7 +135,7 @@ type SysfsIO a = SysfsT (SysfsIOT IO) (SysfsIOT IO) a
 runSysfsIO :: SysfsIO a -> IO a
 runSysfsIO action = runSysfsIOT $ runSysfsT action
 
-instance (MonadIO m) => MonadSysfs (SysfsIOT m) where
+instance (MonadIO m, MonadThrow m) => MonadSysfs (SysfsIOT m) where
   sysfsIsPresent = sysfsIsPresentIO
   pinIsExported = pinIsExportedIO
   pinHasDirection = pinHasDirectionIO
@@ -175,8 +176,12 @@ exportPinIO (Pin n) = liftIO $ IO.writeFile exportFileName (show n)
 unexportPinIO :: (MonadIO m) => Pin -> m ()
 unexportPinIO (Pin n) = liftIO $ IO.writeFile unexportFileName (show n)
 
-readPinDirectionIO :: (MonadIO m) => Pin -> m String
-readPinDirectionIO p = liftIO $ IOS.readFile (pinDirectionFileName p)
+readPinDirectionIO :: (MonadIO m, MonadThrow m) => Pin -> m PinDirection
+readPinDirectionIO p =
+  liftIO $ IOS.readFile (pinDirectionFileName p) >>= \case
+    "in\n"  -> return In
+    "out\n" -> return Out
+    _     -> throwM $ UnexpectedDirection p
 
 writePinDirectionIO :: (MonadIO m) => Pin -> PinDirection -> m ()
 writePinDirectionIO p d = liftIO $ IO.writeFile (pinDirectionFileName p) (lowercase $ show d)
@@ -184,10 +189,14 @@ writePinDirectionIO p d = liftIO $ IO.writeFile (pinDirectionFileName p) (lowerc
 writePinDirectionWithValueIO :: (MonadIO m) => Pin -> PinValue -> m ()
 writePinDirectionWithValueIO p v = liftIO $ IO.writeFile (pinDirectionFileName p) (lowercase $ show v)
 
-readPinValueIO :: (MonadIO m) => Pin -> m String
-readPinValueIO p = liftIO $ IOS.readFile (pinValueFileName p)
+readPinValueIO :: (MonadIO m, MonadThrow m) => Pin -> m PinValue
+readPinValueIO p =
+  liftIO $ IOS.readFile (pinValueFileName p) >>= \case
+    "0\n" -> return Low
+    "1\n" -> return High
+    _   -> throwM $ UnexpectedValue p
 
-threadWaitReadPinValueIO :: (MonadIO m) => Pin -> m String
+threadWaitReadPinValueIO :: (MonadIO m) => Pin -> m PinValue
 threadWaitReadPinValueIO p = liftIO $
   do fd <- openFd (pinValueFileName p) ReadOnly Nothing defaultFileFlags
      throwErrnoIfMinus1Retry_ "pollSysfs" $ pollSysfs fd
@@ -201,14 +210,24 @@ threadWaitReadPinValueIO p = liftIO $
 writePinValueIO :: (MonadIO m) => Pin -> PinValue -> m ()
 writePinValueIO p v = liftIO $ IO.writeFile (pinValueFileName p) (toSysfsPinValue v)
 
-readPinEdgeIO :: (MonadIO m) => Pin -> m String
-readPinEdgeIO p = liftIO $ IOS.readFile (pinEdgeFileName p)
+readPinEdgeIO :: (MonadIO m) => Pin -> m PinReadTrigger
+readPinEdgeIO p =
+  liftIO $ IOS.readFile (pinEdgeFileName p) >>= \case
+    "none\n"  -> return Disabled
+    "rising\n" -> return RisingEdge
+    "falling\n" -> return FallingEdge
+    "both\n" -> return Level
+    _     -> throwM $ UnexpectedEdge p
 
 writePinEdgeIO :: (MonadIO m) => Pin -> PinReadTrigger -> m ()
 writePinEdgeIO p v = liftIO $ IO.writeFile (pinEdgeFileName p) (toSysfsPinEdge v)
 
-readPinActiveLowIO :: (MonadIO m) => Pin -> m String
-readPinActiveLowIO p = liftIO $ IOS.readFile (pinActiveLowFileName p)
+readPinActiveLowIO :: (MonadIO m) => Pin -> m Bool
+readPinActiveLowIO p =
+  liftIO $ IOS.readFile (pinActiveLowFileName p) >>= \case
+    "0\n" -> return False
+    "1\n" -> return True
+    _   -> throwM $ UnexpectedActiveLow p
 
 writePinActiveLowIO :: (MonadIO m) => Pin -> Bool -> m ()
 writePinActiveLowIO p v = liftIO $ IO.writeFile (pinActiveLowFileName p) (toSysfsActiveLowValue v)
