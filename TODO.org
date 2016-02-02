@@ -1,0 +1,26 @@
+* Implement QuickCheck types for PinReadTrigger, SysfsEdge.
+
+* Move SysfsException type to MonadSysfs.
+
+* Create top-level Linux.hs module with tidy exports.
+
+* Check compatibility with debounce, timeout
+
+* Investigate porting SysfsMock to CatchT and losing IO.
+
+* See if I can re-jig MonadSysfs documentation so that it's only exported for the MonadSysfs.hs module.
+
+* Review MonadSysfs instances.
+Is ContT appropriate? ExceptT? They're definitely not for SysfsIOT due
+to its MonadThrow constraint, but they might be OK for SysfsMock.
+
+* Get rid of errors package dependence.
+
+* Clean up .cabal, esp. extensions section.
+
+* Add a MonadSysfs example?
+
+* Release 0.6.0.
+Put it on Hackage? RFC on Reddit?
+
+* Implement FreeBSD GPIO (using ioctls?).
