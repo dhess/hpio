@@ -18,5 +18,5 @@ module System.GPIO
 
 import System.GPIO.Free
 import System.GPIO.Linux.Sysfs (MonadSysfs(..), SysfsF, SysfsT, runSysfsT)
-import System.GPIO.Linux.SysfsIO (SysfsIOT(..), SysfsIO, runSysfsIO, runSysfsIO', runSysfsIOSafe)
+import System.GPIO.Linux.SysfsIO (SysfsIOT(..), SysfsIO, runSysfsIO)
 import System.GPIO.Types

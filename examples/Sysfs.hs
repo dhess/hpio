@@ -4,13 +4,10 @@
 
 module Main where
 
-import Control.Error.Util (errLn)
 import Control.Monad (when)
-import Control.Monad.Except (MonadError)
 import Control.Monad.IO.Class (MonadIO, liftIO)
-import System.Exit (exitFailure)
 import System.GPIO.Free
-import System.GPIO.Linux.SysfsIO (runSysfsIOSafe)
+import System.GPIO.Linux.SysfsIO (runSysfsIO)
 import System.GPIO.Types
 
 output :: (MonadIO m) => String -> m ()
@@ -26,7 +23,7 @@ pickAPin =
             return $ Pin 0
        p:_ -> return p
 
-example :: (MonadIO m, MonadError e m) => GpioT h m m ()
+example :: (MonadIO m) => GpioT h m m ()
 example =
   do p <- pickAPin
      output ("Opening " ++ show p)
@@ -46,10 +43,4 @@ example =
                  writePin h newValue
 
 main :: IO ()
-main =
-  do result <- runSysfsIOSafe example
-     case result of
-       Left e ->
-         do errLn $ "Error: " ++ e
-            exitFailure
-       Right _ -> return ()
+main = runSysfsIO example

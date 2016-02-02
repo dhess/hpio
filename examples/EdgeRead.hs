@@ -4,14 +4,11 @@
 module Main where
 
 import Control.Concurrent (forkIO, threadDelay)
-import Control.Error.Util (errLn)
 import Control.Monad (forever, void)
-import Control.Monad.Except (MonadError)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Options.Applicative
-import System.Exit (exitFailure)
 import System.GPIO.Free
-import System.GPIO.Linux.SysfsIO (runSysfsIOSafe)
+import System.GPIO.Linux.SysfsIO (runSysfsIO)
 import System.GPIO.Types
 
 data GlobalOptions =
@@ -53,15 +50,15 @@ cmds =
   hsubparser
     (command "sysfs" (info sysfsCmd (progDesc "Use the Linux sysfs interpreter to drive INPIN using OUTPIN. (Make sure the pins are connected!")))
 
-run :: GlobalOptions -> IO (Either String ())
+run :: GlobalOptions -> IO ()
 run (GlobalOptions delay trigger (Sysfs (SysfsOptions inputPin outputPin))) =
-  do void $ forkIO (void $ runSysfsIOSafe $ edgeRead inputPin trigger)
-     runSysfsIOSafe $ driveOutput outputPin delay
+  do void $ forkIO (void $ runSysfsIO $ edgeRead inputPin trigger)
+     runSysfsIO $ driveOutput outputPin delay
 
 output :: (MonadIO m) => String -> m ()
 output = liftIO . putStrLn
 
-edgeRead :: (MonadIO m, MonadError e m) => Pin -> PinReadTrigger -> GpioT h m m ()
+edgeRead :: (MonadIO m) => Pin -> PinReadTrigger -> GpioT h m m ()
 edgeRead p trigger =
   withPin p $ \h ->
     do setPinDirection h In
@@ -70,7 +67,7 @@ edgeRead p trigger =
          do v <- readPin h
             output ("Input: " ++ show v)
 
-driveOutput :: (MonadIO m, MonadError e m) => Pin -> Int -> GpioT h m m ()
+driveOutput :: (MonadIO m) => Pin -> Int -> GpioT h m m ()
 driveOutput p delay =
   withPin p $ \h ->
     do setPinDirection h Out
@@ -80,13 +77,7 @@ driveOutput p delay =
             output ("Output: " ++ show v)
 
 main :: IO ()
-main =
-  do result <- execParser opts >>= run
-     case result of
-       Left e ->
-         do errLn $ "Error: " ++ e
-            exitFailure
-       Right _ -> return ()
+main =execParser opts >>= run
   where
     opts =
       info (helper <*> cmds)

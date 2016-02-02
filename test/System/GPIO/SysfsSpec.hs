@@ -3,7 +3,6 @@
 
 module System.GPIO.SysfsSpec (spec) where
 
-import Control.Monad.Except
 import qualified Data.Map.Strict as Map
 import System.GPIO.Free
 import System.GPIO.Linux.SysfsMock
@@ -18,12 +17,12 @@ import Test.Hspec
 -- the platform we're developing on doesn't actually have GPIO
 -- functionality).
 
-testOpenClose :: (MonadError e m) => GpioT h m m ()
+testOpenClose :: (Monad m) => GpioT h m m ()
 testOpenClose =
   do handle <- openPin (Pin 1)
      closePin handle
 
-testSetDirection :: (MonadError e m) => GpioT h m m (PinDirection, PinDirection, PinDirection)
+testSetDirection :: (Monad m) => GpioT h m m (PinDirection, PinDirection, PinDirection)
 testSetDirection =
   do d <- openPin (Pin 1)
      (Just dir1) <- getPinDirection d
@@ -43,7 +42,7 @@ testSetDirection =
             closePin d
             return (dir1,dir2,dir3)
 
-testSetReadTrigger :: (MonadError e m) => GpioT h m m (Maybe PinReadTrigger, Maybe PinReadTrigger, Maybe PinReadTrigger, Maybe PinReadTrigger)
+testSetReadTrigger :: (Monad m) => GpioT h m m (Maybe PinReadTrigger, Maybe PinReadTrigger, Maybe PinReadTrigger, Maybe PinReadTrigger)
 testSetReadTrigger =
   do d <- openPin (Pin 1)
      setPinReadTrigger d Disabled
@@ -57,7 +56,7 @@ testSetReadTrigger =
      closePin d
      return (t1, t2, t3, t4)
 
-testSetReadTriggerIdempotent :: (MonadError e m) => GpioT h m m (Maybe PinReadTrigger, Maybe PinReadTrigger)
+testSetReadTriggerIdempotent :: (Monad m) => GpioT h m m (Maybe PinReadTrigger, Maybe PinReadTrigger)
 testSetReadTriggerIdempotent =
   do d <- openPin (Pin 1)
      setPinReadTrigger d FallingEdge
@@ -67,7 +66,7 @@ testSetReadTriggerIdempotent =
      closePin d
      return (t1, t2)
 
-testSetDirectionIdempotent :: (MonadError e m) => GpioT h m m (PinDirection, PinDirection)
+testSetDirectionIdempotent :: (Monad m) => GpioT h m m (PinDirection, PinDirection)
 testSetDirectionIdempotent =
   do d <- openPin (Pin 1)
      (Just dir1) <- getPinDirection d
@@ -83,7 +82,7 @@ testSetDirectionIdempotent =
             closePin d
             return (dir1,dir2)
 
-testTogglePinDirection :: (MonadError e m) => GpioT h m m (PinDirection, PinDirection, PinDirection, PinDirection, PinDirection)
+testTogglePinDirection :: (Monad m) => GpioT h m m (PinDirection, PinDirection, PinDirection, PinDirection, PinDirection)
 testTogglePinDirection =
   do d <- openPin (Pin 1)
      (Just dir1) <- getPinDirection d
@@ -94,7 +93,7 @@ testTogglePinDirection =
      closePin d
      return (dir1, dir2, dir3, dir4, dir5)
 
-testSampleWritePin :: (MonadError e m) => GpioT h m m (PinValue, PinValue, PinValue)
+testSampleWritePin :: (Monad m) => GpioT h m m (PinValue, PinValue, PinValue)
 testSampleWritePin =
   do d <- openPin (Pin 1)
      setPinDirection d Out
@@ -115,7 +114,7 @@ testSampleWritePin =
             closePin d
             return (val1,val2,val3)
 
-testSampleWritePinIdempotent :: (MonadError e m) => GpioT h m m (PinValue, PinValue)
+testSampleWritePinIdempotent :: (Monad m) => GpioT h m m (PinValue, PinValue)
 testSampleWritePinIdempotent =
   do d <- openPin (Pin 1)
      setPinDirection d Out
@@ -132,14 +131,14 @@ testSampleWritePinIdempotent =
             closePin d
             return (val1,val2)
 
-testWritePinFailsOnInputPin :: (MonadError e m) => GpioT h m m ()
+testWritePinFailsOnInputPin :: (Monad m) => GpioT h m m ()
 testWritePinFailsOnInputPin =
   do d <- openPin (Pin 1)
      setPinDirection d In
      writePin d High
      closePin d
 
-testWritePin' :: (MonadError e m) => GpioT h m m (PinValue, PinValue, Maybe PinDirection, Maybe PinDirection)
+testWritePin' :: (Monad m) => GpioT h m m (PinValue, PinValue, Maybe PinDirection, Maybe PinDirection)
 testWritePin' =
   do d1 <- openPin (Pin 1)
      d2 <- openPin (Pin 2)
@@ -153,7 +152,7 @@ testWritePin' =
      closePin d2
      return (val1, val2, dir1, dir2)
 
-testWritePinIdempotent' :: (MonadError e m) => GpioT h m m (PinValue, PinValue, PinValue, PinValue)
+testWritePinIdempotent' :: (Monad m) => GpioT h m m (PinValue, PinValue, PinValue, PinValue)
 testWritePinIdempotent' =
   do d <- openPin (Pin 1)
      writePin' d High
@@ -167,7 +166,7 @@ testWritePinIdempotent' =
      closePin d
      return (val1, val2, val3, val4)
 
-testTogglePinValue :: (MonadError e m) => GpioT h m m (PinValue, PinValue, PinValue, PinValue, PinValue)
+testTogglePinValue :: (Monad m) => GpioT h m m (PinValue, PinValue, PinValue, PinValue, PinValue)
 testTogglePinValue =
   do d <- openPin (Pin 1)
      setPinDirection d Out
@@ -179,20 +178,20 @@ testTogglePinValue =
      closePin d
      return (val1, val2, val3, val4, val5)
 
-invalidHandle :: (MonadError e m) => (h -> GpioT h m m a) -> GpioT h m m a
+invalidHandle :: (Monad m) => (h -> GpioT h m m a) -> GpioT h m m a
 invalidHandle action =
   do d <- openPin (Pin 1)
      closePin d
      action d
 
-testWithPin :: (MonadError e m) => GpioT h m m PinValue
+testWithPin :: (Monad m) => GpioT h m m PinValue
 testWithPin = withPin (Pin 1) $ \h ->
   do setPinDirection h Out
      writePin h High
      val <- samplePin h
      return val
 
-testNestedWithPin :: (MonadError e m) => GpioT h m m (PinValue, PinValue)
+testNestedWithPin :: (Monad m) => GpioT h m m (PinValue, PinValue)
 testNestedWithPin =
   withPin (Pin 1) $ \h1 ->
     withPin (Pin 2) $ \h2 ->
@@ -204,7 +203,7 @@ testNestedWithPin =
          val2 <- samplePin h2
          return (val1, val2)
 
-testNestedWithPinError :: (MonadError e m) => GpioT h m m (PinValue, PinValue)
+testNestedWithPinError :: (Monad m) => GpioT h m m (PinValue, PinValue)
 testNestedWithPinError =
   withPin (Pin 1) $ \h1 ->
     withPin (Pin 2) $ \h2 ->
@@ -215,12 +214,6 @@ testNestedWithPinError =
          val1 <- samplePin h1
          val2 <- samplePin h2
          return (val1, val2)
-
-testErrorInComputation :: (MonadError String m) => GpioT h m m h
-testErrorInComputation =
-  do d <- openPin (Pin 1)
-     closePin d
-     throwError "Expected error"
 
 spec :: Spec
 spec =
@@ -403,51 +396,3 @@ spec =
           it "fails properly when nested" $
             do runSysfsMock testNestedWithPin (mockWorld [Pin 1]) `shouldThrow` anyIOException
                runSysfsMock testNestedWithPinError (mockWorld [Pin 1, Pin 2]) `shouldThrow` anyIOException
-
-     describe "runSysfsMock'" $
-       do it "returns results as Right a" $
-            let world = mockWorld [Pin 1]
-                expectedResult = (Right (Out, In, Out), world)
-            in runSysfsMock' testSetDirection world `shouldReturn` expectedResult
-
-          it "returns errors in the computation as Left String" $
-            let world = mockWorld [Pin 1]
-                expectedResult = (Left "Expected error", world)
-            in runSysfsMock' testErrorInComputation world `shouldReturn` expectedResult
-
-          it "returns IO errors as IOException" $
-            runSysfsMock' testOpenClose (mockWorld []) `shouldThrow` anyIOException
-
-          it "works with withPin on success" $
-            let world =
-                  Map.fromList [(Pin 1, defaultState {value = High})]
-                expectedResult = (Right High, world)
-            in runSysfsMock' testWithPin (mockWorld [Pin 1]) `shouldReturn` expectedResult
-
-          it "works with withPin on failure" $
-             runSysfsMock testWithPin (mockWorld [Pin 2]) `shouldThrow` anyIOException
-
-     describe "runSysfsMockSafe" $
-       do it "returns results as Right a" $
-            let world = mockWorld [Pin 1]
-                expectedResult = Right ((Out, In, Out), world)
-            in runSysfsMockSafe testSetDirection world `shouldReturn` expectedResult
-
-          it "returns errors in the computation as Left String" $
-            let world = mockWorld [Pin 1]
-                expectedResult = Left "user error (Expected error)"
-            in runSysfsMockSafe testErrorInComputation world `shouldReturn` expectedResult
-
-          it "returns IO errors as Left String" $
-            let world = mockWorld []
-                expectedResult = Left "/sys/class/gpio/export: hClose: invalid argument (Invalid argument)"
-            in runSysfsMockSafe testOpenClose world `shouldReturn` expectedResult
-
-          it "works with withPin on success" $
-            let world =
-                  Map.fromList [(Pin 1, defaultState {value = High})]
-                expectedResult = Right (High, world)
-            in runSysfsMockSafe testWithPin (mockWorld [Pin 1]) `shouldReturn` expectedResult
-
-          it "works with withPin on failure" $
-            runSysfsMockSafe testWithPin (mockWorld [Pin 2]) `shouldReturn` Left "/sys/class/gpio/export: hClose: invalid argument (Invalid argument)"

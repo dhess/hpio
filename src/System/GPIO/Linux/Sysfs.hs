@@ -11,16 +11,30 @@ module System.GPIO.Linux.Sysfs
        , SysfsF
        , SysfsT
        , runSysfsT
+         -- * Exceptions
+       , SysfsException
          -- * Linux sysfs GPIO types
        , PinDescriptor(..)
        ) where
 
 import Control.Monad (void)
-import Control.Monad.Except (MonadError, catchError, throwError)
+import Control.Monad.Catch (Exception, MonadMask(..), MonadThrow(..), bracket, throwM)
 import Control.Monad.Trans.Free (iterT)
+import Data.Typeable (Typeable)
 import System.GPIO.Free (GpioF(..), GpioT, openPin, closePin, samplePin, writePin, getPinDirection, setPinDirection)
 import System.GPIO.Linux.MonadSysfs (MonadSysfs(..))
 import System.GPIO.Types
+
+-- | Exceptions that can be thrown by 'SysfsT' computations.
+data SysfsException
+  = SysfsNotPresent
+  | UnexpectedDirection Pin
+  | UnexpectedValue Pin
+  | UnexpectedEdge Pin
+  | UnexpectedActiveLow Pin
+  deriving (Show,Typeable)
+
+instance Exception SysfsException
 
 -- | The sysfs interpreter's pin handle type. Currently it's just a
 -- newtype wrapper around a 'Pin'. The constructor is exported for
@@ -36,20 +50,14 @@ type SysfsT m = GpioT PinDescriptor m
 type SysfsF m = GpioF PinDescriptor m
 
 -- | Run a 'SysfsT' computation embedded in monad 'm' and return the
--- result. Errors that occur in the computation or in the interpreter
--- are thrown with a 'String' argument via 'throwError', so the
--- wrapped monad must also be an instance of 'MonadError' 'String'.
--- Any 'Control.Exception.Base.IOException's that occur as a side
--- effect of the computation are not handled here and are simply
--- propagated upwards.
---
--- (Errors that could occur in the interpreter are generally limited
--- to reading unexpected results from various sysfs GPIO control
--- files.)
-runSysfsT :: (MonadError String m, MonadSysfs m) => (SysfsT m) m a -> m a
+-- result. Errors that occur in the interpreter are thrown as
+-- 'SysfsException' values. (Errors that could occur in the
+-- interpreter are generally limited to reading unexpected results
+-- from various sysfs GPIO control files.)
+runSysfsT :: (MonadMask m, MonadThrow m, MonadSysfs m) => (SysfsT m) m a -> m a
 runSysfsT = iterT run
   where
-    run :: (MonadError String m, MonadSysfs m) => (SysfsF m) (m a) -> m a
+    run :: (MonadMask m, MonadThrow m, MonadSysfs m) => (SysfsF m) (m a) -> m a
 
     run (Pins next) =
       do hasSysfs <- sysfsIsPresent
@@ -62,7 +70,7 @@ runSysfsT = iterT run
     run (OpenPin p next) =
       do hasSysfs <- sysfsIsPresent
          case hasSysfs of
-           False -> throwError "sysfs GPIO is not present"
+           False -> throwM SysfsNotPresent
            True ->
              do exported <- pinIsExported p
                 case exported of
@@ -86,7 +94,7 @@ runSysfsT = iterT run
                 case dir of
                   "in\n"  -> next $ Just In
                   "out\n" -> next $ Just Out
-                  _     -> throwError $ "Unexpected direction value for " ++ show p
+                  _     -> throwM $ UnexpectedDirection p
 
     run (SetPinDirection d dir next) =
       do let p = pin d
@@ -108,7 +116,7 @@ runSysfsT = iterT run
          case value of
            "0\n" -> next Low
            "1\n" -> next High
-           _   -> throwError $ "Unexpected pin value for " ++ show p
+           _   -> throwM $ UnexpectedValue p
 
     run (ReadPin d next) =
       do let p = pin d
@@ -116,7 +124,7 @@ runSysfsT = iterT run
          case value of
            "0\n" -> next Low
            "1\n" -> next High
-           _   -> throwError $ "Unexpected pin value for " ++ show p
+           _   -> throwM $ UnexpectedValue p
 
     run (WritePin d v next) =
       do let p = pin d
@@ -146,7 +154,7 @@ runSysfsT = iterT run
                   "rising\n" -> next $ Just RisingEdge
                   "falling\n" -> next $ Just FallingEdge
                   "both\n" -> next $ Just Level
-                  _     -> throwError $ "Unexpected edge value for " ++ show p
+                  _     -> throwM $ UnexpectedEdge p
 
     run (SetPinReadTrigger d trigger next) =
       do let p = pin d
@@ -159,7 +167,7 @@ runSysfsT = iterT run
          case value of
            "0\n" -> next High
            "1\n" -> next Low
-           _   -> throwError $ "Unexpected active_low value for " ++ show p
+           _   -> throwM $ UnexpectedActiveLow p
 
     run (SetPinActiveLevel d v next) =
       do let p = pin d
@@ -167,11 +175,8 @@ runSysfsT = iterT run
          next
 
     run (WithPin p block next) =
-      do pd <- runSysfsT $ openPin p
-         catchError
-           (do a <- runSysfsT $ block pd
-               runSysfsT $ closePin pd
-               next a)
-           (\e ->
-             do runSysfsT $ closePin pd
-                throwError e)
+      bracket (runSysfsT $ openPin p)
+              (\pd -> runSysfsT $ closePin pd)
+              (\pd ->
+                do a <- runSysfsT $ block pd
+                   next a)
