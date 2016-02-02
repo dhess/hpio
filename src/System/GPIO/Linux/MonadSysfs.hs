@@ -58,6 +58,7 @@ import qualified Control.Monad.Trans.Writer.Lazy as LazyWriter (WriterT)
 import qualified Control.Monad.Trans.Writer.Strict as StrictWriter (WriterT)
 import Data.Data
 import GHC.Generics
+import Test.QuickCheck (Arbitrary(..), arbitraryBoundedEnum, genericShrink)
 import System.FilePath ((</>))
 import System.GPIO.Types
 
@@ -119,6 +120,10 @@ data SysfsEdge
   | Falling
   | Both
   deriving (Bounded,Enum,Eq,Data,Ord,Read,Show,Generic)
+
+instance Arbitrary SysfsEdge where
+  arbitrary = arbitraryBoundedEnum
+  shrink = genericShrink
 
 -- | Convert a 'SysfsEdge' value to its equivalent 'PinReadTrigger'
 -- value.

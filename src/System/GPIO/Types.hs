@@ -23,7 +23,7 @@ import Data.Bits
 import Data.Data
 import Data.Ix
 import GHC.Generics
-import Test.QuickCheck
+import Test.QuickCheck (Arbitrary(..), arbitraryBoundedEnum, genericShrink)
 
 -- | A GPIO pin, identified by pin number.
 --
@@ -118,6 +118,10 @@ data PinReadTrigger
   | FallingEdge
   | Level
   deriving (Bounded,Enum,Eq,Data,Ord,Read,Show,Generic)
+
+instance Arbitrary PinReadTrigger where
+  arbitrary = arbitraryBoundedEnum
+  shrink = genericShrink
 
 -- | Invert a 'PinDirection' value.
 invertDirection :: PinDirection -> PinDirection

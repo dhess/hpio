@@ -1,5 +1,3 @@
-* Implement QuickCheck types for PinReadTrigger, SysfsEdge.
-
 * Move SysfsException type to MonadSysfs.
 
 * Create top-level Linux.hs module with tidy exports.
