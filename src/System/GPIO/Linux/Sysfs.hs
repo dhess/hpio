@@ -11,37 +11,16 @@ module System.GPIO.Linux.Sysfs
        , SysfsF
        , SysfsT
        , runSysfsT
-         -- * Exceptions
-       , SysfsException(..)
          -- * Linux 'sysfs' GPIO types
        , PinDescriptor(..)
        ) where
 
 import Control.Monad (void)
-import Control.Monad.Catch (Exception, MonadMask(..), MonadThrow(..), bracket, throwM)
+import Control.Monad.Catch (MonadMask(..), MonadThrow(..), bracket, throwM)
 import Control.Monad.Trans.Free (iterT)
-import Data.Typeable (Typeable)
 import System.GPIO.Free (GpioF(..), GpioT, openPin, closePin, samplePin, writePin, getPinDirection, setPinDirection)
-import System.GPIO.Linux.MonadSysfs (MonadSysfs(..), toPinReadTrigger, toSysfsEdge)
+import System.GPIO.Linux.MonadSysfs (MonadSysfs(..), toPinReadTrigger, toSysfsEdge, SomeSysfsException( SysfsNotPresent ))
 import System.GPIO.Types
-
--- | Exceptions that can be thrown by 'SysfsT' computations (in
--- addition to general 'System.IO.Error.IOError's). The @UnexpectedX@
--- values are truly exceptional and mean that, while the 'sysfs'
--- attribute for the given pin exists, the contents of the attribute
--- do not match any expected value for that attribute. (This would
--- probably be indicative of a fundamental kernel-level GPIO change or
--- enhancement, and the need for an updated 'SysfsT' interpreter to
--- handle the new value(s).)
-data SysfsException
-  = SysfsNotPresent
-  | UnexpectedDirection Pin String
-  | UnexpectedValue Pin String
-  | UnexpectedEdge Pin String
-  | UnexpectedActiveLow Pin String
-  deriving (Show,Typeable)
-
-instance Exception SysfsException
 
 -- | The 'sysfs' interpreter's pin handle type. Currently it's just a
 -- newtype wrapper around a 'Pin'. The constructor is exported for
