@@ -1,5 +1,3 @@
-* Check compatibility with debounce, timeout
-
 * Review MonadSysfs instances.
 Is ContT appropriate? ExceptT? They're definitely not for SysfsIOT due
 to its MonadThrow constraint, but they might be OK for SysfsMock.
