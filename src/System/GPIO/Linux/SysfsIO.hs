@@ -1,24 +1,6 @@
 -- | The actual Linux 'sysfs' GPIO implementation. This implementation
 -- will only function properly on Linux systems with a 'sysfs' GPIO
 -- subsystem, obviously.
---
--- == Interactions with threads
--- Some parts of this GPIO implementation use the Haskell C FFI, and
--- may block on C I/O operations. (Specifically,
--- 'System.GPIO.Free.readPin' will block in the C FFI until its event
--- is triggered.) When using this implementation with GHC, you should
--- compile your program with the @-threaded@ option, so that threads
--- performing these blocking operations do not block other Haskell
--- threads in the system.
---
--- Note that the C FFI bits in this implementation are marked as
--- 'interruptible', so that, on versions of GHC later than 7.8.1,
--- functions such as 'Control.Concurent.throwTo' will work properly
--- when targeting a Haskell thread which is using this implementation.
---
--- (On Haskell implementations other than GHC, the threading
--- implications are unknown; see the implementation's notes on how its
--- threading system interacts with the C FFI.)
 
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
@@ -122,6 +104,24 @@ pollSysfs fd =
 
 -- | A monad transformer which adds Linux 'sysfs' GPIO computations to
 -- an inner monad 'm'.
+--
+-- == Interactions with threads
+-- Some parts of this GPIO implementation use the Haskell C FFI, and
+-- may block on C I/O operations. (Specifically,
+-- 'System.GPIO.Free.readPin' will block in the C FFI until its event
+-- is triggered.) When using this implementation with GHC, you should
+-- compile your program with the @-threaded@ option, so that threads
+-- performing these blocking operations do not block other Haskell
+-- threads in the system.
+--
+-- Note that the C FFI bits in this implementation are marked as
+-- 'interruptible', so that, on versions of GHC later than 7.8.1,
+-- functions such as 'Control.Concurent.throwTo' will work properly
+-- when targeting a Haskell thread which is using this implementation.
+--
+-- (On Haskell implementations other than GHC, the threading
+-- implications are unknown; see the implementation's notes on how its
+-- threading system interacts with the C FFI.)
 newtype SysfsIOT m a =
   SysfsIOT { runSysfsIOT :: m a }
   deriving (Alternative,Applicative,Functor,Monad,MonadIO,MonadThrow,MonadCatch,MonadMask)

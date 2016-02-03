@@ -1,14 +1,13 @@
--- | A 'GpioF' interpreter for Linux GPIO via 'sysfs'.
+-- | A 'GpioF' interpreter for Linux GPIO using the 'sysfs'
+-- filesystem.
 
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module System.GPIO.Linux.Sysfs
-       ( -- * MonadSysfs class
-         MonadSysfs(..)
-         -- * The Linux 'sysfs' GPIO interpreter
-       , SysfsF
+       ( -- * The Linux 'sysfs' GPIO interpreter
+         SysfsF
        , SysfsT
        , runSysfsT
          -- * Linux 'sysfs' GPIO types
@@ -28,18 +27,30 @@ import System.GPIO.Types
 -- versions of the package.
 newtype PinDescriptor = PinDescriptor { pin :: Pin } deriving (Show, Eq, Ord)
 
--- | A monad transformer which adds Linux 'sysfs' GPIO computations to
--- other monads.
+-- | A monad transformer which adds 'GpioF' eDSL programs to other
+-- monads, backed by the Linux 'sysfs' GPIO filesystem.
 type SysfsT m = GpioT PinDescriptor m
 
--- | The Linux 'sysfs' GPIO DSL type.
+-- | A 'GpioF' eDSL type for Linux 'sysfs'-based GPIO.
 type SysfsF m = GpioF PinDescriptor m
 
--- | Run a 'SysfsT' computation embedded in monad 'm' and return the
--- result. Errors that occur in the interpreter are thrown as
--- 'SysfsException' values. (Errors that could occur in the
--- interpreter are generally limited to reading unexpected results
--- from various 'sysfs' GPIO control files.)
+-- | Run (interpret) a 'SysfsT' computation embedded in monad 'm' and
+-- return the result.
+--
+-- Think of this interpreter as a portability layer: it interprets
+-- cross-platform 'GpioF' eDSL programs by translating 'GpioF'
+-- commands to their native equivalents on the Linux 'sysfs' GPIO
+-- filesystem. The actual 'sysfs' GPIO operations are provided by the
+-- wrapped monad 'm', which must be an instance of 'MonadSysfs'.
+--
+-- Errors that occur in the interpreter are thrown as 'SysfsException'
+-- values. Errors that could occur in the interpreter are generally
+-- limited to reading unexpected results from various 'sysfs' GPIO
+-- control files.
+--
+-- (Of course, when running programs against an actual 'sysfs' GPIO
+-- filesystem, exceptions of type 'System.IO.Error.IOError' may also
+-- occur.)
 runSysfsT :: (MonadMask m, MonadThrow m, MonadSysfs m) => (SysfsT m) m a -> m a
 runSysfsT = iterT run
   where

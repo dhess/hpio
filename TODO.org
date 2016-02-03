@@ -1,5 +1,3 @@
-* Create top-level Linux.hs module with tidy exports.
-
 * Clean up Sysfs interpreter.
 
 * Make types lens-ready.

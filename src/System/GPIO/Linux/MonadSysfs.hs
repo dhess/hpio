@@ -1,26 +1,4 @@
--- | Monads in which low-level Linux 'sysfs' GPIO operations can be
--- embedded.
---
--- If you want to write low-level, Linux-specific GPIO programs
--- without the overhead (and cross-platform portability!) of the
--- 'Control.Monad.Trans.Free.FreeT'-based
--- 'System.GPIO.Linux.Sysfs.SysfsT' interpreter, you can use this
--- typeclass directly.
---
--- See the
--- <https://www.kernel.org/doc/Documentation/gpio/sysfs.txt Linux kernel documentation>
--- for the definitive description of the Linux 'sysfs'-based GPIO API
--- and the terminology used in this module.
---
--- == Pin numbering
---
--- 'MonadSysfs' implementations use the same pin numbering scheme as
--- the 'sysfs' GPIO filesystem. For example, 'Pin' 13 corresponds to
--- @gpio13@ in the 'sysfs' filesystem. Note that the 'sysfs' pin
--- numbering scheme is almost always different than the pin numbering
--- scheme given by the platform/hardware documentation. Consult your
--- platform documentation for the mapping of pin numbers between the
--- two namespaces.
+-- | A monad type class for Linux 'sysfs' GPIO operations.
 
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
@@ -32,7 +10,13 @@ module System.GPIO.Linux.MonadSysfs
        , SysfsEdge(..)
        , toPinReadTrigger
        , toSysfsEdge
+         -- * Exceptions
+       , SysfsException(..)
         -- * Convenience functions
+        -- | Typically, you will only need these functions if you're
+        -- writing an implementation of 'MonadSysfs', but they're
+        -- general enough to be useful if you're writing low-level
+        -- Linux GPIO code, as well.
        , sysfsPath
        , exportFileName
        , unexportFileName
@@ -41,8 +25,6 @@ module System.GPIO.Linux.MonadSysfs
        , pinDirectionFileName
        , pinEdgeFileName
        , pinValueFileName
-         -- * Exceptions
-       , SysfsException(..)
        ) where
 
 import Control.Monad.Catch (Exception)
@@ -161,8 +143,29 @@ toSysfsEdge RisingEdge = Rising
 toSysfsEdge FallingEdge = Falling
 toSysfsEdge Level = Both
 
--- | Monads in which low-level Linux 'sysfs' GPIO-like operations may be
--- embedded.
+-- | A type class for monads which implement (or mock) low-level Linux
+-- 'sysfs' GPIO operations.
+--
+-- If you want to write low-level, Linux-specific GPIO programs
+-- without the overhead (and cross-platform portability!) of the
+-- 'Control.Monad.Trans.Free.FreeT'-based
+-- 'System.GPIO.Linux.Sysfs.SysfsT' interpreter, you can use instances
+-- of this typeclass directly.
+--
+-- See the
+-- <https://www.kernel.org/doc/Documentation/gpio/sysfs.txt Linux kernel documentation>
+-- for the definitive description of the Linux 'sysfs'-based GPIO API
+-- and the terminology used in this module.
+--
+-- == Pin numbering
+--
+-- 'MonadSysfs' implementations use the same pin numbering scheme as
+-- the 'sysfs' GPIO filesystem. For example, 'Pin' 13 corresponds to
+-- @gpio13@ in the 'sysfs' filesystem. Note that the 'sysfs' pin
+-- numbering scheme is almost always different than the pin numbering
+-- scheme given by the platform/hardware documentation. Consult your
+-- platform documentation for the mapping of pin numbers between the
+-- two namespaces.
 class (Monad m) => MonadSysfs m where
 
   -- | Test whether the 'sysfs' GPIO filesystem is available.
