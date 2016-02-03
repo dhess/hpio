@@ -6,8 +6,6 @@
 
 * Investigate porting SysfsMock to CatchT and losing IO.
 
-* See if I can re-jig MonadSysfs documentation so that it's only exported for the MonadSysfs.hs module.
-
 * Review MonadSysfs instances.
 Is ContT appropriate? ExceptT? They're definitely not for SysfsIOT due
 to its MonadThrow constraint, but they might be OK for SysfsMock.
