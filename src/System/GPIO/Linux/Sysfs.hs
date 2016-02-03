@@ -3,6 +3,7 @@
 
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module System.GPIO.Linux.Sysfs
@@ -57,71 +58,59 @@ runSysfsT = iterT run
     run :: (MonadMask m, MonadThrow m, MonadSysfs m) => (SysfsF m) (m a) -> m a
 
     run (Pins next) =
-      do hasSysfs <- sysfsIsPresent
-         case hasSysfs of
-           False -> next []
-           True -> availablePins >>= next
+      sysfsIsPresent >>= \case
+        False -> next []
+        True -> availablePins >>= next
 
     -- Export the pin. Note that it may already be exported, which we
     -- treat as success.
     run (OpenPin p next) =
-      do hasSysfs <- sysfsIsPresent
-         case hasSysfs of
-           False -> throwM SysfsNotPresent
-           True ->
-             do exported <- pinIsExported p
-                case exported of
-                  True -> next $ PinDescriptor p
-                  False ->
-                    do exportPin p
-                       next $ PinDescriptor p
+      sysfsIsPresent >>= \case
+        False -> throwM SysfsNotPresent
+        True ->
+          pinIsExported p >>= \case
+            True -> next $ PinDescriptor p
+            False ->
+              do exportPin p
+                 next $ PinDescriptor p
 
-    run (ClosePin d next) =
-      do let p = pin d
-         unexportPin p
+    run (ClosePin (PinDescriptor p) next) =
+      do unexportPin p
          next
 
-    run (GetPinDirection d next) =
-      do let p = pin d
-         settable <- pinHasDirection p
-         case settable of
-           False -> next Nothing
-           True ->
-             do dir <- readPinDirection p
-                next $ Just dir
+    run (GetPinDirection (PinDescriptor p) next) =
+      pinHasDirection p >>= \case
+        False -> next Nothing
+        True ->
+          do dir <- readPinDirection p
+             next $ Just dir
 
-    run (SetPinDirection d dir next) =
-      do let p = pin d
-         writePinDirection p dir
+    run (SetPinDirection (PinDescriptor p) dir next) =
+      do writePinDirection p dir
          next
 
-    run (TogglePinDirection d next) =
-      do maybeDir <- runSysfsT $ getPinDirection d
-         case maybeDir of
-           Nothing -> next Nothing
-           Just dir ->
-             do let newDir = invertDirection dir
-                void $ runSysfsT $ setPinDirection d newDir
-                next $ Just newDir
+    run (TogglePinDirection h next) =
+      (runSysfsT $ getPinDirection h) >>= \case
+        Nothing -> next Nothing
+        Just dir ->
+          do let newDir = invertDirection dir
+             void $ runSysfsT $ setPinDirection h newDir
+             next $ Just newDir
 
-    run (SamplePin d next) =
-      do let p = pin d
-         value <- readPinValue p
+    run (SamplePin (PinDescriptor p) next) =
+      do value <- readPinValue p
          next value
 
-    run (ReadPin d next) =
-      do let p = pin d
-         value <- threadWaitReadPinValue p
+    run (ReadPin (PinDescriptor p) next) =
+      do value <- threadWaitReadPinValue p
          next value
 
-    run (WritePin d v next) =
-      do let p = pin d
-         writePinValue p v
+    run (WritePin (PinDescriptor p) v next) =
+      do writePinValue p v
          next
 
-    run (WritePin' d v next) =
-      do let p = pin d
-         writePinDirectionWithValue p v
+    run (WritePin' (PinDescriptor p) v next) =
+      do writePinDirectionWithValue p v
          next
 
     run (TogglePinValue h next) =
@@ -130,32 +119,27 @@ runSysfsT = iterT run
          void $ runSysfsT $ writePin h newVal
          next newVal
 
-    run (GetPinReadTrigger d next) =
-      do let p = pin d
-         hasEdge <- pinHasEdge p
-         case hasEdge of
-           False -> next Nothing
-           True ->
-             do edge <- readPinEdge p
-                next $ Just (toPinReadTrigger edge)
+    run (GetPinReadTrigger (PinDescriptor p) next) =
+      pinHasEdge p >>= \case
+        False -> next Nothing
+        True ->
+          do edge <- readPinEdge p
+             next $ Just (toPinReadTrigger edge)
 
-    run (SetPinReadTrigger d trigger next) =
-      do let p = pin d
-         writePinEdge p $ toSysfsEdge trigger
+    run (SetPinReadTrigger (PinDescriptor p) trigger next) =
+      do writePinEdge p $ toSysfsEdge trigger
          next
 
     -- N.B.: Linux's "active_low" is the opposite of the eDSL's
     -- "active level"!
-    run (GetPinActiveLevel d next) =
-      do let p = pin d
-         activeLow <- readPinActiveLow p
+    run (GetPinActiveLevel (PinDescriptor p) next) =
+      do activeLow <- readPinActiveLow p
          next $ boolToValue (not activeLow)
 
     -- N.B.: Linux's "active_low" is the opposite of the eDSL's
     -- "active level"!
-    run (SetPinActiveLevel d v next) =
-      do let p = pin d
-         writePinActiveLow p $ valueToBool (invertValue v)
+    run (SetPinActiveLevel (PinDescriptor p) v next) =
+      do writePinActiveLow p $ valueToBool (invertValue v)
          next
 
     run (WithPin p block next) =
