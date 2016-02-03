@@ -1,5 +1,3 @@
-* Make types lens-ready.
-
 * Check compatibility with debounce, timeout
 
 * Investigate porting SysfsMock to CatchT and losing IO.

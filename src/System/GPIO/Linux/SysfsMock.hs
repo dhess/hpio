@@ -63,22 +63,22 @@ import System.IO.Error (mkIOError, ioeSetErrorString)
 -- | Keep track of the state of mock pins. In real Linux 'sysfs', pins
 -- keep their state even after they're unexported.
 data MockState =
-  MockState { exported :: !Bool
-            , hasUserDirection :: !Bool -- is direction visible to the user?
-            , direction :: !PinDirection
-            , activeLow :: !Bool
-            , value :: !PinValue -- This is the line level
-            , edge :: Maybe SysfsEdge
+  MockState { _exported :: !Bool
+            , _hasUserDirection :: !Bool -- is direction visible to the user?
+            , _direction :: !PinDirection
+            , _activeLow :: !Bool
+            , _value :: !PinValue -- This is the line level
+            , _edge :: Maybe SysfsEdge
             } deriving (Show, Eq)
 
 -- | Default initial state of mock pins.
 defaultState :: MockState
-defaultState = MockState { exported = False
-                         , hasUserDirection = True
-                         , direction = Out
-                         , activeLow = False
-                         , value = Low
-                         , edge = Just None
+defaultState = MockState { _exported = False
+                         , _hasUserDirection = True
+                         , _direction = Out
+                         , _activeLow = False
+                         , _value = Low
+                         , _edge = Just None
                          }
 
 -- | Maps pins to their state
@@ -136,7 +136,7 @@ sysfsIsPresentMock = return True
 pinIsExportedMock :: (Monad m) => Pin -> SysfsMockT m Bool
 pinIsExportedMock p =
   do s <- pinState p
-     return $ maybe False exported s
+     return $ maybe False _exported s
 
 -- The way this is implemented in 'MonadSysfs' is, if the pin is not
 -- exported, or if the pin does not have a user-visible direction
@@ -149,21 +149,21 @@ pinHasDirectionMock p = userVisibleDirection p >>= return . isJust
 -- 'False', otherwise 'True'.
 pinHasEdgeMock :: (Monad m) => Pin -> SysfsMockT m Bool
 pinHasEdgeMock p =
-  guardedPinState p edge (isJust . edge) >>= return . isJust
+  guardedPinState p _edge (isJust . _edge) >>= return . isJust
 
 exportPinMock :: (MonadIO m) => Pin -> SysfsMockT m ()
 exportPinMock p =
   pinState p >>= \case
     Nothing -> ioErr exportErrorInvalidArgument
     Just s ->
-      if (exported s)
+      if (_exported s)
          then ioErr exportErrorResourceBusy
-         else updatePinState p (s { exported = True })
+         else updatePinState p (s { _exported = True })
 
 unexportPinMock :: (MonadIO m) => Pin -> SysfsMockT m ()
 unexportPinMock p =
   do s <- checkedPinState p id unexportErrorInvalidArgument
-     updatePinState p $ s { exported = False }
+     updatePinState p $ s { _exported = False }
 
 readPinDirectionMock :: (MonadIO m) => Pin -> SysfsMockT m PinDirection
 readPinDirectionMock p =
@@ -174,49 +174,49 @@ readPinDirectionMock p =
 
 writePinDirectionMock :: (MonadIO m) => Pin -> PinDirection -> SysfsMockT m ()
 writePinDirectionMock p dir =
-  guardedPinState p id hasUserDirection >>= \case
+  guardedPinState p id _hasUserDirection >>= \case
     Nothing -> ioErr (writePinDirectionErrorNoSuchThing p)
-    Just s -> updatePinState p (s { direction = dir })
+    Just s -> updatePinState p (s { _direction = dir })
 
 writePinDirectionWithValueMock :: (MonadIO m) => Pin -> PinValue -> SysfsMockT m ()
 writePinDirectionWithValueMock p v =
-  guardedPinState p id hasUserDirection >>= \case
+  guardedPinState p id _hasUserDirection >>= \case
     Nothing -> ioErr (writePinDirectionErrorNoSuchThing p)
-    Just s -> updatePinState p (s { direction = Out, value = logicalLevel (activeLow s) v})
+    Just s -> updatePinState p (s { _direction = Out, _value = logicalLevel (_activeLow s) v})
 
 readPinValueMock :: (MonadIO m) => Pin -> SysfsMockT m PinValue
 readPinValueMock p =
   do s <- checkedPinState p id (readPinValueErrorNoSuchThing p)
-     return (logicalLevel (activeLow s) (value s))
+     return (logicalLevel (_activeLow s) (_value s))
 
 writePinValueMock :: (MonadIO m) => Pin -> PinValue -> SysfsMockT m ()
 writePinValueMock p v =
   do s <- checkedPinState p id (writePinValueErrorNoSuchThing p)
-     case (direction s) of
+     case (_direction s) of
        In -> ioErr (writePinValueErrorPermissionDenied p)
-       Out -> updatePinState p (s { value = logicalLevel (activeLow s) v })
+       Out -> updatePinState p (s { _value = logicalLevel (_activeLow s) v })
 
 readPinEdgeMock :: (MonadIO m) => Pin -> SysfsMockT m SysfsEdge
 readPinEdgeMock p =
-  checkedPinState p edge (readPinEdgeErrorNoSuchThing p) >>= \case
+  checkedPinState p _edge (readPinEdgeErrorNoSuchThing p) >>= \case
     Nothing -> ioErr (readPinEdgeErrorNoSuchThing p)
     Just x -> return x
 
 writePinEdgeMock :: (MonadIO m) => Pin -> SysfsEdge -> SysfsMockT m ()
 writePinEdgeMock p t =
   do s <- checkedPinState p id (writePinEdgeErrorNoSuchThing p)
-     case (edge s) of
+     case (_edge s) of
        Nothing -> ioErr (writePinEdgeErrorNoSuchThing p)
-       Just _ -> updatePinState p (s { edge = Just t })
+       Just _ -> updatePinState p (s { _edge = Just t })
 
 readPinActiveLowMock :: (MonadIO m) => Pin -> SysfsMockT m Bool
 readPinActiveLowMock p =
-  checkedPinState p activeLow (readPinActiveLowErrorNoSuchThing p)
+  checkedPinState p _activeLow (readPinActiveLowErrorNoSuchThing p)
 
 writePinActiveLowMock :: (MonadIO m) => Pin -> Bool -> SysfsMockT m ()
 writePinActiveLowMock p v =
   do s <- checkedPinState p id (writePinActiveLowErrorNoSuchThing p)
-     updatePinState p (s { activeLow = v})
+     updatePinState p (s { _activeLow = v})
 
 -- XXX TODO: this function doesn't have any way to emulate the failure
 -- of the hunt for the "base" and "ngpio" files in GPIO chip
@@ -272,14 +272,14 @@ guardedPinState p f predicate =
 guardedPinState' :: Pin -> MockWorld -> (MockState -> a) -> (MockState -> Bool) -> Maybe a
 guardedPinState' p stateMap f predicate =
   do s <- Map.lookup p stateMap
-     guard $ exported s
+     guard $ _exported s
      guard $ predicate s
      return $ f s
 
 -- If the pin is exported and its "direction" attribute exists, return
 -- the pin's direction in a 'Just'. Otherwise, return 'Nothing'.
 userVisibleDirection :: (Monad m) => Pin -> SysfsMockT m (Maybe PinDirection)
-userVisibleDirection p = guardedPinState p direction hasUserDirection
+userVisibleDirection p = guardedPinState p _direction _hasUserDirection
 
 
 -- Mock 'IOError's. We make these as close to the real thing as is

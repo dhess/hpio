@@ -240,7 +240,7 @@ spec =
        do it "gets the pin's direction" $
             let world1 = mockWorld [Pin 1]
                 world2 =
-                  Map.fromList [(Pin 1, defaultState {direction = In})]
+                  Map.fromList [(Pin 1, defaultState {_direction = In})]
                 expectedResult1 = (Just Out, world1)
                 expectedResult2 = (Just In, world2)
             in
@@ -249,7 +249,7 @@ spec =
 
           it "returns Nothing when the pin direction is not settable" $
             let world =
-                  Map.fromList [(Pin 1, defaultState {hasUserDirection = False})]
+                  Map.fromList [(Pin 1, defaultState {_hasUserDirection = False})]
                 expectedResult = (Nothing, world)
             in runSysfsMock (withPin (Pin 1) (\h -> getPinDirection h >>= return)) world `shouldReturn` expectedResult
 
@@ -266,7 +266,7 @@ spec =
 
           it "fails when the pin's direction is not settable" $
             let world =
-                  Map.fromList [(Pin 1, defaultState {hasUserDirection = False, value = High})
+                  Map.fromList [(Pin 1, defaultState {_hasUserDirection = False, _value = High})
                                ,(Pin 2, defaultState)]
             in runSysfsMock testSetDirection world `shouldThrow` anyIOException
 
@@ -280,7 +280,7 @@ spec =
        do it "gets the pin's read trigger" $
             let world1 = mockWorld [Pin 1]
                 world2 =
-                  Map.fromList [(Pin 1, defaultState {edge = Just Falling})]
+                  Map.fromList [(Pin 1, defaultState {_edge = Just Falling})]
                 expectedResult1 = (Just Disabled, world1)
                 expectedResult2 = (Just FallingEdge, world2)
             in
@@ -288,7 +288,7 @@ spec =
                  runSysfsMock (withPin (Pin 1) (\h -> getPinReadTrigger h >>= return)) world2 `shouldReturn` expectedResult2
           it "returns Nothing when the pin's read trigger is not settable" $
             let world =
-                  Map.fromList [(Pin 1, defaultState {edge = Nothing})]
+                  Map.fromList [(Pin 1, defaultState {_edge = Nothing})]
                 expectedResult = (Nothing, world)
             in runSysfsMock (withPin (Pin 1) (\h -> getPinReadTrigger h >>= return)) world `shouldReturn` expectedResult
 
@@ -296,16 +296,16 @@ spec =
        do it "sets the pin's read trigger" $
             let world = mockWorld [Pin 1]
                 expectedResult = ((Just Disabled, Just RisingEdge, Just FallingEdge, Just Level),
-                                  Map.fromList [(Pin 1, defaultState {edge = Just Both})])
+                                  Map.fromList [(Pin 1, defaultState {_edge = Just Both})])
             in runSysfsMock testSetReadTrigger world `shouldReturn` expectedResult
           it "is idempotent" $
             let world = mockWorld [Pin 1]
                 expectedResult = ((Just FallingEdge, Just FallingEdge),
-                                 Map.fromList [(Pin 1, defaultState {edge = Just Falling})])
+                                 Map.fromList [(Pin 1, defaultState {_edge = Just Falling})])
             in runSysfsMock testSetReadTriggerIdempotent world `shouldReturn` expectedResult
           it "fails when the pin's direction is not settable" $
             let world =
-                  Map.fromList [(Pin 1, defaultState {edge = Nothing})
+                  Map.fromList [(Pin 1, defaultState {_edge = Nothing})
                                ,(Pin 2, defaultState)]
             in runSysfsMock testSetReadTrigger world `shouldThrow` anyIOException
 
@@ -335,11 +335,11 @@ spec =
      describe "writePin'" $
        do it "sets the pin value and direction" $
             let world =
-                  Map.fromList [(Pin 1, defaultState {direction = In})
-                               ,(Pin 2, defaultState {value = High})]
+                  Map.fromList [(Pin 1, defaultState {_direction = In})
+                               ,(Pin 2, defaultState {_value = High})]
                 expectedResult =
                   ((High, Low, Just Out, Just Out),
-                   Map.fromList [(Pin 1, defaultState {value = High})
+                   Map.fromList [(Pin 1, defaultState {_value = High})
                                 ,(Pin 2, defaultState)])
             in runSysfsMock testWritePin' world `shouldReturn` expectedResult
 
@@ -350,7 +350,7 @@ spec =
 
           it "fails when the pin's direction is not settable" $
             let world =
-                  Map.fromList [(Pin 1, defaultState {hasUserDirection = False, value = High})
+                  Map.fromList [(Pin 1, defaultState {_hasUserDirection = False, _value = High})
                                ,(Pin 2, defaultState)]
             in runSysfsMock testWritePin' world `shouldThrow` anyIOException
 
@@ -380,7 +380,7 @@ spec =
      describe "withPin" $
        do it "opens and closes the pin as expected" $
             let world =
-                  Map.fromList [(Pin 1, defaultState {value = High})]
+                  Map.fromList [(Pin 1, defaultState {_value = High})]
                 expectedResult = (High, world)
             in runSysfsMock testWithPin (mockWorld [Pin 1]) `shouldReturn` expectedResult
 
@@ -389,7 +389,7 @@ spec =
 
           it "can nest" $
             let world =
-                   Map.fromList [(Pin 1, defaultState {value = High})
+                   Map.fromList [(Pin 1, defaultState {_value = High})
                                 ,(Pin 2, defaultState)]
                 expectedResult = ((High, Low), world)
             in runSysfsMock testNestedWithPin world `shouldReturn` expectedResult

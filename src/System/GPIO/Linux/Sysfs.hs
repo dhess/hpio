@@ -26,7 +26,7 @@ import System.GPIO.Types
 -- newtype wrapper around a 'Pin'. The constructor is exported for
 -- convenience, but note that the implementation may change in future
 -- versions of the package.
-newtype PinDescriptor = PinDescriptor { pin :: Pin } deriving (Show, Eq, Ord)
+newtype PinDescriptor = PinDescriptor { _pin :: Pin } deriving (Show, Eq, Ord)
 
 -- | A monad transformer which adds 'GpioF' eDSL programs to other
 -- monads, backed by the Linux 'sysfs' GPIO filesystem.
