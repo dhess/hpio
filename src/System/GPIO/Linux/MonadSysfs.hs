@@ -28,7 +28,6 @@ module System.GPIO.Linux.MonadSysfs
        ) where
 
 import Control.Monad.Catch (Exception)
-import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Cont (ContT)
 import Control.Monad.Trans.Except (ExceptT)
@@ -280,7 +279,7 @@ instance (MonadSysfs m) => MonadSysfs (IdentityT m) where
   writePinActiveLow h v = lift $ writePinActiveLow h v
   availablePins = lift availablePins
 
-instance (MonadIO m, MonadSysfs m) => MonadSysfs (ContT r m) where
+instance (MonadSysfs m) => MonadSysfs (ContT r m) where
   sysfsIsPresent = lift sysfsIsPresent
   pinIsExported = lift . pinIsExported
   pinHasDirection = lift . pinHasDirection
@@ -299,7 +298,7 @@ instance (MonadIO m, MonadSysfs m) => MonadSysfs (ContT r m) where
   writePinActiveLow h v = lift $ writePinActiveLow h v
   availablePins = lift availablePins
 
-instance (MonadIO m, MonadSysfs m) => MonadSysfs (ExceptT e m) where
+instance (MonadSysfs m) => MonadSysfs (ExceptT e m) where
   sysfsIsPresent = lift sysfsIsPresent
   pinIsExported = lift . pinIsExported
   pinHasDirection = lift . pinHasDirection
@@ -318,7 +317,7 @@ instance (MonadIO m, MonadSysfs m) => MonadSysfs (ExceptT e m) where
   writePinActiveLow h v = lift $ writePinActiveLow h v
   availablePins = lift availablePins
 
-instance (MonadIO m, MonadSysfs m) => MonadSysfs (ListT m) where
+instance (MonadSysfs m) => MonadSysfs (ListT m) where
   sysfsIsPresent = lift sysfsIsPresent
   pinIsExported = lift . pinIsExported
   pinHasDirection = lift . pinHasDirection
@@ -337,7 +336,7 @@ instance (MonadIO m, MonadSysfs m) => MonadSysfs (ListT m) where
   writePinActiveLow h v = lift $ writePinActiveLow h v
   availablePins = lift availablePins
 
-instance (MonadIO m, MonadSysfs m) => MonadSysfs (MaybeT m) where
+instance (MonadSysfs m) => MonadSysfs (MaybeT m) where
   sysfsIsPresent = lift sysfsIsPresent
   pinIsExported = lift . pinIsExported
   pinHasDirection = lift . pinHasDirection
@@ -356,7 +355,7 @@ instance (MonadIO m, MonadSysfs m) => MonadSysfs (MaybeT m) where
   writePinActiveLow h v = lift $ writePinActiveLow h v
   availablePins = lift availablePins
 
-instance (MonadIO m, MonadSysfs m) => MonadSysfs (ReaderT r m) where
+instance (MonadSysfs m) => MonadSysfs (ReaderT r m) where
   sysfsIsPresent = lift sysfsIsPresent
   pinIsExported = lift . pinIsExported
   pinHasDirection = lift . pinHasDirection
@@ -375,7 +374,7 @@ instance (MonadIO m, MonadSysfs m) => MonadSysfs (ReaderT r m) where
   writePinActiveLow h v = lift $ writePinActiveLow h v
   availablePins = lift availablePins
 
-instance (MonadIO m, MonadSysfs m, Monoid w) => MonadSysfs (LazyRWS.RWST r w s m) where
+instance (MonadSysfs m, Monoid w) => MonadSysfs (LazyRWS.RWST r w s m) where
   sysfsIsPresent = lift sysfsIsPresent
   pinIsExported = lift . pinIsExported
   pinHasDirection = lift . pinHasDirection
@@ -394,7 +393,7 @@ instance (MonadIO m, MonadSysfs m, Monoid w) => MonadSysfs (LazyRWS.RWST r w s m
   writePinActiveLow h v = lift $ writePinActiveLow h v
   availablePins = lift availablePins
 
-instance (MonadIO m, MonadSysfs m, Monoid w) => MonadSysfs (StrictRWS.RWST r w s m) where
+instance (MonadSysfs m, Monoid w) => MonadSysfs (StrictRWS.RWST r w s m) where
   sysfsIsPresent = lift sysfsIsPresent
   pinIsExported = lift . pinIsExported
   pinHasDirection = lift . pinHasDirection
@@ -413,7 +412,7 @@ instance (MonadIO m, MonadSysfs m, Monoid w) => MonadSysfs (StrictRWS.RWST r w s
   writePinActiveLow h v = lift $ writePinActiveLow h v
   availablePins = lift availablePins
 
-instance (MonadIO m, MonadSysfs m) => MonadSysfs (LazyState.StateT s m) where
+instance (MonadSysfs m) => MonadSysfs (LazyState.StateT s m) where
   sysfsIsPresent = lift sysfsIsPresent
   pinIsExported = lift . pinIsExported
   pinHasDirection = lift . pinHasDirection
@@ -432,7 +431,7 @@ instance (MonadIO m, MonadSysfs m) => MonadSysfs (LazyState.StateT s m) where
   writePinActiveLow h v = lift $ writePinActiveLow h v
   availablePins = lift availablePins
 
-instance (MonadIO m, MonadSysfs m) => MonadSysfs (StrictState.StateT s m) where
+instance (MonadSysfs m) => MonadSysfs (StrictState.StateT s m) where
   sysfsIsPresent = lift sysfsIsPresent
   pinIsExported = lift . pinIsExported
   pinHasDirection = lift . pinHasDirection
@@ -451,7 +450,7 @@ instance (MonadIO m, MonadSysfs m) => MonadSysfs (StrictState.StateT s m) where
   writePinActiveLow h v = lift $ writePinActiveLow h v
   availablePins = lift availablePins
 
-instance (MonadIO m, MonadSysfs m, Monoid w) => MonadSysfs (LazyWriter.WriterT w m) where
+instance (MonadSysfs m, Monoid w) => MonadSysfs (LazyWriter.WriterT w m) where
   sysfsIsPresent = lift sysfsIsPresent
   pinIsExported = lift . pinIsExported
   pinHasDirection = lift . pinHasDirection
@@ -470,7 +469,7 @@ instance (MonadIO m, MonadSysfs m, Monoid w) => MonadSysfs (LazyWriter.WriterT w
   writePinActiveLow h v = lift $ writePinActiveLow h v
   availablePins = lift availablePins
 
-instance (MonadIO m, MonadSysfs m, Monoid w) => MonadSysfs (StrictWriter.WriterT w m) where
+instance (MonadSysfs m, Monoid w) => MonadSysfs (StrictWriter.WriterT w m) where
   sysfsIsPresent = lift sysfsIsPresent
   pinIsExported = lift . pinIsExported
   pinHasDirection = lift . pinHasDirection
