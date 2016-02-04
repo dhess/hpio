@@ -9,8 +9,9 @@ Bug-Reports:            https://github.com/dhess/gpio/issues/
 Stability:              experimental
 License:                BSD3
 License-File:           LICENSE
-Copyright:              Copyright (c) 2015, Drew Hess
-Tested-With:            GHC == 7.10.2
+Copyright:              Copyright (c) 2016, Drew Hess
+Tested-With:            GHC == 7.10.3
+Category:               System
 Synopsis:               Perform GPIO from Haskell
 Description:
   This package provides an embedded DSL for writing
@@ -30,7 +31,6 @@ Description:
   source code distribution.
 
 Extra-Doc-Files:        README.md
-Extra-Source-Files:     examples/*.hs
 
 Library
   Default-Language:     Haskell2010
@@ -38,16 +38,25 @@ Library
   GHC-Options:          -Wall
   Exposed-Modules:      System.GPIO
                       , System.GPIO.Free
+                      , System.GPIO.Linux
                       , System.GPIO.Linux.MonadSysfs
                       , System.GPIO.Linux.Sysfs
                       , System.GPIO.Linux.SysfsIO
                       , System.GPIO.Linux.SysfsMock
                       , System.GPIO.Types
-  Other-Extensions:     DeriveGeneric
+  Other-Extensions:     DeriveDataTypeable
+                      , DeriveGeneric
                       , FlexibleContexts
+                      , FlexibleInstances
                       , GADTs
+                      , GeneralizedNewtypeDeriving
+                      , KindSignatures
+                      , LambdaCase
+                      , OverloadedStrings
+                      , QuasiQuotes
                       , TemplateHaskell
-  Build-Depends:        base >= 4 && < 5
+                      , TypeSynonymInstances
+  Build-Depends:        base ==4.*
                       , containers
                       , directory
                       , exceptions
@@ -66,7 +75,7 @@ Library
 Executable gpio-sysfs-example
   Main-Is:              Sysfs.hs
   HS-Source-Dirs:       examples
-  Build-Depends:        base >= 4 && < 5
+  Build-Depends:        base ==4.*
                       , gpio
                       , mtl
                       , transformers
@@ -76,7 +85,7 @@ Executable gpio-sysfs-example
 Executable gpio-edgeread-example
   Main-Is:              EdgeRead.hs
   HS-Source-Dirs:       examples
-  Build-Depends:        base >= 4 && < 5
+  Build-Depends:        base ==4.*
                       , gpio
                       , mtl
                       , optparse-applicative
@@ -91,11 +100,7 @@ Test-Suite spec
                       , test
   Ghc-Options:          -Wall
   Main-Is:              Main.hs
-  Other-Extensions:     DeriveGeneric
-                      , FlexibleContexts
-                      , GADTs
-                      , TemplateHaskell
-  Build-Depends:        base
+  Build-Depends:        base ==4.*
                       , containers
                       , directory
                       , exceptions
@@ -111,6 +116,7 @@ Test-Suite spec
                       , unix
   Other-modules:        System.GPIO
                       , System.GPIO.Free
+                      , System.GPIO.Linux
                       , System.GPIO.Linux.MonadSysfs
                       , System.GPIO.Linux.Sysfs
                       , System.GPIO.Linux.SysfsIO
@@ -120,3 +126,8 @@ Test-Suite spec
 Source-Repository head
   Type:                 git
   Location:             git://github.com/dhess/gpio.git
+
+Source-Repository this
+  Type:                 git
+  Location:             git://github.com/dhess/gpio.git
+  Tag:                  0.5.1
