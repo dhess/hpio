@@ -1,6 +1,5 @@
-extra-deps: []
-resolver: lts-3.16
-flags: {}
-extra-package-dbs: []
+require-stack-version: ">= 0.1.5"
+pvp-bounds: both
+resolver: lts-5.1
 packages:
-- '.'
+- .
