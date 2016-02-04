@@ -106,6 +106,7 @@ data SysfsException
   | UnexpectedValue Pin String
   | UnexpectedEdge Pin String
   | UnexpectedActiveLow Pin String
+  | UnexpectedContents FilePath String
   deriving (Show,Typeable)
 
 instance Exception SysfsException

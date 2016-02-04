@@ -1,6 +1,6 @@
-{ mkDerivation, base, containers, directory, errors, exceptions
-, filepath, free, hspec, inline-c, mtl, optparse-applicative
-, QuickCheck, stdenv, strict, text, transformers, unix
+{ mkDerivation, base, containers, directory, exceptions, filepath
+, free, hspec, inline-c, mtl, optparse-applicative, QuickCheck
+, stdenv, strict, text, transformers, unix
 }:
 mkDerivation {
   pname = "gpio";
@@ -9,15 +9,15 @@ mkDerivation {
   isLibrary = true;
   isExecutable = true;
   libraryHaskellDepends = [
-    base containers directory errors exceptions filepath free inline-c
-    mtl QuickCheck strict text transformers unix
+    base containers directory exceptions filepath free inline-c mtl
+    QuickCheck strict text transformers unix
   ];
   executableHaskellDepends = [
-    base errors mtl optparse-applicative transformers
+    base mtl optparse-applicative transformers
   ];
   testHaskellDepends = [
-    base containers directory errors exceptions filepath free hspec
-    inline-c mtl QuickCheck strict text transformers unix
+    base containers directory exceptions filepath free hspec inline-c
+    mtl QuickCheck strict text transformers unix
   ];
   homepage = "https://github.com/dhess/gpio";
   description = "Perform GPIO from Haskell";

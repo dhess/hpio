@@ -1,5 +1,3 @@
-* Get rid of errors package dependence.
-
 * Clean up .cabal, esp. extensions section.
 
 * Add a MonadSysfs example?

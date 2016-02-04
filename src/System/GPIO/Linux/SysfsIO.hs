@@ -16,15 +16,11 @@ module System.GPIO.Linux.SysfsIO
 
 import Prelude hiding (readFile, writeFile)
 import Control.Applicative
-import Control.Error.Script (scriptIO)
-import Control.Error.Util (hushT)
 import Control.Monad (filterM)
 import Control.Monad.Catch
 import Control.Monad.IO.Class (MonadIO, liftIO)
-import Control.Monad.Trans.Maybe (MaybeT, runMaybeT)
 import Data.Char (toLower)
 import Data.List (isPrefixOf, sort)
-import Data.Maybe (catMaybes)
 import Foreign.C.Error (throwErrnoIfMinus1Retry_)
 import Foreign.C.Types (CInt(..))
 import qualified Language.C.Inline as C (include)
@@ -38,6 +34,7 @@ import qualified System.IO as IO (writeFile)
 import qualified System.IO.Strict as IOS (readFile)
 import System.Posix.IO (OpenMode(ReadOnly), closeFd, defaultFileFlags, openFd)
 import System.Posix.Types (Fd)
+import Text.Read (readMaybe)
 
 -- Our poll(2) wrapper.
 --
@@ -208,7 +205,7 @@ threadWaitReadPinValueIO p = liftIO $
 writePinValueIO :: (MonadIO m) => Pin -> PinValue -> m ()
 writePinValueIO p v = liftIO $ IO.writeFile (pinValueFileName p) (toSysfsPinValue v)
 
-readPinEdgeIO :: (MonadIO m) => Pin -> m SysfsEdge
+readPinEdgeIO :: (MonadThrow m, MonadIO m) => Pin -> m SysfsEdge
 readPinEdgeIO p =
   liftIO $ IOS.readFile (pinEdgeFileName p) >>= \case
     "none\n"  -> return None
@@ -220,7 +217,7 @@ readPinEdgeIO p =
 writePinEdgeIO :: (MonadIO m) => Pin -> SysfsEdge -> m ()
 writePinEdgeIO p v = liftIO $ IO.writeFile (pinEdgeFileName p) (toSysfsPinEdge v)
 
-readPinActiveLowIO :: (MonadIO m) => Pin -> m Bool
+readPinActiveLowIO :: (MonadThrow m, MonadIO m) => Pin -> m Bool
 readPinActiveLowIO p =
   liftIO $ IOS.readFile (pinActiveLowFileName p) >>= \case
     "0\n" -> return False
@@ -230,14 +227,14 @@ readPinActiveLowIO p =
 writePinActiveLowIO :: (MonadIO m) => Pin -> Bool -> m ()
 writePinActiveLowIO p v = liftIO $ IO.writeFile (pinActiveLowFileName p) (toSysfsActiveLowValue v)
 
-availablePinsIO :: (MonadIO m) => m [Pin]
+availablePinsIO :: (MonadThrow m, MonadIO m) => m [Pin]
 availablePinsIO =
   do sysfsEntries <- liftIO $ getDirectoryContents sysfsPath
      let sysfsContents = fmap (sysfsPath </>) sysfsEntries
      sysfsDirectories <- filterM (liftIO . doesDirectoryExist) sysfsContents
      let chipDirs = filter (\f -> isPrefixOf "gpiochip" $ takeFileName f) sysfsDirectories
-     maybePins <- mapM (runMaybeT . pinRange) chipDirs
-     return $ sort $ concat $ catMaybes maybePins
+     pins <- mapM pinRange chipDirs
+     return $ sort $ concat pins
 
 -- Helper functions that aren't exported.
 --
@@ -259,22 +256,23 @@ toSysfsActiveLowValue :: Bool -> String
 toSysfsActiveLowValue False = "0"
 toSysfsActiveLowValue True = "1"
 
-readFromFile :: (MonadIO m, Read a) => FilePath -> m a
-readFromFile f = liftIO (IOS.readFile f >>= readIO)
+readIntFromFile :: (MonadThrow m, MonadIO m) => FilePath -> m Int
+readIntFromFile f =
+  do contents <- liftIO $ IOS.readFile f
+     case readMaybe contents of
+       Just n -> return n
+       Nothing -> throwM $ UnexpectedContents f contents
 
-maybeIO :: (MonadIO m) => IO a -> MaybeT m a
-maybeIO = hushT . scriptIO
+chipBaseGpio :: (MonadThrow m, MonadIO m) => FilePath -> m Int
+chipBaseGpio chipDir = readIntFromFile (chipDir </> "base")
 
-chipBaseGpio :: (MonadIO m) => FilePath -> m Int
-chipBaseGpio chipDir = readFromFile (chipDir </> "base")
+chipNGpio :: (MonadThrow m, MonadIO m) => FilePath -> m Int
+chipNGpio chipDir = readIntFromFile (chipDir </> "ngpio")
 
-chipNGpio :: (MonadIO m) => FilePath -> m Int
-chipNGpio chipDir = readFromFile (chipDir </> "ngpio")
-
-pinRange :: (MonadIO m) => FilePath -> MaybeT m [Pin]
+pinRange :: (MonadThrow m, MonadIO m) => FilePath -> m [Pin]
 pinRange chipDir =
-  do base <- maybeIO $ chipBaseGpio chipDir
-     ngpio <- maybeIO $ chipNGpio chipDir
+  do base <- chipBaseGpio chipDir
+     ngpio <- chipNGpio chipDir
      case (base >= 0 && ngpio > 0) of
        False -> return []
        True -> return $ fmap Pin [base .. (base + ngpio - 1)]

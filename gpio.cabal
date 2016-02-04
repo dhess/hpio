@@ -50,7 +50,6 @@ Library
   Build-Depends:        base >= 4 && < 5
                       , containers
                       , directory
-                      , errors
                       , exceptions
                       , filepath
                       , free
@@ -68,7 +67,6 @@ Executable gpio-sysfs-example
   Main-Is:              Sysfs.hs
   HS-Source-Dirs:       examples
   Build-Depends:        base >= 4 && < 5
-                      , errors
                       , gpio
                       , mtl
                       , transformers
@@ -79,7 +77,6 @@ Executable gpio-edgeread-example
   Main-Is:              EdgeRead.hs
   HS-Source-Dirs:       examples
   Build-Depends:        base >= 4 && < 5
-                      , errors
                       , gpio
                       , mtl
                       , optparse-applicative
@@ -101,7 +98,6 @@ Test-Suite spec
   Build-Depends:        base
                       , containers
                       , directory
-                      , errors
                       , exceptions
                       , filepath
                       , free
