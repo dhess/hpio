@@ -32,6 +32,7 @@ import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Cont (ContT)
 import Control.Monad.Trans.Except (ExceptT)
+import Control.Monad.Trans.Identity (IdentityT)
 import Control.Monad.Trans.List (ListT)
 import Control.Monad.Trans.Maybe (MaybeT)
 import Control.Monad.Trans.Reader (ReaderT)
@@ -259,6 +260,25 @@ class (Monad m) => MonadSysfs m where
   -- are available on the host but which, for various reasons, are not
   -- exposed via the 'sysfs' GPIO filesystem.
   availablePins :: m [Pin]
+
+instance (MonadSysfs m) => MonadSysfs (IdentityT m) where
+  sysfsIsPresent = lift sysfsIsPresent
+  pinIsExported = lift . pinIsExported
+  pinHasDirection = lift . pinHasDirection
+  pinHasEdge = lift . pinHasEdge
+  exportPin = lift . exportPin
+  unexportPin = lift . unexportPin
+  readPinDirection = lift . readPinDirection
+  writePinDirection h d = lift $ writePinDirection h d
+  writePinDirectionWithValue h v = lift $ writePinDirectionWithValue h v
+  readPinValue = lift . readPinValue
+  threadWaitReadPinValue = lift . threadWaitReadPinValue
+  writePinValue h v = lift $ writePinValue h v
+  readPinEdge = lift . readPinEdge
+  writePinEdge h x = lift $ writePinEdge h x
+  readPinActiveLow = lift . readPinActiveLow
+  writePinActiveLow h v = lift $ writePinActiveLow h v
+  availablePins = lift availablePins
 
 instance (MonadIO m, MonadSysfs m) => MonadSysfs (ContT r m) where
   sysfsIsPresent = lift sysfsIsPresent
