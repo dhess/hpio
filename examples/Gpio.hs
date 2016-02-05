@@ -52,16 +52,16 @@ readTriggerOptions =
                  metavar "INT" <>
                  value oneSecond <>
                  showDefault <>
-                 help "Delay between output toggles (in ms)") <*>
+                 help "Delay between output pin value toggles (in ms)") <*>
     option auto (long "trigger" <>
                  short 't' <>
-                 metavar "TRIGGER" <>
+                 metavar "None|RisingEdge|FallingEdge|Level" <>
                  value Level <>
                  showDefault <>
-                 help "Event on which to trigger (None, RisingEdge, FallingEdge, or Level)") <*>
+                 help "Event on which to trigger the input pin") <*>
     option auto (long "timeout" <>
                  short 'T' <>
-                 metavar "TIMEOUT" <>
+                 metavar "INT" <>
                  value (-1) <>
                  help "Use a timeout for readPin (in ms)") <*>
     argument auto (metavar "INPIN")  <*>
@@ -124,5 +124,5 @@ main =execParser opts >>= run
     opts =
       info (helper <*> cmds)
            (fullDesc <>
-            progDesc "Run the demo using the specified interpreter" <>
-            header "edgeread - demonstrate gpio edge-triggered reads")
+            progDesc "Example gpio programs." <>
+            header "gpio-example - run gpio demonstrations.")

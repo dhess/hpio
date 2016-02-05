@@ -82,8 +82,8 @@ Executable gpio-sysfs-example
   Default-Language:     Haskell2010
   Ghc-Options:          -Wall -threaded
 
-Executable gpio-edgeread-example
-  Main-Is:              EdgeRead.hs
+Executable gpio-example
+  Main-Is:              Gpio.hs
   HS-Source-Dirs:       examples
   Build-Depends:        base ==4.*
                       , gpio
