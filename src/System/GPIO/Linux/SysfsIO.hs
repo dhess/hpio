@@ -144,66 +144,66 @@ runSysfsIO :: SysfsIO a -> IO a
 runSysfsIO action = runSysfsIOT $ runSysfsT action
 
 instance (MonadIO m, MonadThrow m) => MonadSysfs (SysfsIOT m) where
-  sysfsIsPresent = sysfsIsPresentIO
-  pinIsExported = pinIsExportedIO
-  pinHasDirection = pinHasDirectionIO
-  pinHasEdge = pinHasEdgeIO
-  exportPin = exportPinIO
-  unexportPin = unexportPinIO
-  readPinDirection = readPinDirectionIO
-  writePinDirection = writePinDirectionIO
-  writePinDirectionWithValue = writePinDirectionWithValueIO
-  readPinValue = readPinValueIO
-  threadWaitReadPinValue = threadWaitReadPinValueIO
-  threadWaitReadPinValue' = threadWaitReadPinValueIO'
-  writePinValue = writePinValueIO
-  readPinEdge = readPinEdgeIO
-  writePinEdge = writePinEdgeIO
-  readPinActiveLow = readPinActiveLowIO
-  writePinActiveLow = writePinActiveLowIO
-  availablePins = availablePinsIO
+  sysfsIsPresent = liftIO sysfsIsPresentIO
+  pinIsExported = liftIO . pinIsExportedIO
+  pinHasDirection = liftIO . pinHasDirectionIO
+  pinHasEdge = liftIO . pinHasEdgeIO
+  exportPin = liftIO . exportPinIO
+  unexportPin = liftIO . unexportPinIO
+  readPinDirection = liftIO . readPinDirectionIO
+  writePinDirection p d = liftIO $ writePinDirectionIO p d
+  writePinDirectionWithValue p v = liftIO $ writePinDirectionWithValueIO p v
+  readPinValue = liftIO . readPinValueIO
+  threadWaitReadPinValue = liftIO . threadWaitReadPinValueIO
+  threadWaitReadPinValue' p to = liftIO $ threadWaitReadPinValueIO' p to
+  writePinValue p v = liftIO $ writePinValueIO p v
+  readPinEdge = liftIO . readPinEdgeIO
+  writePinEdge p e = liftIO $ writePinEdgeIO p e
+  readPinActiveLow = liftIO . readPinActiveLowIO
+  writePinActiveLow p v = liftIO $ writePinActiveLowIO p v
+  availablePins = liftIO availablePinsIO
 
 -- 'MonadSysfs' implementation.
 
-sysfsIsPresentIO :: (MonadIO m) => m Bool
-sysfsIsPresentIO = liftIO $ doesDirectoryExist sysfsPath
+sysfsIsPresentIO :: IO Bool
+sysfsIsPresentIO = doesDirectoryExist sysfsPath
 
-pinIsExportedIO :: (MonadIO m) => Pin -> m Bool
-pinIsExportedIO p = liftIO $ doesDirectoryExist (pinDirName p)
+pinIsExportedIO :: Pin -> IO Bool
+pinIsExportedIO p = doesDirectoryExist (pinDirName p)
 
-pinHasDirectionIO :: (MonadIO m) => Pin -> m Bool
-pinHasDirectionIO p = liftIO $ doesFileExist (pinDirectionFileName p)
+pinHasDirectionIO :: Pin -> IO Bool
+pinHasDirectionIO p = doesFileExist (pinDirectionFileName p)
 
-pinHasEdgeIO :: (MonadIO m) => Pin -> m Bool
-pinHasEdgeIO p = liftIO $ doesFileExist (pinEdgeFileName p)
+pinHasEdgeIO :: Pin -> IO Bool
+pinHasEdgeIO p = doesFileExist (pinEdgeFileName p)
 
-exportPinIO :: (MonadIO m) => Pin -> m ()
-exportPinIO (Pin n) = liftIO $ IO.writeFile exportFileName (show n)
+exportPinIO :: Pin -> IO ()
+exportPinIO (Pin n) = IO.writeFile exportFileName (show n)
 
-unexportPinIO :: (MonadIO m) => Pin -> m ()
-unexportPinIO (Pin n) = liftIO $ IO.writeFile unexportFileName (show n)
+unexportPinIO :: Pin -> IO ()
+unexportPinIO (Pin n) = IO.writeFile unexportFileName (show n)
 
-readPinDirectionIO :: (MonadIO m, MonadThrow m) => Pin -> m PinDirection
+readPinDirectionIO :: Pin -> IO PinDirection
 readPinDirectionIO p =
-  liftIO $ IOS.readFile (pinDirectionFileName p) >>= \case
+  IOS.readFile (pinDirectionFileName p) >>= \case
     "in\n"  -> return In
     "out\n" -> return Out
     x     -> throwM $ UnexpectedDirection p x
 
-writePinDirectionIO :: (MonadIO m) => Pin -> PinDirection -> m ()
-writePinDirectionIO p d = liftIO $ IO.writeFile (pinDirectionFileName p) (lowercase $ show d)
+writePinDirectionIO :: Pin -> PinDirection -> IO ()
+writePinDirectionIO p d = IO.writeFile (pinDirectionFileName p) (lowercase $ show d)
 
-writePinDirectionWithValueIO :: (MonadIO m) => Pin -> PinValue -> m ()
-writePinDirectionWithValueIO p v = liftIO $ IO.writeFile (pinDirectionFileName p) (lowercase $ show v)
+writePinDirectionWithValueIO :: Pin -> PinValue -> IO ()
+writePinDirectionWithValueIO p v = IO.writeFile (pinDirectionFileName p) (lowercase $ show v)
 
-readPinValueIO :: (MonadIO m, MonadThrow m) => Pin -> m PinValue
+readPinValueIO :: Pin -> IO PinValue
 readPinValueIO p =
-  liftIO $ IOS.readFile (pinValueFileName p) >>= \case
+  IOS.readFile (pinValueFileName p) >>= \case
     "0\n" -> return Low
     "1\n" -> return High
     x   -> throwM $ UnexpectedValue p x
 
-threadWaitReadPinValueIO :: (MonadIO m) => Pin -> m PinValue
+threadWaitReadPinValueIO :: Pin -> IO PinValue
 threadWaitReadPinValueIO p =
   threadWaitReadPinValueIO' p (-1) >>= \case
     Just v -> return v
@@ -212,8 +212,8 @@ threadWaitReadPinValueIO p =
     -- means the poll must either wait forever or fail.
     Nothing -> error "threadWaitReadPinValueIO timed out, and it should not have. Please file a bug at https://github.com/dhess/gpio"
 
-threadWaitReadPinValueIO' :: (MonadIO m) => Pin -> Int -> m (Maybe PinValue)
-threadWaitReadPinValueIO' p timeout = liftIO $
+threadWaitReadPinValueIO' :: Pin -> Int -> IO (Maybe PinValue)
+threadWaitReadPinValueIO' p timeout =
   do fd <- openFd (pinValueFileName p) ReadOnly Nothing defaultFileFlags
      pollResult <- throwErrnoIfMinus1Retry "pollSysfs" $ pollSysfs fd timeout
      -- Could use fdRead here and handle EAGAIN, but it's easier to
@@ -225,36 +225,36 @@ threadWaitReadPinValueIO' p timeout = liftIO $
         then fmap Just $ readPinValueIO p
         else return Nothing
 
-writePinValueIO :: (MonadIO m) => Pin -> PinValue -> m ()
-writePinValueIO p v = liftIO $ IO.writeFile (pinValueFileName p) (toSysfsPinValue v)
+writePinValueIO :: Pin -> PinValue -> IO ()
+writePinValueIO p v = IO.writeFile (pinValueFileName p) (toSysfsPinValue v)
 
-readPinEdgeIO :: (MonadThrow m, MonadIO m) => Pin -> m SysfsEdge
+readPinEdgeIO :: Pin -> IO SysfsEdge
 readPinEdgeIO p =
-  liftIO $ IOS.readFile (pinEdgeFileName p) >>= \case
+  IOS.readFile (pinEdgeFileName p) >>= \case
     "none\n"  -> return None
     "rising\n" -> return Rising
     "falling\n" -> return Falling
     "both\n" -> return Both
     x     -> throwM $ UnexpectedEdge p x
 
-writePinEdgeIO :: (MonadIO m) => Pin -> SysfsEdge -> m ()
-writePinEdgeIO p v = liftIO $ IO.writeFile (pinEdgeFileName p) (toSysfsPinEdge v)
+writePinEdgeIO :: Pin -> SysfsEdge -> IO ()
+writePinEdgeIO p v = IO.writeFile (pinEdgeFileName p) (toSysfsPinEdge v)
 
-readPinActiveLowIO :: (MonadThrow m, MonadIO m) => Pin -> m Bool
+readPinActiveLowIO :: Pin -> IO Bool
 readPinActiveLowIO p =
-  liftIO $ IOS.readFile (pinActiveLowFileName p) >>= \case
+  IOS.readFile (pinActiveLowFileName p) >>= \case
     "0\n" -> return False
     "1\n" -> return True
     x   -> throwM $ UnexpectedActiveLow p x
 
-writePinActiveLowIO :: (MonadIO m) => Pin -> Bool -> m ()
-writePinActiveLowIO p v = liftIO $ IO.writeFile (pinActiveLowFileName p) (toSysfsActiveLowValue v)
+writePinActiveLowIO :: Pin -> Bool -> IO ()
+writePinActiveLowIO p v = IO.writeFile (pinActiveLowFileName p) (toSysfsActiveLowValue v)
 
-availablePinsIO :: (MonadThrow m, MonadIO m) => m [Pin]
+availablePinsIO :: IO [Pin]
 availablePinsIO =
-  do sysfsEntries <- liftIO $ getDirectoryContents sysfsPath
+  do sysfsEntries <- getDirectoryContents sysfsPath
      let sysfsContents = fmap (sysfsPath </>) sysfsEntries
-     sysfsDirectories <- filterM (liftIO . doesDirectoryExist) sysfsContents
+     sysfsDirectories <- filterM doesDirectoryExist sysfsContents
      let chipDirs = filter (\f -> isPrefixOf "gpiochip" $ takeFileName f) sysfsDirectories
      pins <- mapM pinRange chipDirs
      return $ sort $ concat pins
@@ -279,20 +279,20 @@ toSysfsActiveLowValue :: Bool -> String
 toSysfsActiveLowValue False = "0"
 toSysfsActiveLowValue True = "1"
 
-readIntFromFile :: (MonadThrow m, MonadIO m) => FilePath -> m Int
+readIntFromFile :: FilePath -> IO Int
 readIntFromFile f =
-  do contents <- liftIO $ IOS.readFile f
+  do contents <- IOS.readFile f
      case readMaybe contents of
        Just n -> return n
        Nothing -> throwM $ UnexpectedContents f contents
 
-chipBaseGpio :: (MonadThrow m, MonadIO m) => FilePath -> m Int
+chipBaseGpio :: FilePath -> IO Int
 chipBaseGpio chipDir = readIntFromFile (chipDir </> "base")
 
-chipNGpio :: (MonadThrow m, MonadIO m) => FilePath -> m Int
+chipNGpio :: FilePath -> IO Int
 chipNGpio chipDir = readIntFromFile (chipDir </> "ngpio")
 
-pinRange :: (MonadThrow m, MonadIO m) => FilePath -> m [Pin]
+pinRange :: FilePath -> IO [Pin]
 pinRange chipDir =
   do base <- chipBaseGpio chipDir
      ngpio <- chipNGpio chipDir
