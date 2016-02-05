@@ -12,7 +12,7 @@ License-File:           LICENSE
 Copyright:              Copyright (c) 2016, Drew Hess
 Tested-With:            GHC == 7.10.3
 Category:               System
-Synopsis:               Perform GPIO from Haskell
+Synopsis:               Monads for GPIO in Haskell
 Description:
   This package provides an embedded DSL for writing
   platform-independent GPIO programs in Haskell. Currently only Linux

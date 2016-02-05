@@ -1,4 +1,4 @@
--- | Top-level exports for the GPIO eDSL.
+-- | Top-level re-exports for writing GPIO programs.
 
 module System.GPIO
        ( -- * GPIO types
