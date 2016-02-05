@@ -5,7 +5,7 @@ module System.GPIO.SysfsSpec (spec) where
 
 import qualified Data.Map.Strict as Map
 import System.GPIO.Free
-import System.GPIO.Linux.MonadSysfs (SysfsEdge(..))
+import System.GPIO.Linux.SysfsTypes (SysfsEdge(..))
 import System.GPIO.Linux.SysfsMock
 import System.GPIO.Types
 

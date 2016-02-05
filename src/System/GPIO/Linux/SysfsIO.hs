@@ -1,6 +1,21 @@
 -- | The actual Linux 'sysfs' GPIO implementation. This implementation
 -- will only function properly on Linux systems with a 'sysfs' GPIO
 -- subsystem, obviously.
+--
+-- See the <https://www.kernel.org/doc/Documentation/gpio/sysfs.txt
+-- Linux kernel documentation> for the definitive description of the
+-- Linux 'sysfs'-based GPIO API and the terminology used in this
+-- module.
+--
+-- == Pin numbering
+--
+-- The 'sysfs' GPIO implementation in this module uses the same pin
+-- numbering scheme as the 'sysfs' GPIO filesystem. For example, 'Pin'
+-- 13 corresponds to @gpio13@ in the 'sysfs' filesystem. Note that the
+-- 'sysfs' pin numbering scheme is almost always different than the
+-- pin numbering scheme given by the platform/hardware documentation.
+-- Consult your platform documentation for the mapping of pin numbers
+-- between the two namespaces.
 
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
@@ -29,6 +44,8 @@ import System.Directory (doesDirectoryExist, doesFileExist, getDirectoryContents
 import System.FilePath ((</>), takeFileName)
 import System.GPIO.Linux.MonadSysfs
 import System.GPIO.Linux.Sysfs
+import System.GPIO.Linux.SysfsTypes
+import System.GPIO.Linux.SysfsUtil
 import System.GPIO.Types
 import qualified System.IO as IO (writeFile)
 import qualified System.IO.Strict as IOS (readFile)

@@ -1,33 +1,10 @@
 -- | A monad type class for Linux 'sysfs' GPIO operations.
 
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
-
 module System.GPIO.Linux.MonadSysfs
        ( -- * MonadSysfs class
          MonadSysfs(..)
-         -- * 'sysfs'-specific types
-       , SysfsEdge(..)
-       , toPinReadTrigger
-       , toSysfsEdge
-         -- * Exceptions
-       , SysfsException(..)
-        -- * Convenience functions
-        -- | Typically, you will only need these functions if you're
-        -- writing an implementation of 'MonadSysfs', but they're
-        -- general enough to be useful if you're writing low-level
-        -- Linux GPIO code, as well.
-       , sysfsPath
-       , exportFileName
-       , unexportFileName
-       , pinDirName
-       , pinActiveLowFileName
-       , pinDirectionFileName
-       , pinEdgeFileName
-       , pinValueFileName
        ) where
 
-import Control.Monad.Catch (Exception)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Cont (ContT)
 import Control.Monad.Trans.Except (ExceptT)
@@ -41,132 +18,19 @@ import qualified Control.Monad.Trans.State.Lazy as LazyState (StateT)
 import qualified Control.Monad.Trans.State.Strict as StrictState (StateT)
 import qualified Control.Monad.Trans.Writer.Lazy as LazyWriter (WriterT)
 import qualified Control.Monad.Trans.Writer.Strict as StrictWriter (WriterT)
-import Data.Data
-import GHC.Generics
-import Test.QuickCheck (Arbitrary(..), arbitraryBoundedEnum, genericShrink)
-import System.FilePath ((</>))
 import System.GPIO.Types
-
--- | The base path to Linux's 'sysfs' GPIO filesystem.
-sysfsPath :: FilePath
-sysfsPath = "/sys/class/gpio"
-
--- | The name of the control file used to export GPIO pins via
--- 'sysfs'.
-exportFileName :: FilePath
-exportFileName = sysfsPath </> "export"
-
--- | The name of the control file used to "unexport" GPIO pins via
--- 'sysfs'.
-unexportFileName :: FilePath
-unexportFileName = sysfsPath </> "unexport"
-
--- | Exporting a GPIO pin via 'sysfs' creates a control directory
--- corresponding to that pin. 'pinDirName' gives the name of that
--- directory for a given pin number.
-pinDirName :: Pin -> FilePath
-pinDirName (Pin n) = sysfsPath </> ("gpio" ++ show n)
-
--- | The name of the attribute file used to read and write the pin's
--- "active low" value.
-pinActiveLowFileName :: Pin -> FilePath
-pinActiveLowFileName p = pinDirName p </> "active_low"
-
--- | Pins whose direction can be controlled via 'sysfs' provide a
--- "direction" attribute file. 'pinDirectionFileName' gives the name
--- of that file for a given pin number. Note that some pins' direction
--- cannot be set. In these cases, the file named by this function does
--- not actually exist.
-pinDirectionFileName :: Pin -> FilePath
-pinDirectionFileName p = pinDirName p </> "direction"
-
--- | Pins that can be configured as interrupt-generating inputs
--- provide an "edge" attribute file. 'pinEdgeFileName' gives the name
--- of that file for a given pin number. Note that some pins' edge
--- configuration cannot be set. In these cases, the file named by this
--- function does not actually exist.
-pinEdgeFileName :: Pin -> FilePath
-pinEdgeFileName p = pinDirName p </> "edge"
-
--- | The name of the attribute file used to read and write the pin's
--- logical signal value.
-pinValueFileName :: Pin -> FilePath
-pinValueFileName p = pinDirName p </> "value"
-
--- | Exceptions that can be thrown by 'MonadSysfs' computations. The
--- @UnexpectedX@ values are truly exceptional and mean that, while the
--- 'sysfs' attribute for the given pin exists, the contents of the
--- attribute do not match any expected value for that attribute. (This
--- would probably be indicative of a fundamental kernel-level GPIO
--- change or enhancement, and the need for an updated 'SysfsT'
--- interpreter to handle the new value(s).)
-data SysfsException
-  = SysfsNotPresent
-  | UnexpectedDirection Pin String
-  | UnexpectedValue Pin String
-  | UnexpectedEdge Pin String
-  | UnexpectedActiveLow Pin String
-  | UnexpectedContents FilePath String
-  deriving (Show,Typeable)
-
-instance Exception SysfsException
-
--- | Linux GPIO pins that can be configured to generate inputs have an
--- "edge" attribute in the 'sysfs' GPIO filesystem. This type
--- represents the values that the "edge" attribute can take.
---
--- This type is isomorphic to the 'PinReadTrigger' type in the
--- 'System.GPIO.Free.GpioF' eDSL.
-data SysfsEdge
-  = None
-  | Rising
-  | Falling
-  | Both
-  deriving (Bounded,Enum,Eq,Data,Ord,Read,Show,Generic)
-
-instance Arbitrary SysfsEdge where
-  arbitrary = arbitraryBoundedEnum
-  shrink = genericShrink
-
--- | Convert a 'SysfsEdge' value to its equivalent 'PinReadTrigger'
--- value.
-toPinReadTrigger :: SysfsEdge -> PinReadTrigger
-toPinReadTrigger None = Disabled
-toPinReadTrigger Rising = RisingEdge
-toPinReadTrigger Falling = FallingEdge
-toPinReadTrigger Both = Level
-
--- | Convert a 'PinReadTrigger' value to its equivalent 'SysfsEdge'
--- value.
-toSysfsEdge :: PinReadTrigger -> SysfsEdge
-toSysfsEdge Disabled = None
-toSysfsEdge RisingEdge = Rising
-toSysfsEdge FallingEdge = Falling
-toSysfsEdge Level = Both
+import System.GPIO.Linux.SysfsTypes
 
 -- | A type class for monads which implement (or mock) low-level Linux
 -- 'sysfs' GPIO operations.
 --
--- If you want to write low-level, Linux-specific GPIO programs
--- without the overhead (and cross-platform portability!) of the
--- 'Control.Monad.Trans.Free.FreeT'-based
--- 'System.GPIO.Linux.Sysfs.SysfsT' interpreter, you can use instances
--- of this typeclass directly.
---
--- See the
--- <https://www.kernel.org/doc/Documentation/gpio/sysfs.txt Linux kernel documentation>
--- for the definitive description of the Linux 'sysfs'-based GPIO API
--- and the terminology used in this module.
---
--- == Pin numbering
---
--- 'MonadSysfs' implementations use the same pin numbering scheme as
--- the 'sysfs' GPIO filesystem. For example, 'Pin' 13 corresponds to
--- @gpio13@ in the 'sysfs' filesystem. Note that the 'sysfs' pin
--- numbering scheme is almost always different than the pin numbering
--- scheme given by the platform/hardware documentation. Consult your
--- platform documentation for the mapping of pin numbers between the
--- two namespaces.
+-- This type class chiefly exists in order to use a 'sysfs' mock for
+-- testing with the 'System.GPIO.Linux.Sysfs.SysfsT'
+-- transformer/interpreter (see
+-- 'System.GPIO.Linux.SysfsMock.SysfsMockT'). Typically, you will not
+-- need to use it directly. If you want to write Linux 'sysfs' GPIO
+-- programs that run in 'IO', see the 'System.GPIO.Linux.SysfsIO'
+-- module.
 class (Monad m) => MonadSysfs m where
 
   -- | Test whether the 'sysfs' GPIO filesystem is available.

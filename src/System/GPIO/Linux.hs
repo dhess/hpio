@@ -1,15 +1,13 @@
 -- | Linux GPIO.
 --
--- Because it's generally only used for testing, the
--- 'System.GPIO.Linux.SysfsMock.SysfsMockT' monad transformer is not
--- exported from here, but you can access it by directly importing
--- "System.GPIO.Linux.SysfsMock".
+-- Because they're generally only used for testing, the
+-- 'System.GPIO.Linux.SysfsMock.SysfsMockT' monad transformer and the
+-- 'System.GPIO.Linux.MonadSysfs.MonadSysfs' type class are not
+-- exported from here.
 
 module System.GPIO.Linux
-       ( -- * Type classes
-         MonadSysfs(..)
-         -- * The Linux sysfs GPIO monad
-       , SysfsIOT(..)
+       ( -- * The Linux sysfs GPIO monad
+         SysfsIOT(..)
        , SysfsIO
        , runSysfsIO
          -- * The Linux sysfs GPIO interpreter
@@ -25,6 +23,6 @@ module System.GPIO.Linux
        , SysfsException(..)
        ) where
 
-import System.GPIO.Linux.MonadSysfs
-import System.GPIO.Linux.SysfsIO
 import System.GPIO.Linux.Sysfs
+import System.GPIO.Linux.SysfsIO
+import System.GPIO.Linux.SysfsTypes

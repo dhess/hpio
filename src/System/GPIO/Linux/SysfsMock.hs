@@ -57,6 +57,8 @@ import Data.Maybe (isJust)
 import GHC.IO.Exception (IOErrorType(..))
 import System.GPIO.Linux.MonadSysfs
 import System.GPIO.Linux.Sysfs
+import System.GPIO.Linux.SysfsTypes
+import System.GPIO.Linux.SysfsUtil
 import System.GPIO.Types
 import System.IO.Error (mkIOError, ioeSetErrorString)
 

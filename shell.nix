@@ -26,7 +26,7 @@ let
           mtl QuickCheck strict text transformers unix
         ];
         homepage = "https://github.com/dhess/gpio";
-        description = "Perform GPIO from Haskell";
+        description = "Monads for GPIO in Haskell";
         license = stdenv.lib.licenses.bsd3;
       };
 
