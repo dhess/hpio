@@ -21,7 +21,7 @@ import Control.Monad.Catch
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.Char (toLower)
 import Data.List (isPrefixOf, sort)
-import Foreign.C.Error (throwErrnoIfMinus1Retry_)
+import Foreign.C.Error (throwErrnoIfMinus1Retry)
 import Foreign.C.Types (CInt(..))
 import qualified Language.C.Inline as C (include)
 import qualified Language.C.Inline.Interruptible as CI
@@ -38,6 +38,12 @@ import Text.Read (readMaybe)
 
 -- Our poll(2) wrapper.
 --
+-- Note: standard practice for Haskell timeouts/delays is to use
+-- microseconds; however, poll(2) takes a __milli__second timeout.
+-- 'pollSysfs' takes a microsecond timeout argument, but the
+-- implementation converts it to milliseconds (in C code) before
+-- passing it to poll(2).
+
 -- Because it may block, we use the 'interruptible' variant of the C
 -- FFI. This means we need to check for EINTR and try again when it
 -- occurs.
@@ -79,9 +85,10 @@ C.include "<unistd.h>"
 -- https://www.kernel.org/doc/Documentation/gpio/sysfs.txt
 -- http://stackoverflow.com/questions/16442935/why-doesnt-this-call-to-poll-block-correctly-on-a-sysfs-device-attribute-file
  -- http://stackoverflow.com/questions/27411013/poll-returns-both-pollpri-pollerr
-pollSysfs :: Fd -> IO CInt
-pollSysfs fd =
+pollSysfs :: Fd -> Int -> IO CInt
+pollSysfs fd timeout =
   let cfd = fromIntegral fd
+      ctimeout = fromIntegral timeout
   in
     [CI.block| int {
          uint8_t dummy;
@@ -90,13 +97,17 @@ pollSysfs fd =
          }
 
          struct pollfd fds = { .fd = $(int cfd), .events = POLLPRI|POLLERR, .revents = 0 };
-         if (poll(&fds, 1, -1) == -1)  {
+
+         int timeout_in_ms = ($(int ctimeout) > 0) ? ($(int ctimeout) / 1000) : $(int ctimeout);
+
+         int poll_result = poll(&fds, 1, timeout_in_ms);
+         if (poll_result == -1)  {
              return -1;
          }
          if (lseek(fds.fd, 0, SEEK_SET) == -1) {
              return -1;
          }
-         return 0;
+         return poll_result;
      } |]
 
 -- | A monad transformer which adds Linux 'sysfs' GPIO computations to
@@ -144,6 +155,7 @@ instance (MonadIO m, MonadThrow m) => MonadSysfs (SysfsIOT m) where
   writePinDirectionWithValue = writePinDirectionWithValueIO
   readPinValue = readPinValueIO
   threadWaitReadPinValue = threadWaitReadPinValueIO
+  threadWaitReadPinValue' = threadWaitReadPinValueIO'
   writePinValue = writePinValueIO
   readPinEdge = readPinEdgeIO
   writePinEdge = writePinEdgeIO
@@ -192,15 +204,26 @@ readPinValueIO p =
     x   -> throwM $ UnexpectedValue p x
 
 threadWaitReadPinValueIO :: (MonadIO m) => Pin -> m PinValue
-threadWaitReadPinValueIO p = liftIO $
+threadWaitReadPinValueIO p =
+  threadWaitReadPinValueIO' p (-1) >>= \case
+    Just v -> return v
+    -- Yes, I really do mean "error" here. 'Nothing' can only occur
+    -- when the poll has timed out, but the (-1) timeout value above
+    -- means the poll must either wait forever or fail.
+    Nothing -> error "threadWaitReadPinValueIO timed out, and it should not have. Please file a bug at https://github.com/dhess/gpio"
+
+threadWaitReadPinValueIO' :: (MonadIO m) => Pin -> Int -> m (Maybe PinValue)
+threadWaitReadPinValueIO' p timeout = liftIO $
   do fd <- openFd (pinValueFileName p) ReadOnly Nothing defaultFileFlags
-     throwErrnoIfMinus1Retry_ "pollSysfs" $ pollSysfs fd
+     pollResult <- throwErrnoIfMinus1Retry "pollSysfs" $ pollSysfs fd timeout
      -- Could use fdRead here and handle EAGAIN, but it's easier to
      -- close the fd and use nice handle-based IO, instead. If this
      -- becomes a performance problem... we probably need a
      -- non-sysfs-based interpreter in that case, anyway.
      closeFd fd
-     readPinValueIO p
+     if pollResult > 0
+        then fmap Just $ readPinValueIO p
+        else return Nothing
 
 writePinValueIO :: (MonadIO m) => Pin -> PinValue -> m ()
 writePinValueIO p v = liftIO $ IO.writeFile (pinValueFileName p) (toSysfsPinValue v)

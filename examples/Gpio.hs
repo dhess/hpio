@@ -10,10 +10,8 @@ import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.Foldable (for_)
 import Options.Applicative
 import System.GPIO.Free
-import System.GPIO.Linux.Sysfs
 import System.GPIO.Linux.SysfsIO (runSysfsIO)
 import System.GPIO.Types
-import System.Timeout (timeout)
 
 -- Only one for now.
 data Interpreter =
@@ -52,7 +50,7 @@ readTriggerOptions =
                  metavar "INT" <>
                  value oneSecond <>
                  showDefault <>
-                 help "Delay between output pin value toggles (in ms)") <*>
+                 help "Delay between output pin value toggles (in microseconds)") <*>
     option auto (long "trigger" <>
                  short 't' <>
                  metavar "None|RisingEdge|FallingEdge|Level" <>
@@ -63,7 +61,7 @@ readTriggerOptions =
                  short 'T' <>
                  metavar "INT" <>
                  value (-1) <>
-                 help "Use a timeout for readPin (in ms)") <*>
+                 help "Use a timeout for readPin (in microseconds)") <*>
     argument auto (metavar "INPIN")  <*>
     argument auto (metavar "OUTPIN")
 
@@ -95,18 +93,15 @@ listPins =
     [] -> output "No GPIO pins found on this system"
     ps -> for_ ps $ liftIO . print
 
--- This must be the 'SysfsT' monad rather than the more generic
--- 'GpioT' because we need to 'runSysfsIO' inside it, in order to use
--- 'timeout'.
-edgeRead :: (MonadIO m) => Pin -> PinReadTrigger -> Int -> (SysfsT m) m ()
+edgeRead :: (MonadIO m) => Pin -> PinReadTrigger -> Int -> GpioT h m m ()
 edgeRead p trigger to =
   withPin p $ \h ->
     do setPinDirection h In
        setPinReadTrigger h trigger
        forever $
-         do result <- liftIO $ timeout to (runSysfsIO $ readPin h)
+         do result <- readPinTimeout h to
             case result of
-              Nothing -> output ("readPin timed out after " ++ show to ++ " ms")
+              Nothing -> output ("readPin timed out after " ++ show to ++ " microseconds")
               Just v -> output ("Input: " ++ show v)
 
 driveOutput :: (MonadIO m) => Pin -> Int -> GpioT h m m ()
@@ -114,7 +109,7 @@ driveOutput p delay =
   withPin p $ \h ->
     do setPinDirection h Out
        forever $
-         do liftIO $ threadDelay (delay * 1000000)
+         do liftIO $ threadDelay delay
             v <- togglePinValue h
             output ("Output: " ++ show v)
 

@@ -105,6 +105,10 @@ runSysfsT = iterT run
       do value <- threadWaitReadPinValue p
          next value
 
+    run (ReadPinTimeout (PinDescriptor p) timeout next) =
+      do value <- threadWaitReadPinValue' p timeout
+         next value
+
     run (WritePin (PinDescriptor p) v next) =
       do writePinValue p v
          next

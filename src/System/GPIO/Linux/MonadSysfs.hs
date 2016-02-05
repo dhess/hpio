@@ -221,10 +221,26 @@ class (Monad m) => MonadSysfs m where
 
   -- | A blocking version of 'readPinValue'. The current thread will
   -- block until an event occurs on the pin as specified by the pin's
-  -- current "edge" attribute setting. (If the pin has no "edge"
-  -- attribute, then this function will not block and will act like
-  -- 'readPinValue'.)
+  -- current "edge" attribute setting.
+  --
+  -- If the pin has no "edge" attribute, then this function will not
+  -- block and will act like 'readPinValue'.
   threadWaitReadPinValue :: Pin -> m PinValue
+
+  -- | Same as 'threadWaitReadPinValue', except that a timeout value,
+  -- specified in microseconds, is provided. If no event occurs before
+  -- the timeout expires, this function returns 'Nothing'; otherwise,
+  -- it returns the pin's value wrapped in a 'Just'.
+  --
+  -- If the timeout value is negative, this function behaves just like
+  -- 'threadWaitReadPinValue'.
+  --
+  -- When specifying a timeout value, be careful not to exceed
+  -- 'maxBound'.
+  --
+  -- If the pin has no "edge" attribute, then this function will not
+  -- block and will act like 'readPinValue'.
+  threadWaitReadPinValue' :: Pin -> Int -> m (Maybe PinValue)
 
   -- | Set the given pin's value.
   --
@@ -273,6 +289,7 @@ instance (MonadSysfs m) => MonadSysfs (IdentityT m) where
   writePinDirectionWithValue h v = lift $ writePinDirectionWithValue h v
   readPinValue = lift . readPinValue
   threadWaitReadPinValue = lift . threadWaitReadPinValue
+  threadWaitReadPinValue' p timeout = lift $ threadWaitReadPinValue' p timeout
   writePinValue h v = lift $ writePinValue h v
   readPinEdge = lift . readPinEdge
   writePinEdge h x = lift $ writePinEdge h x
@@ -292,6 +309,7 @@ instance (MonadSysfs m) => MonadSysfs (ContT r m) where
   writePinDirectionWithValue h v = lift $ writePinDirectionWithValue h v
   readPinValue = lift . readPinValue
   threadWaitReadPinValue = lift . threadWaitReadPinValue
+  threadWaitReadPinValue' p timeout = lift $ threadWaitReadPinValue' p timeout
   writePinValue h v = lift $ writePinValue h v
   readPinEdge = lift . readPinEdge
   writePinEdge h x = lift $ writePinEdge h x
@@ -311,6 +329,7 @@ instance (MonadSysfs m) => MonadSysfs (ExceptT e m) where
   writePinDirectionWithValue h v = lift $ writePinDirectionWithValue h v
   readPinValue = lift . readPinValue
   threadWaitReadPinValue = lift . threadWaitReadPinValue
+  threadWaitReadPinValue' p timeout = lift $ threadWaitReadPinValue' p timeout
   writePinValue h v = lift $ writePinValue h v
   readPinEdge = lift . readPinEdge
   writePinEdge h x = lift $ writePinEdge h x
@@ -330,6 +349,7 @@ instance (MonadSysfs m) => MonadSysfs (ListT m) where
   writePinDirectionWithValue h v = lift $ writePinDirectionWithValue h v
   readPinValue = lift . readPinValue
   threadWaitReadPinValue = lift . threadWaitReadPinValue
+  threadWaitReadPinValue' p timeout = lift $ threadWaitReadPinValue' p timeout
   writePinValue h v = lift $ writePinValue h v
   readPinEdge = lift . readPinEdge
   writePinEdge h x = lift $ writePinEdge h x
@@ -349,6 +369,7 @@ instance (MonadSysfs m) => MonadSysfs (MaybeT m) where
   writePinDirectionWithValue h v = lift $ writePinDirectionWithValue h v
   readPinValue = lift . readPinValue
   threadWaitReadPinValue = lift . threadWaitReadPinValue
+  threadWaitReadPinValue' p timeout = lift $ threadWaitReadPinValue' p timeout
   writePinValue h v = lift $ writePinValue h v
   readPinEdge = lift . readPinEdge
   writePinEdge h x = lift $ writePinEdge h x
@@ -368,6 +389,7 @@ instance (MonadSysfs m) => MonadSysfs (ReaderT r m) where
   writePinDirectionWithValue h v = lift $ writePinDirectionWithValue h v
   readPinValue = lift . readPinValue
   threadWaitReadPinValue = lift . threadWaitReadPinValue
+  threadWaitReadPinValue' p timeout = lift $ threadWaitReadPinValue' p timeout
   writePinValue h v = lift $ writePinValue h v
   readPinEdge = lift . readPinEdge
   writePinEdge h x = lift $ writePinEdge h x
@@ -387,6 +409,7 @@ instance (MonadSysfs m, Monoid w) => MonadSysfs (LazyRWS.RWST r w s m) where
   writePinDirectionWithValue h v = lift $ writePinDirectionWithValue h v
   readPinValue = lift . readPinValue
   threadWaitReadPinValue = lift . threadWaitReadPinValue
+  threadWaitReadPinValue' p timeout = lift $ threadWaitReadPinValue' p timeout
   writePinValue h v = lift $ writePinValue h v
   readPinEdge = lift . readPinEdge
   writePinEdge h x = lift $ writePinEdge h x
@@ -406,6 +429,7 @@ instance (MonadSysfs m, Monoid w) => MonadSysfs (StrictRWS.RWST r w s m) where
   writePinDirectionWithValue h v = lift $ writePinDirectionWithValue h v
   readPinValue = lift . readPinValue
   threadWaitReadPinValue = lift . threadWaitReadPinValue
+  threadWaitReadPinValue' p timeout = lift $ threadWaitReadPinValue' p timeout
   writePinValue h v = lift $ writePinValue h v
   readPinEdge = lift . readPinEdge
   writePinEdge h x = lift $ writePinEdge h x
@@ -425,6 +449,7 @@ instance (MonadSysfs m) => MonadSysfs (LazyState.StateT s m) where
   writePinDirectionWithValue h v = lift $ writePinDirectionWithValue h v
   readPinValue = lift . readPinValue
   threadWaitReadPinValue = lift . threadWaitReadPinValue
+  threadWaitReadPinValue' p timeout = lift $ threadWaitReadPinValue' p timeout
   writePinValue h v = lift $ writePinValue h v
   readPinEdge = lift . readPinEdge
   writePinEdge h x = lift $ writePinEdge h x
@@ -444,6 +469,7 @@ instance (MonadSysfs m) => MonadSysfs (StrictState.StateT s m) where
   writePinDirectionWithValue h v = lift $ writePinDirectionWithValue h v
   readPinValue = lift . readPinValue
   threadWaitReadPinValue = lift . threadWaitReadPinValue
+  threadWaitReadPinValue' p timeout = lift $ threadWaitReadPinValue' p timeout
   writePinValue h v = lift $ writePinValue h v
   readPinEdge = lift . readPinEdge
   writePinEdge h x = lift $ writePinEdge h x
@@ -463,6 +489,7 @@ instance (MonadSysfs m, Monoid w) => MonadSysfs (LazyWriter.WriterT w m) where
   writePinDirectionWithValue h v = lift $ writePinDirectionWithValue h v
   readPinValue = lift . readPinValue
   threadWaitReadPinValue = lift . threadWaitReadPinValue
+  threadWaitReadPinValue' p timeout = lift $ threadWaitReadPinValue' p timeout
   writePinValue h v = lift $ writePinValue h v
   readPinEdge = lift . readPinEdge
   writePinEdge h x = lift $ writePinEdge h x
@@ -482,6 +509,7 @@ instance (MonadSysfs m, Monoid w) => MonadSysfs (StrictWriter.WriterT w m) where
   writePinDirectionWithValue h v = lift $ writePinDirectionWithValue h v
   readPinValue = lift . readPinValue
   threadWaitReadPinValue = lift . threadWaitReadPinValue
+  threadWaitReadPinValue' p timeout = lift $ threadWaitReadPinValue' p timeout
   writePinValue h v = lift $ writePinValue h v
   readPinEdge = lift . readPinEdge
   writePinEdge h x = lift $ writePinEdge h x

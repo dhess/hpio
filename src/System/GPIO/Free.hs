@@ -22,6 +22,7 @@ module System.GPIO.Free
        , togglePinDirection
        , samplePin
        , readPin
+       , readPinTimeout
        , writePin
        , writePin'
        , togglePinValue
@@ -47,6 +48,7 @@ data GpioF h m next where
   TogglePinDirection :: h -> (Maybe PinDirection -> next) -> GpioF h m next
   SamplePin :: h -> (PinValue -> next) -> GpioF h m next
   ReadPin :: h -> (PinValue -> next) -> GpioF h m next
+  ReadPinTimeout :: h -> Int -> (Maybe PinValue -> next) -> GpioF h m next
   WritePin :: h -> PinValue -> next -> GpioF h m next
   WritePin' :: h -> PinValue -> next -> GpioF h m next
   TogglePinValue :: h -> (PinValue -> next) -> GpioF h m next
@@ -65,6 +67,7 @@ instance Functor (GpioF h m) where
   fmap f (TogglePinDirection h g) = TogglePinDirection h (f . g)
   fmap f (SamplePin h g) = SamplePin h (f . g)
   fmap f (ReadPin h g) = ReadPin h (f . g)
+  fmap f (ReadPinTimeout h t g) = ReadPinTimeout h t (f . g)
   fmap f (WritePin h v x) = WritePin h v (f x)
   fmap f (WritePin' h v x) = WritePin' h v (f x)
   fmap f (TogglePinValue h g) = TogglePinValue h (f . g)
@@ -139,6 +142,26 @@ makeFreeCon 'SamplePin
 -- function may behave differently across different implementations of
 -- Haskell. It has only been tested with GHC.
 makeFreeCon 'ReadPin
+
+-- | Same as 'readPin', except with a timeout, specified in
+-- microseconds. If no event occurs before the timeout expires, this
+-- function returns 'Nothing'; otherwise, it returns the pin's
+-- /logical/ 'PinValue' wrapped in a 'Just'.
+--
+-- If the timeout value is negative, this function behaves just like
+-- 'readPin'.
+--
+-- When specifying a timeout value, be careful not to exceed
+-- 'maxBound'.
+--
+-- If the pin does not support blocking reads, then this function
+-- behaves like 'samplePin' and returns the pin's logical value
+-- without blocking.
+--
+-- Note: due to its interaction with the threading system, this
+-- function may behave differently across different implementations of
+-- Haskell. It has only been tested with GHC.
+makeFreeCon 'ReadPinTimeout
 
 -- | Set the pin's /logical/ 'PinValue'. It is an error to call this
 -- function when the pin is not configured for output.

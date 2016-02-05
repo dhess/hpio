@@ -123,6 +123,7 @@ instance (MonadIO m) => MonadSysfs (SysfsMockT m) where
   writePinDirectionWithValue = writePinDirectionWithValueMock
   readPinValue = readPinValueMock
   threadWaitReadPinValue = readPinValueMock -- XXX dhess: hack.
+  threadWaitReadPinValue' p _ = fmap Just $ readPinValueMock p -- XXX dhess: hack.
   writePinValue = writePinValueMock
   readPinEdge = readPinEdgeMock
   writePinEdge = writePinEdgeMock
