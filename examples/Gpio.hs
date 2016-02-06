@@ -53,7 +53,7 @@ readTriggerOptions =
                  help "Delay between output pin value toggles (in microseconds)") <*>
     option auto (long "trigger" <>
                  short 't' <>
-                 metavar "None|RisingEdge|FallingEdge|Level" <>
+                 metavar "Disabled|RisingEdge|FallingEdge|Level" <>
                  value Level <>
                  showDefault <>
                  help "Event on which to trigger the input pin") <*>
@@ -76,7 +76,7 @@ cmds =
                  help "Choose the GPIO interpreter (system) to use") <*>
     hsubparser
       (command "listPins" (info listPinsCmd (progDesc "List the GPIO pins available on the system")) <>
-       command "readTrigger" (info readTriggerCmd (progDesc "Use the Linux sysfs interpreter to drive INPIN using OUTPIN. (Make sure the pins are connected!")))
+       command "readTrigger" (info readTriggerCmd (progDesc "Drive INPIN using OUTPIN. (Make sure the pins are connected!")))
 
 run :: GlobalOptions -> IO ()
 run (GlobalOptions SysfsIO (ReadTrigger (ReadTriggerOptions period trigger to inputPin outputPin))) =

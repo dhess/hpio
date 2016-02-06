@@ -81,6 +81,7 @@ Executable gpio-sysfs-example
   Build-Depends:        base ==4.*
                       , gpio
                       , mtl
+                      , optparse-applicative
                       , transformers
   Default-Language:     Haskell2010
   Ghc-Options:          -Wall -threaded
