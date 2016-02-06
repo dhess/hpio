@@ -4,6 +4,7 @@
 
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
@@ -33,13 +34,16 @@ module System.GPIO.Linux.Sysfs.IO
          , writePinActiveLow
          ) where
 
-import Prelude hiding (readFile, writeFile)
 import Control.Monad (filterM)
 import Control.Monad.Catch
 import Control.Monad.Fix (MonadFix)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Trans.Class (MonadTrans(..))
-import Data.Char (toLower)
+import Data.Binary (Binary, decodeOrFail, encode)
+import Data.ByteString (ByteString)
+import qualified Data.ByteString as BS (readFile, writeFile)
+import qualified Data.ByteString.Char8 as C8 (unpack)
+import qualified Data.ByteString.Lazy as LBS (ByteString, empty, toStrict, fromStrict)
 import Data.List (isPrefixOf, sort)
 import Foreign.C.Error (throwErrnoIfMinus1Retry)
 import Foreign.C.Types (CInt(..))
@@ -52,11 +56,8 @@ import System.GPIO.Linux.Sysfs.Free
 import System.GPIO.Linux.Sysfs.Types
 import System.GPIO.Linux.Sysfs.Util
 import System.GPIO.Types
-import qualified System.IO as IO (writeFile)
-import qualified System.IO.Strict as IOS (readFile)
 import System.Posix.IO (OpenMode(ReadOnly), closeFd, defaultFileFlags, openFd)
 import System.Posix.Types (Fd)
-import Text.Read (readMaybe)
 
 -- Our poll(2) wrapper.
 --
@@ -213,14 +214,14 @@ pinHasEdge p = doesFileExist (pinEdgeFileName p)
 
 -- | Export the given pin.
 exportPin :: Pin -> IO ()
-exportPin (Pin n) = IO.writeFile exportFileName (show n)
+exportPin (Pin n) = BS.writeFile exportFileName (encodeStrict n)
 
 -- | Unexport the given pin.
 --
 -- It is an error to call this function if the pin is not currently
 -- exported.
 unexportPin :: Pin -> IO ()
-unexportPin (Pin n) = IO.writeFile unexportFileName (show n)
+unexportPin (Pin n) = BS.writeFile unexportFileName (encodeStrict n)
 
 -- | Read the given pin's direction.
 --
@@ -228,17 +229,17 @@ unexportPin (Pin n) = IO.writeFile unexportFileName (show n)
 -- attribute.
 readPinDirection :: Pin -> IO PinDirection
 readPinDirection p =
-  IOS.readFile (pinDirectionFileName p) >>= \case
+  BS.readFile (pinDirectionFileName p) >>= \case
     "in\n"  -> return In
     "out\n" -> return Out
-    x     -> throwM $ UnexpectedDirection p x
+    x     -> throwM $ UnexpectedDirection p (C8.unpack x)
 
 -- | Set the given pin's direction.
 --
 -- It is an error to call this function if the pin has no @direction@
 -- attribute.
 writePinDirection :: Pin -> PinDirection -> IO ()
-writePinDirection p d = IO.writeFile (pinDirectionFileName p) (lowercase $ show d)
+writePinDirection p d = BS.writeFile (pinDirectionFileName p) (encodeStrict $ toSysfsPinDirection d)
 
 -- | Pins whose direction can be set may be configured for output by
 -- writing a 'PinValue' to their @direction@ attribute. This enables
@@ -249,7 +250,7 @@ writePinDirection p d = IO.writeFile (pinDirectionFileName p) (lowercase $ show 
 -- It is an error to call this function if the pin has no
 -- @direction@ attribute.
 writePinDirectionWithValue :: Pin -> PinValue -> IO ()
-writePinDirectionWithValue p v = IO.writeFile (pinDirectionFileName p) (lowercase $ show v)
+writePinDirectionWithValue p v = BS.writeFile (pinDirectionFileName p) (encodeStrict $ toSysfsPinValue v)
 
 -- | Read the given pin's value.
 --
@@ -257,10 +258,10 @@ writePinDirectionWithValue p v = IO.writeFile (pinDirectionFileName p) (lowercas
 -- @edge@ attribute setting.
 readPinValue :: Pin -> IO PinValue
 readPinValue p =
-  IOS.readFile (pinValueFileName p) >>= \case
+  BS.readFile (pinValueFileName p) >>= \case
     "0\n" -> return Low
     "1\n" -> return High
-    x   -> throwM $ UnexpectedValue p x
+    x   -> throwM $ UnexpectedValue p (C8.unpack x)
 
 -- | A blocking version of 'readPinValue'. The current thread will
 -- block until an event occurs on the pin as specified by the pin's
@@ -308,7 +309,7 @@ threadWaitReadPinValue' p timeout =
 -- It is an error to call this function if the pin is configured as
 -- an input pin.
 writePinValue :: Pin -> PinValue -> IO ()
-writePinValue p v = IO.writeFile (pinValueFileName p) (toSysfsPinValue v)
+writePinValue p v = BS.writeFile (pinValueFileName p) (toSysfsPinValue v)
 
 -- | Read the given pin's @edge@ attribute.
 --
@@ -316,31 +317,31 @@ writePinValue p v = IO.writeFile (pinValueFileName p) (toSysfsPinValue v)
 -- attribute.
 readPinEdge :: Pin -> IO SysfsEdge
 readPinEdge p =
-  IOS.readFile (pinEdgeFileName p) >>= \case
+  BS.readFile (pinEdgeFileName p) >>= \case
     "none\n"  -> return None
     "rising\n" -> return Rising
     "falling\n" -> return Falling
     "both\n" -> return Both
-    x     -> throwM $ UnexpectedEdge p x
+    x     -> throwM $ UnexpectedEdge p (C8.unpack x)
 
 -- | Write the given pin's @edge@ attribute.
 --
 -- It is an error to call this function when the pin has no @edge@
 -- attribute.
 writePinEdge :: Pin -> SysfsEdge -> IO ()
-writePinEdge p v = IO.writeFile (pinEdgeFileName p) (toSysfsPinEdge v)
+writePinEdge p v = BS.writeFile (pinEdgeFileName p) (toSysfsPinEdge v)
 
 -- | Read the given pin's @active_low@ attribute.
 readPinActiveLow :: Pin -> IO Bool
 readPinActiveLow p =
-  IOS.readFile (pinActiveLowFileName p) >>= \case
+  BS.readFile (pinActiveLowFileName p) >>= \case
     "0\n" -> return False
     "1\n" -> return True
-    x   -> throwM $ UnexpectedActiveLow p x
+    x   -> throwM $ UnexpectedActiveLow p (C8.unpack x)
 
 -- | Write the given pin's @active_low@ attribute.
 writePinActiveLow :: Pin -> Bool -> IO ()
-writePinActiveLow p v = IO.writeFile (pinActiveLowFileName p) (toSysfsActiveLowValue v)
+writePinActiveLow p v = BS.writeFile (pinActiveLowFileName p) (toSysfsActiveLowValue v)
 
 -- | Return a list of all pins that are exposed via the 'sysfs' GPIO
 -- filesystem. Note that the returned list may omit some pins that
@@ -358,29 +359,45 @@ availablePins =
 -- Helper functions that aren't exported.
 --
 
-lowercase :: String -> String
-lowercase = fmap toLower
+encodeStrict :: Binary a => a -> ByteString
+encodeStrict = LBS.toStrict . encode
 
-toSysfsPinEdge :: SysfsEdge -> String
+toSysfsPinDirection :: PinDirection -> ByteString
+toSysfsPinDirection In = "in"
+toSysfsPinDirection Out = "out"
+
+toSysfsPinEdge :: SysfsEdge -> ByteString
 toSysfsPinEdge None = "none"
 toSysfsPinEdge Rising = "rising"
 toSysfsPinEdge Falling = "falling"
 toSysfsPinEdge Both = "both"
 
-toSysfsPinValue :: PinValue -> String
+toSysfsPinValue :: PinValue -> ByteString
 toSysfsPinValue Low = "0"
 toSysfsPinValue High = "1"
 
-toSysfsActiveLowValue :: Bool -> String
+toSysfsActiveLowValue :: Bool -> ByteString
 toSysfsActiveLowValue False = "0"
 toSysfsActiveLowValue True = "1"
 
+endToken :: LBS.ByteString -> Bool
+endToken bs = bs == LBS.empty || bs == "\n"
+
+maybeDecodeInt :: ByteString -> Maybe Int
+maybeDecodeInt bs =
+  case decodeOrFail (LBS.fromStrict bs) of
+    Right (leftOver, _, n) ->
+      if (endToken leftOver)
+         then Just n
+         else Nothing
+    _ -> Nothing
+
 readIntFromFile :: FilePath -> IO Int
 readIntFromFile f =
-  do contents <- IOS.readFile f
-     case readMaybe contents of
+  do contents <- BS.readFile f
+     case maybeDecodeInt contents of
        Just n -> return n
-       Nothing -> throwM $ UnexpectedContents f contents
+       Nothing -> throwM $ UnexpectedContents f (C8.unpack contents)
 
 chipBaseGpio :: FilePath -> IO Int
 chipBaseGpio chipDir = readIntFromFile (chipDir </> "base")

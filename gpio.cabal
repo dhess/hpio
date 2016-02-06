@@ -59,7 +59,10 @@ Library
                       , QuasiQuotes
                       , TemplateHaskell
                       , TypeSynonymInstances
-  Build-Depends:        base ==4.*
+  Build-Depends:        QuickCheck
+                      , base ==4.*
+                      , binary
+                      , bytestring
                       , containers
                       , directory
                       , exceptions
@@ -67,8 +70,6 @@ Library
                       , free
                       , inline-c
                       , mtl
-                      , QuickCheck
-                      , strict
                       , text
                       , transformers
                       , unix
@@ -104,7 +105,10 @@ Test-Suite spec
                       , test
   Ghc-Options:          -Wall
   Main-Is:              Main.hs
-  Build-Depends:        base ==4.*
+  Build-Depends:        QuickCheck
+                      , base ==4.*
+                      , binary
+                      , bytestring
                       , containers
                       , directory
                       , exceptions
@@ -113,8 +117,6 @@ Test-Suite spec
                       , hspec
                       , inline-c
                       , mtl
-                      , QuickCheck
-                      , strict
                       , text
                       , transformers
                       , unix
