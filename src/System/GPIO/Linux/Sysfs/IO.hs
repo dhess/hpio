@@ -22,7 +22,7 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module System.GPIO.Linux.SysfsIO
+module System.GPIO.Linux.Sysfs.IO
          ( -- * SysfsIOT transformer
            SysfsIOT(..)
          , SysfsIO
@@ -42,10 +42,10 @@ import qualified Language.C.Inline as C (include)
 import qualified Language.C.Inline.Interruptible as CI
 import System.Directory (doesDirectoryExist, doesFileExist, getDirectoryContents)
 import System.FilePath ((</>), takeFileName)
-import System.GPIO.Linux.MonadSysfs
-import System.GPIO.Linux.Sysfs
-import System.GPIO.Linux.SysfsTypes
-import System.GPIO.Linux.SysfsUtil
+import System.GPIO.Linux.Sysfs.Monad
+import System.GPIO.Linux.Sysfs.Free
+import System.GPIO.Linux.Sysfs.Types
+import System.GPIO.Linux.Sysfs.Util
 import System.GPIO.Types
 import qualified System.IO as IO (writeFile)
 import qualified System.IO.Strict as IOS (readFile)

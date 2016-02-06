@@ -3,7 +3,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 
-module System.GPIO.Linux.SysfsTypes
+module System.GPIO.Linux.Sysfs.Types
        ( -- * 'sysfs'-specific types
         SysfsEdge(..)
        , toPinReadTrigger

@@ -1,6 +1,6 @@
 -- | Useful low-level Linux 'sysfs' functions.
 
-module System.GPIO.Linux.SysfsUtil
+module System.GPIO.Linux.Sysfs.Util
        ( sysfsPath
        , exportFileName
        , unexportFileName

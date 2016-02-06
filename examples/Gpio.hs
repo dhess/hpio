@@ -10,7 +10,7 @@ import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.Foldable (for_)
 import Options.Applicative
 import System.GPIO.Free
-import System.GPIO.Linux.SysfsIO (runSysfsIO)
+import System.GPIO.Linux.Sysfs.IO (runSysfsIO)
 import System.GPIO.Types
 
 -- Only one for now.

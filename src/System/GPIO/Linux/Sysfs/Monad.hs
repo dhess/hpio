@@ -1,6 +1,6 @@
 -- | A monad type class for Linux 'sysfs' GPIO operations.
 
-module System.GPIO.Linux.MonadSysfs
+module System.GPIO.Linux.Sysfs.Monad
        ( -- * MonadSysfs class
          MonadSysfs(..)
        ) where
@@ -19,7 +19,7 @@ import qualified Control.Monad.Trans.State.Strict as StrictState (StateT)
 import qualified Control.Monad.Trans.Writer.Lazy as LazyWriter (WriterT)
 import qualified Control.Monad.Trans.Writer.Strict as StrictWriter (WriterT)
 import System.GPIO.Types
-import System.GPIO.Linux.SysfsTypes
+import System.GPIO.Linux.Sysfs.Types
 
 -- | A type class for monads which implement (or mock) low-level Linux
 -- 'sysfs' GPIO operations.

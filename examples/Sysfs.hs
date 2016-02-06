@@ -7,7 +7,7 @@ module Main where
 import Control.Monad (when)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import System.GPIO.Free
-import System.GPIO.Linux.SysfsIO (runSysfsIO)
+import System.GPIO.Linux.Sysfs.IO (runSysfsIO)
 import System.GPIO.Types
 
 output :: (MonadIO m) => String -> m ()

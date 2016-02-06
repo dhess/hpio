@@ -29,7 +29,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 
-module System.GPIO.Linux.SysfsMock
+module System.GPIO.Linux.Sysfs.Mock
        ( -- * The SysfsMock monad
          SysfsMockT(..)
        , SysfsMock
@@ -55,10 +55,10 @@ import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 import Data.Maybe (isJust)
 import GHC.IO.Exception (IOErrorType(..))
-import System.GPIO.Linux.MonadSysfs
-import System.GPIO.Linux.Sysfs
-import System.GPIO.Linux.SysfsTypes
-import System.GPIO.Linux.SysfsUtil
+import System.GPIO.Linux.Sysfs.Monad
+import System.GPIO.Linux.Sysfs.Free
+import System.GPIO.Linux.Sysfs.Types
+import System.GPIO.Linux.Sysfs.Util
 import System.GPIO.Types
 import System.IO.Error (mkIOError, ioeSetErrorString)
 
