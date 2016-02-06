@@ -48,7 +48,6 @@ module System.GPIO.Linux.Sysfs.Mock
 import Control.Applicative
 import Control.Monad
 import Control.Monad.Catch
-import Control.Monad.Cont
 import Control.Monad.Fix
 import Control.Monad.Reader
 import Control.Monad.State.Strict
@@ -100,7 +99,7 @@ mockWorld pins = Map.fromList $ zip pins (repeat defaultState)
 -- inner monad 'm'.
 newtype SysfsMockT m a =
   SysfsMockT { unSysfsMockT :: StateT MockWorld m a }
-  deriving (Alternative,Applicative,Functor,Monad,MonadState MockWorld,MonadReader r,MonadWriter w,MonadFix,MonadPlus,MonadIO,MonadCont,MonadTrans,MonadCatch,MonadThrow,MonadMask)
+  deriving (Alternative,Applicative,Functor,Monad,MonadState MockWorld,MonadReader r,MonadWriter w,MonadFix,MonadPlus,MonadIO,MonadTrans,MonadCatch,MonadThrow,MonadMask)
 
 -- | Run a mock 'sysfs' computation with the given 'MockWorld', and
 -- return a tuple containing the final value and final 'MockWorld'

@@ -34,10 +34,11 @@ module System.GPIO.Linux.Sysfs.IO
          ) where
 
 import Prelude hiding (readFile, writeFile)
-import Control.Applicative
 import Control.Monad (filterM)
 import Control.Monad.Catch
+import Control.Monad.Fix (MonadFix)
 import Control.Monad.IO.Class (MonadIO, liftIO)
+import Control.Monad.Trans.Class (MonadTrans(..))
 import Data.Char (toLower)
 import Data.List (isPrefixOf, sort)
 import Foreign.C.Error (throwErrnoIfMinus1Retry)
@@ -153,7 +154,7 @@ pollSysfs fd timeout =
 -- threading system interacts with the C FFI.)
 newtype SysfsIOT m a =
   SysfsIOT { runSysfsIOT :: m a }
-  deriving (Alternative,Applicative,Functor,Monad,MonadIO,MonadThrow,MonadCatch,MonadMask)
+  deriving (Applicative,Functor,Monad,MonadFix,MonadIO,MonadThrow,MonadCatch,MonadMask)
 
 -- | A convenient specialization of 'SysfsT' which runs GPIO eDSL
 -- computations in 'IO'.
@@ -163,6 +164,11 @@ type SysfsIO a = SysfsT (SysfsIOT IO) (SysfsIOT IO) a
 -- result.
 runSysfsIO :: SysfsIO a -> IO a
 runSysfsIO action = runSysfsIOT $ runSysfsT action
+
+instance MonadTrans SysfsIOT where
+  lift m = SysfsIOT $
+    do a <- m
+       return a
 
 instance (MonadIO m, MonadThrow m) => M.MonadSysfs (SysfsIOT m) where
   sysfsIsPresent = liftIO sysfsIsPresent
