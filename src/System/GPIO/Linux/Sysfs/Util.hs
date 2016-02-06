@@ -35,12 +35,12 @@ pinDirName :: Pin -> FilePath
 pinDirName (Pin n) = sysfsPath </> ("gpio" ++ show n)
 
 -- | The name of the attribute file used to read and write the pin's
--- "active low" value.
+-- @active_low@ value.
 pinActiveLowFileName :: Pin -> FilePath
 pinActiveLowFileName p = pinDirName p </> "active_low"
 
 -- | Pins whose direction can be controlled via 'sysfs' provide a
--- "direction" attribute file. 'pinDirectionFileName' gives the name
+-- @direction@ attribute file. 'pinDirectionFileName' gives the name
 -- of that file for a given pin number. Note that some pins' direction
 -- cannot be set. In these cases, the file named by this function does
 -- not actually exist.
@@ -48,7 +48,7 @@ pinDirectionFileName :: Pin -> FilePath
 pinDirectionFileName p = pinDirName p </> "direction"
 
 -- | Pins that can be configured as interrupt-generating inputs
--- provide an "edge" attribute file. 'pinEdgeFileName' gives the name
+-- provide an @edge@ attribute file. 'pinEdgeFileName' gives the name
 -- of that file for a given pin number. Note that some pins' edge
 -- configuration cannot be set. In these cases, the file named by this
 -- function does not actually exist.

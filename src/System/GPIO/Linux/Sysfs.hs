@@ -1,4 +1,19 @@
 -- | GPIO in Linux via the 'sysfs' filesystem.
+--
+-- See the <https://www.kernel.org/doc/Documentation/gpio/sysfs.txt
+-- Linux kernel documentation> for the definitive description of the
+-- Linux 'sysfs'-based GPIO API and the terminology used in this
+-- module.
+--
+-- == Pin numbering
+--
+-- The 'sysfs' GPIO implementation in this module uses the same pin
+-- numbering scheme as the 'sysfs' GPIO filesystem. For example, 'Pin'
+-- 13 corresponds to @gpio13@ in the 'sysfs' filesystem. Note that the
+-- 'sysfs' pin numbering scheme is almost always different than the
+-- pin numbering scheme given by the platform/hardware documentation.
+-- Consult your platform documentation for the mapping of pin numbers
+-- between the two namespaces.
 
 module System.GPIO.Linux.Sysfs
        ( -- * The Linux 'sysfs' GPIO interpreter

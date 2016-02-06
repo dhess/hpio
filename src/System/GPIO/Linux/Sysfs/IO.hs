@@ -1,21 +1,6 @@
 -- | The actual Linux 'sysfs' GPIO implementation. This implementation
 -- will only function properly on Linux systems with a 'sysfs' GPIO
 -- subsystem, obviously.
---
--- See the <https://www.kernel.org/doc/Documentation/gpio/sysfs.txt
--- Linux kernel documentation> for the definitive description of the
--- Linux 'sysfs'-based GPIO API and the terminology used in this
--- module.
---
--- == Pin numbering
---
--- The 'sysfs' GPIO implementation in this module uses the same pin
--- numbering scheme as the 'sysfs' GPIO filesystem. For example, 'Pin'
--- 13 corresponds to @gpio13@ in the 'sysfs' filesystem. Note that the
--- 'sysfs' pin numbering scheme is almost always different than the
--- pin numbering scheme given by the platform/hardware documentation.
--- Consult your platform documentation for the mapping of pin numbers
--- between the two namespaces.
 
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
@@ -210,14 +195,13 @@ pinIsExported p = doesDirectoryExist (pinDirName p)
 -- | Test whether the given pin's direction can be set via the
 -- 'sysfs' GPIO filesystem. (Some pins have a hard-wired direction,
 -- in which case their direction must be determined by some other
--- mechanism as the "direction" attribute does not exist for such
+-- mechanism as the @direction@ attribute does not exist for such
 -- pins.)
 pinHasDirection :: Pin -> IO Bool
 pinHasDirection p = doesFileExist (pinDirectionFileName p)
 
--- | Test whether the pin has an "edge" 'sysfs' attribute, i.e.,
--- whether it can be configured for edge- or level-triggered
--- interrupts.
+-- | Test whether the pin has an @edge@ attribute, i.e., whether it
+-- can be configured for edge- or level-triggered interrupts.
 pinHasEdge :: Pin -> IO Bool
 pinHasEdge p = doesFileExist (pinEdgeFileName p)
 
@@ -234,8 +218,8 @@ unexportPin (Pin n) = IO.writeFile unexportFileName (show n)
 
 -- | Read the given pin's direction.
 --
--- It is an error to call this function if the pin has no
--- "direction" attribute in the 'sysfs' GPIO filesystem.
+-- It is an error to call this function if the pin has no @direction@
+-- attribute.
 readPinDirection :: Pin -> IO PinDirection
 readPinDirection p =
   IOS.readFile (pinDirectionFileName p) >>= \case
@@ -245,26 +229,26 @@ readPinDirection p =
 
 -- | Set the given pin's direction.
 --
--- It is an error to call this function if the pin has no
--- "direction" attribute in the 'sysfs' GPIO filesystem.
+-- It is an error to call this function if the pin has no @direction@
+-- attribute.
 writePinDirection :: Pin -> PinDirection -> IO ()
 writePinDirection p d = IO.writeFile (pinDirectionFileName p) (lowercase $ show d)
 
 -- | Pins whose direction can be set may be configured for output by
--- writing a 'PinValue' to their 'sysfs' "direction" attribute. This
--- enables glitch-free output configuration, assuming the pin is
--- currently configured for input, or some kind of tri-stated or
--- floating high-impedance mode.
+-- writing a 'PinValue' to their @direction@ attribute. This enables
+-- glitch-free output configuration, assuming the pin is currently
+-- configured for input, or some kind of tri-stated or floating
+-- high-impedance mode.
 --
 -- It is an error to call this function if the pin has no
--- "direction" attribute in the 'sysfs' GPIO filesystem.
+-- @direction@ attribute.
 writePinDirectionWithValue :: Pin -> PinValue -> IO ()
 writePinDirectionWithValue p v = IO.writeFile (pinDirectionFileName p) (lowercase $ show v)
 
 -- | Read the given pin's value.
 --
 -- Note that this function never blocks, regardless of the pin's
--- "edge" attribute setting.
+-- @edge@ attribute setting.
 readPinValue :: Pin -> IO PinValue
 readPinValue p =
   IOS.readFile (pinValueFileName p) >>= \case
@@ -274,9 +258,9 @@ readPinValue p =
 
 -- | A blocking version of 'readPinValue'. The current thread will
 -- block until an event occurs on the pin as specified by the pin's
--- current "edge" attribute setting.
+-- current @edge@ attribute setting.
 --
--- If the pin has no "edge" attribute, then this function will not
+-- If the pin has no @edge@ attribute, then this function will not
 -- block and will act like 'readPinValue'.
 threadWaitReadPinValue :: Pin -> IO PinValue
 threadWaitReadPinValue p =
@@ -298,7 +282,7 @@ threadWaitReadPinValue p =
 -- When specifying a timeout value, be careful not to exceed
 -- 'maxBound'.
 --
--- If the pin has no "edge" attribute, then this function will not
+-- If the pin has no @edge@ attribute, then this function will not
 -- block and will act like 'readPinValue'.
 threadWaitReadPinValue' :: Pin -> Int -> IO (Maybe PinValue)
 threadWaitReadPinValue' p timeout =
@@ -320,9 +304,9 @@ threadWaitReadPinValue' p timeout =
 writePinValue :: Pin -> PinValue -> IO ()
 writePinValue p v = IO.writeFile (pinValueFileName p) (toSysfsPinValue v)
 
--- | Read the given pin's "edge" 'sysfs' attribute.
+-- | Read the given pin's @edge@ attribute.
 --
--- It is an error to call this function when the pin has no "edge"
+-- It is an error to call this function when the pin has no @edge@
 -- attribute.
 readPinEdge :: Pin -> IO SysfsEdge
 readPinEdge p =
@@ -333,14 +317,14 @@ readPinEdge p =
     "both\n" -> return Both
     x     -> throwM $ UnexpectedEdge p x
 
--- | Write the given pin's "edge" 'sysfs' attribute.
+-- | Write the given pin's @edge@ attribute.
 --
--- It is an error to call this function when the pin has no "edge"
+-- It is an error to call this function when the pin has no @edge@
 -- attribute.
 writePinEdge :: Pin -> SysfsEdge -> IO ()
 writePinEdge p v = IO.writeFile (pinEdgeFileName p) (toSysfsPinEdge v)
 
--- | Read the given pin's "active_low" 'sysfs' attribute.
+-- | Read the given pin's @active_low@ attribute.
 readPinActiveLow :: Pin -> IO Bool
 readPinActiveLow p =
   IOS.readFile (pinActiveLowFileName p) >>= \case
@@ -348,7 +332,7 @@ readPinActiveLow p =
     "1\n" -> return True
     x   -> throwM $ UnexpectedActiveLow p x
 
--- | Write the given pin's "active_low" 'sysfs' attribute.
+-- | Write the given pin's @active_low@ attribute.
 writePinActiveLow :: Pin -> Bool -> IO ()
 writePinActiveLow p v = IO.writeFile (pinActiveLowFileName p) (toSysfsActiveLowValue v)
 

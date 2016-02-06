@@ -9,9 +9,12 @@
 --
 -- == TODO
 --
--- The following exceptional states cannot yet be emulated:
+-- The following are not properly simulated:
 --
--- * The blocking behavior of 'System.GPIO.Free.readPin' is not implemented.
+-- * The blocking behavior of 'threadWaitReadPinValue' and
+-- 'threadWaitReadPinValue''.
+--
+-- * The timeout behavior of 'threadWaitReadPinValue''.
 --
 -- * A "sysfs is not present" condition.
 --
@@ -62,8 +65,10 @@ import System.GPIO.Linux.Sysfs.Util
 import System.GPIO.Types
 import System.IO.Error (mkIOError, ioeSetErrorString)
 
--- | Keep track of the state of mock pins. In real Linux 'sysfs', pins
--- keep their state even after they're unexported.
+-- | Keep track of the state of mock pins.
+--
+-- Note that in the real Linux 'sysfs', pins keep their state even
+-- after they're unexported.
 data MockState =
   MockState { _exported :: !Bool
             , _hasUserDirection :: !Bool -- is direction visible to the user?

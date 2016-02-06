@@ -19,8 +19,8 @@ import System.GPIO.Types
 import Test.QuickCheck (Arbitrary(..), arbitraryBoundedEnum, genericShrink)
 
 -- | Linux GPIO pins that can be configured to generate inputs have an
--- "edge" attribute in the 'sysfs' GPIO filesystem. This type
--- represents the values that the "edge" attribute can take.
+-- @edge@ attribute in the 'sysfs' GPIO filesystem. This type
+-- represents the values that the @edge@ attribute can take.
 --
 -- This type is isomorphic to the 'PinReadTrigger' type in the
 -- 'System.GPIO.Free.GpioF' eDSL.
