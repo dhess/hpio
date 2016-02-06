@@ -27,118 +27,33 @@ import System.GPIO.Linux.Sysfs.Types
 -- This type class chiefly exists in order to use a 'sysfs' mock for
 -- testing with the 'System.GPIO.Linux.Sysfs.SysfsT'
 -- transformer/interpreter (see
--- 'System.GPIO.Linux.SysfsMock.SysfsMockT'). Typically, you will not
+-- 'System.GPIO.Linux.Sysfs.Mock.SysfsMockT'). Typically, you will not
 -- need to use it directly. If you want to write Linux 'sysfs' GPIO
--- programs that run in 'IO', see the 'System.GPIO.Linux.SysfsIO'
+-- programs that run in 'IO', see the "System.GPIO.Linux.Sysfs.IO"
 -- module.
+--
+-- To see the documentation for this type class's methods, see the
+-- canonical implementations of these methods in
+-- "System.GPIO.Linux.Sysfs.IO". (The low-level GPIO functions in that
+-- module have the same name as the methods in this type class.)
 class (Monad m) => MonadSysfs m where
-
-  -- | Test whether the 'sysfs' GPIO filesystem is available.
   sysfsIsPresent :: m Bool
-
-  -- | Test whether the given pin is already exported.
   pinIsExported :: Pin -> m Bool
-
-  -- | Test whether the given pin's direction can be set via the
-  -- 'sysfs' GPIO filesystem. (Some pins have a hard-wired direction,
-  -- in which case their direction must be determined by some other
-  -- mechanism as the "direction" attribute does not exist for such
-  -- pins.)
   pinHasDirection :: Pin -> m Bool
-
-  -- | Export the given pin.
   exportPin :: Pin -> m ()
-
-  -- | Unexport the given pin.
-  --
-  -- It is an error to call this function if the pin is not currently
-  -- exported.
   unexportPin :: Pin -> m ()
-
-  -- | Read the given pin's direction.
-  --
-  -- It is an error to call this function if the pin has no
-  -- "direction" attribute in the 'sysfs' GPIO filesystem.
   readPinDirection :: Pin -> m PinDirection
-
-  -- | Set the given pin's direction.
-  --
-  -- It is an error to call this function if the pin has no
-  -- "direction" attribute in the 'sysfs' GPIO filesystem.
   writePinDirection :: Pin -> PinDirection -> m ()
-
-  -- | Pins whose direction can be set may be configured for output by
-  -- writing a 'PinValue' to their 'sysfs' "direction" attribute. This
-  -- enables glitch-free output configuration, assuming the pin is
-  -- currently configured for input, or some kind of tri-stated or
-  -- floating high-impedance mode.
-  --
-  -- It is an error to call this function if the pin has no
-  -- "direction" attribute in the 'sysfs' GPIO filesystem.
   writePinDirectionWithValue :: Pin -> PinValue -> m ()
-
-  -- | Read the given pin's value.
-  --
-  -- Note that this function never blocks, regardless of the pin's
-  -- "edge" attribute setting.
   readPinValue :: Pin -> m PinValue
-
-  -- | A blocking version of 'readPinValue'. The current thread will
-  -- block until an event occurs on the pin as specified by the pin's
-  -- current "edge" attribute setting.
-  --
-  -- If the pin has no "edge" attribute, then this function will not
-  -- block and will act like 'readPinValue'.
   threadWaitReadPinValue :: Pin -> m PinValue
-
-  -- | Same as 'threadWaitReadPinValue', except that a timeout value,
-  -- specified in microseconds, is provided. If no event occurs before
-  -- the timeout expires, this function returns 'Nothing'; otherwise,
-  -- it returns the pin's value wrapped in a 'Just'.
-  --
-  -- If the timeout value is negative, this function behaves just like
-  -- 'threadWaitReadPinValue'.
-  --
-  -- When specifying a timeout value, be careful not to exceed
-  -- 'maxBound'.
-  --
-  -- If the pin has no "edge" attribute, then this function will not
-  -- block and will act like 'readPinValue'.
   threadWaitReadPinValue' :: Pin -> Int -> m (Maybe PinValue)
-
-  -- | Set the given pin's value.
-  --
-  -- It is an error to call this function if the pin is configured as
-  -- an input pin.
   writePinValue :: Pin -> PinValue -> m ()
-
-  -- | Test whether the pin has an "edge" 'sysfs' attribute, i.e.,
-  -- whether it can be configured for edge- or level-triggered
-  -- interrupts.
   pinHasEdge :: Pin -> m Bool
-
-  -- | Read the given pin's "edge" 'sysfs' attribute.
-  --
-  -- It is an error to call this function when the pin has no "edge"
-  -- attribute.
   readPinEdge :: Pin -> m SysfsEdge
-
-  -- | Write the given pin's "edge" 'sysfs' attribute.
-  --
-  -- It is an error to call this function when the pin has no "edge"
-  -- attribute.
   writePinEdge :: Pin -> SysfsEdge -> m ()
-
-  -- | Read the given pin's "active_low" 'sysfs' attribute.
   readPinActiveLow :: Pin -> m Bool
-
-  -- | Write the given pin's "active_low" 'sysfs' attribute.
   writePinActiveLow :: Pin -> Bool -> m ()
-
-  -- | Return a list of all pins that are exposed via the 'sysfs' GPIO
-  -- filesystem. Note that the returned list may omit some pins that
-  -- are available on the host but which, for various reasons, are not
-  -- exposed via the 'sysfs' GPIO filesystem.
   availablePins :: m [Pin]
 
 instance (MonadSysfs m) => MonadSysfs (IdentityT m) where

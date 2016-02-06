@@ -52,7 +52,8 @@ toSysfsEdge FallingEdge = Falling
 toSysfsEdge Level = Both
 
 -- | Exceptions that can be thrown by 'sysfs' computations (in
--- addition to standard 'IO' exceptions, of course).
+-- addition to standard 'System.IO.Error.IOError' exceptions, of
+-- course).
 --
 -- The @UnexpectedX@ values are truly exceptional and mean that, while
 -- the 'sysfs' attribute for the given pin exists, the contents of the

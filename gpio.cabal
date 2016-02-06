@@ -23,9 +23,9 @@ Description:
   transformer, so it is easily embedded in other monad transformer
   stacks which perform I/O.
   .
-  Monads are also provided for each supported platform's native GPIO
-  API, so that you can program directly to the platform API and avoid
-  the overhead of the eDSL interpreter.
+  Monads and low-level functions are also provided for each supported
+  platform's native GPIO API, so that you can program directly to the
+  platform API and avoid the overhead of the eDSL interpreter.
   .
   Example programs are provided in the 'examples' directory of the
   source code distribution.

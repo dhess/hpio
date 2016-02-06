@@ -27,6 +27,25 @@ module System.GPIO.Linux.Sysfs.IO
            SysfsIOT(..)
          , SysfsIO
          , runSysfsIO
+           -- * Low-level 'sysfs' GPIO functions.
+         , sysfsIsPresent
+         , availablePins
+         , pinIsExported
+         , exportPin
+         , unexportPin
+         , pinHasDirection
+         , readPinDirection
+         , writePinDirection
+         , writePinDirectionWithValue
+         , readPinValue
+         , threadWaitReadPinValue
+         , threadWaitReadPinValue'
+         , writePinValue
+         , pinHasEdge
+         , readPinEdge
+         , writePinEdge
+         , readPinActiveLow
+         , writePinActiveLow
          ) where
 
 import Prelude hiding (readFile, writeFile)
@@ -42,7 +61,7 @@ import qualified Language.C.Inline as C (include)
 import qualified Language.C.Inline.Interruptible as CI
 import System.Directory (doesDirectoryExist, doesFileExist, getDirectoryContents)
 import System.FilePath ((</>), takeFileName)
-import System.GPIO.Linux.Sysfs.Monad
+import qualified System.GPIO.Linux.Sysfs.Monad as M
 import System.GPIO.Linux.Sysfs.Free
 import System.GPIO.Linux.Sysfs.Types
 import System.GPIO.Linux.Sysfs.Util
@@ -160,77 +179,129 @@ type SysfsIO a = SysfsT (SysfsIOT IO) (SysfsIOT IO) a
 runSysfsIO :: SysfsIO a -> IO a
 runSysfsIO action = runSysfsIOT $ runSysfsT action
 
-instance (MonadIO m, MonadThrow m) => MonadSysfs (SysfsIOT m) where
-  sysfsIsPresent = liftIO sysfsIsPresentIO
-  pinIsExported = liftIO . pinIsExportedIO
-  pinHasDirection = liftIO . pinHasDirectionIO
-  pinHasEdge = liftIO . pinHasEdgeIO
-  exportPin = liftIO . exportPinIO
-  unexportPin = liftIO . unexportPinIO
-  readPinDirection = liftIO . readPinDirectionIO
-  writePinDirection p d = liftIO $ writePinDirectionIO p d
-  writePinDirectionWithValue p v = liftIO $ writePinDirectionWithValueIO p v
-  readPinValue = liftIO . readPinValueIO
-  threadWaitReadPinValue = liftIO . threadWaitReadPinValueIO
-  threadWaitReadPinValue' p to = liftIO $ threadWaitReadPinValueIO' p to
-  writePinValue p v = liftIO $ writePinValueIO p v
-  readPinEdge = liftIO . readPinEdgeIO
-  writePinEdge p e = liftIO $ writePinEdgeIO p e
-  readPinActiveLow = liftIO . readPinActiveLowIO
-  writePinActiveLow p v = liftIO $ writePinActiveLowIO p v
-  availablePins = liftIO availablePinsIO
+instance (MonadIO m, MonadThrow m) => M.MonadSysfs (SysfsIOT m) where
+  sysfsIsPresent = liftIO sysfsIsPresent
+  pinIsExported = liftIO . pinIsExported
+  pinHasDirection = liftIO . pinHasDirection
+  pinHasEdge = liftIO . pinHasEdge
+  exportPin = liftIO . exportPin
+  unexportPin = liftIO . unexportPin
+  readPinDirection = liftIO . readPinDirection
+  writePinDirection p d = liftIO $ writePinDirection p d
+  writePinDirectionWithValue p v = liftIO $ writePinDirectionWithValue p v
+  readPinValue = liftIO . readPinValue
+  threadWaitReadPinValue = liftIO . threadWaitReadPinValue
+  threadWaitReadPinValue' p to = liftIO $ threadWaitReadPinValue' p to
+  writePinValue p v = liftIO $ writePinValue p v
+  readPinEdge = liftIO . readPinEdge
+  writePinEdge p e = liftIO $ writePinEdge p e
+  readPinActiveLow = liftIO . readPinActiveLow
+  writePinActiveLow p v = liftIO $ writePinActiveLow p v
+  availablePins = liftIO availablePins
 
--- 'MonadSysfs' implementation.
+-- | Test whether the 'sysfs' GPIO filesystem is available.
+sysfsIsPresent :: IO Bool
+sysfsIsPresent = doesDirectoryExist sysfsPath
 
-sysfsIsPresentIO :: IO Bool
-sysfsIsPresentIO = doesDirectoryExist sysfsPath
+-- | Test whether the given pin is already exported.
+pinIsExported :: Pin -> IO Bool
+pinIsExported p = doesDirectoryExist (pinDirName p)
 
-pinIsExportedIO :: Pin -> IO Bool
-pinIsExportedIO p = doesDirectoryExist (pinDirName p)
+-- | Test whether the given pin's direction can be set via the
+-- 'sysfs' GPIO filesystem. (Some pins have a hard-wired direction,
+-- in which case their direction must be determined by some other
+-- mechanism as the "direction" attribute does not exist for such
+-- pins.)
+pinHasDirection :: Pin -> IO Bool
+pinHasDirection p = doesFileExist (pinDirectionFileName p)
 
-pinHasDirectionIO :: Pin -> IO Bool
-pinHasDirectionIO p = doesFileExist (pinDirectionFileName p)
+-- | Test whether the pin has an "edge" 'sysfs' attribute, i.e.,
+-- whether it can be configured for edge- or level-triggered
+-- interrupts.
+pinHasEdge :: Pin -> IO Bool
+pinHasEdge p = doesFileExist (pinEdgeFileName p)
 
-pinHasEdgeIO :: Pin -> IO Bool
-pinHasEdgeIO p = doesFileExist (pinEdgeFileName p)
+-- | Export the given pin.
+exportPin :: Pin -> IO ()
+exportPin (Pin n) = IO.writeFile exportFileName (show n)
 
-exportPinIO :: Pin -> IO ()
-exportPinIO (Pin n) = IO.writeFile exportFileName (show n)
+-- | Unexport the given pin.
+--
+-- It is an error to call this function if the pin is not currently
+-- exported.
+unexportPin :: Pin -> IO ()
+unexportPin (Pin n) = IO.writeFile unexportFileName (show n)
 
-unexportPinIO :: Pin -> IO ()
-unexportPinIO (Pin n) = IO.writeFile unexportFileName (show n)
-
-readPinDirectionIO :: Pin -> IO PinDirection
-readPinDirectionIO p =
+-- | Read the given pin's direction.
+--
+-- It is an error to call this function if the pin has no
+-- "direction" attribute in the 'sysfs' GPIO filesystem.
+readPinDirection :: Pin -> IO PinDirection
+readPinDirection p =
   IOS.readFile (pinDirectionFileName p) >>= \case
     "in\n"  -> return In
     "out\n" -> return Out
     x     -> throwM $ UnexpectedDirection p x
 
-writePinDirectionIO :: Pin -> PinDirection -> IO ()
-writePinDirectionIO p d = IO.writeFile (pinDirectionFileName p) (lowercase $ show d)
+-- | Set the given pin's direction.
+--
+-- It is an error to call this function if the pin has no
+-- "direction" attribute in the 'sysfs' GPIO filesystem.
+writePinDirection :: Pin -> PinDirection -> IO ()
+writePinDirection p d = IO.writeFile (pinDirectionFileName p) (lowercase $ show d)
 
-writePinDirectionWithValueIO :: Pin -> PinValue -> IO ()
-writePinDirectionWithValueIO p v = IO.writeFile (pinDirectionFileName p) (lowercase $ show v)
+-- | Pins whose direction can be set may be configured for output by
+-- writing a 'PinValue' to their 'sysfs' "direction" attribute. This
+-- enables glitch-free output configuration, assuming the pin is
+-- currently configured for input, or some kind of tri-stated or
+-- floating high-impedance mode.
+--
+-- It is an error to call this function if the pin has no
+-- "direction" attribute in the 'sysfs' GPIO filesystem.
+writePinDirectionWithValue :: Pin -> PinValue -> IO ()
+writePinDirectionWithValue p v = IO.writeFile (pinDirectionFileName p) (lowercase $ show v)
 
-readPinValueIO :: Pin -> IO PinValue
-readPinValueIO p =
+-- | Read the given pin's value.
+--
+-- Note that this function never blocks, regardless of the pin's
+-- "edge" attribute setting.
+readPinValue :: Pin -> IO PinValue
+readPinValue p =
   IOS.readFile (pinValueFileName p) >>= \case
     "0\n" -> return Low
     "1\n" -> return High
     x   -> throwM $ UnexpectedValue p x
 
-threadWaitReadPinValueIO :: Pin -> IO PinValue
-threadWaitReadPinValueIO p =
-  threadWaitReadPinValueIO' p (-1) >>= \case
+-- | A blocking version of 'readPinValue'. The current thread will
+-- block until an event occurs on the pin as specified by the pin's
+-- current "edge" attribute setting.
+--
+-- If the pin has no "edge" attribute, then this function will not
+-- block and will act like 'readPinValue'.
+threadWaitReadPinValue :: Pin -> IO PinValue
+threadWaitReadPinValue p =
+  threadWaitReadPinValue' p (-1) >>= \case
     Just v -> return v
     -- Yes, I really do mean "error" here. 'Nothing' can only occur
     -- when the poll has timed out, but the (-1) timeout value above
     -- means the poll must either wait forever or fail.
-    Nothing -> error "threadWaitReadPinValueIO timed out, and it should not have. Please file a bug at https://github.com/dhess/gpio"
+    Nothing -> error "threadWaitReadPinValue timed out, and it should not have. Please file a bug at https://github.com/dhess/gpio"
 
-threadWaitReadPinValueIO' :: Pin -> Int -> IO (Maybe PinValue)
-threadWaitReadPinValueIO' p timeout =
+-- | Same as 'threadWaitReadPinValue', except that a timeout value,
+-- specified in microseconds, is provided. If no event occurs before
+-- the timeout expires, this function returns 'Nothing'; otherwise,
+-- it returns the pin's value wrapped in a 'Just'.
+--
+-- If the timeout value is negative, this function behaves just like
+-- 'threadWaitReadPinValue'.
+--
+-- When specifying a timeout value, be careful not to exceed
+-- 'maxBound'.
+--
+-- If the pin has no "edge" attribute, then this function will not
+-- block and will act like 'readPinValue'.
+threadWaitReadPinValue' :: Pin -> Int -> IO (Maybe PinValue)
+threadWaitReadPinValue' p timeout =
   do fd <- openFd (pinValueFileName p) ReadOnly Nothing defaultFileFlags
      pollResult <- throwErrnoIfMinus1Retry "pollSysfs" $ pollSysfs fd timeout
      -- Could use fdRead here and handle EAGAIN, but it's easier to
@@ -239,14 +310,22 @@ threadWaitReadPinValueIO' p timeout =
      -- non-sysfs-based interpreter in that case, anyway.
      closeFd fd
      if pollResult > 0
-        then fmap Just $ readPinValueIO p
+        then fmap Just $ readPinValue p
         else return Nothing
 
-writePinValueIO :: Pin -> PinValue -> IO ()
-writePinValueIO p v = IO.writeFile (pinValueFileName p) (toSysfsPinValue v)
+-- | Set the given pin's value.
+--
+-- It is an error to call this function if the pin is configured as
+-- an input pin.
+writePinValue :: Pin -> PinValue -> IO ()
+writePinValue p v = IO.writeFile (pinValueFileName p) (toSysfsPinValue v)
 
-readPinEdgeIO :: Pin -> IO SysfsEdge
-readPinEdgeIO p =
+-- | Read the given pin's "edge" 'sysfs' attribute.
+--
+-- It is an error to call this function when the pin has no "edge"
+-- attribute.
+readPinEdge :: Pin -> IO SysfsEdge
+readPinEdge p =
   IOS.readFile (pinEdgeFileName p) >>= \case
     "none\n"  -> return None
     "rising\n" -> return Rising
@@ -254,21 +333,31 @@ readPinEdgeIO p =
     "both\n" -> return Both
     x     -> throwM $ UnexpectedEdge p x
 
-writePinEdgeIO :: Pin -> SysfsEdge -> IO ()
-writePinEdgeIO p v = IO.writeFile (pinEdgeFileName p) (toSysfsPinEdge v)
+-- | Write the given pin's "edge" 'sysfs' attribute.
+--
+-- It is an error to call this function when the pin has no "edge"
+-- attribute.
+writePinEdge :: Pin -> SysfsEdge -> IO ()
+writePinEdge p v = IO.writeFile (pinEdgeFileName p) (toSysfsPinEdge v)
 
-readPinActiveLowIO :: Pin -> IO Bool
-readPinActiveLowIO p =
+-- | Read the given pin's "active_low" 'sysfs' attribute.
+readPinActiveLow :: Pin -> IO Bool
+readPinActiveLow p =
   IOS.readFile (pinActiveLowFileName p) >>= \case
     "0\n" -> return False
     "1\n" -> return True
     x   -> throwM $ UnexpectedActiveLow p x
 
-writePinActiveLowIO :: Pin -> Bool -> IO ()
-writePinActiveLowIO p v = IO.writeFile (pinActiveLowFileName p) (toSysfsActiveLowValue v)
+-- | Write the given pin's "active_low" 'sysfs' attribute.
+writePinActiveLow :: Pin -> Bool -> IO ()
+writePinActiveLow p v = IO.writeFile (pinActiveLowFileName p) (toSysfsActiveLowValue v)
 
-availablePinsIO :: IO [Pin]
-availablePinsIO =
+-- | Return a list of all pins that are exposed via the 'sysfs' GPIO
+-- filesystem. Note that the returned list may omit some pins that
+-- are available on the host but which, for various reasons, are not
+-- exposed via the 'sysfs' GPIO filesystem.
+availablePins :: IO [Pin]
+availablePins =
   do sysfsEntries <- getDirectoryContents sysfsPath
      let sysfsContents = fmap (sysfsPath </>) sysfsEntries
      sysfsDirectories <- filterM doesDirectoryExist sysfsContents
