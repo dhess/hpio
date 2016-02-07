@@ -307,16 +307,17 @@ threadWaitReadPinValue p =
 -- block and will act like 'readPinValue'.
 threadWaitReadPinValue' :: Pin -> Int -> IO (Maybe PinValue)
 threadWaitReadPinValue' p timeout =
-  do fd <- openFd (pinValueFileName p) ReadOnly Nothing defaultFileFlags
-     pollResult <- throwErrnoIfMinus1Retry "pollSysfs" $ pollSysfs fd timeout
+  do pollResult <- bracket
+                     (openFd (pinValueFileName p) ReadOnly Nothing defaultFileFlags)
+                     (closeFd)
+                     (\fd -> throwErrnoIfMinus1Retry "pollSysfs" $ pollSysfs fd timeout)
      -- Could use fdRead here and handle EAGAIN, but it's easier to
      -- close the fd and use nice handle-based IO, instead. If this
      -- becomes a performance problem... we probably need a
      -- non-sysfs-based interpreter in that case, anyway.
-     closeFd fd
      if pollResult > 0
-        then fmap Just $ readPinValue p
-        else return Nothing
+       then fmap Just $ readPinValue p
+       else return Nothing
 
 -- | Set the given pin's value.
 --
