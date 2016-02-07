@@ -5,6 +5,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PackageImports #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
@@ -34,7 +35,7 @@ module System.GPIO.Linux.Sysfs.IO
          , writePinActiveLow
          ) where
 
-import Control.Monad (filterM)
+import Control.Monad (filterM, void)
 import Control.Monad.Catch
 import Control.Monad.Fix (MonadFix)
 import Control.Monad.IO.Class (MonadIO, liftIO)
@@ -56,7 +57,8 @@ import System.GPIO.Linux.Sysfs.Free
 import System.GPIO.Linux.Sysfs.Types
 import System.GPIO.Linux.Sysfs.Util
 import System.GPIO.Types
-import System.Posix.IO (OpenMode(ReadOnly), closeFd, defaultFileFlags, openFd)
+import "unix" System.Posix.IO (OpenMode(ReadOnly, WriteOnly), closeFd, defaultFileFlags, openFd)
+import "unix-bytestring" System.Posix.IO.ByteString (fdWrite)
 import System.Posix.Types (Fd)
 
 -- Our poll(2) wrapper.
@@ -212,16 +214,28 @@ pinHasDirection p = doesFileExist (pinDirectionFileName p)
 pinHasEdge :: Pin -> IO Bool
 pinHasEdge p = doesFileExist (pinEdgeFileName p)
 
+-- @sysfs@ control files which are global shared resources may be
+-- written simultaneously by multiple threads. This is fine -- @sysfs@
+-- can handle this -- but Haskell's writeFile cannot, as it locks the
+-- file and prevents multiple writers. We don't want this behavior, so
+-- we use low-level operations to get around it.
+llWriteFile :: FilePath -> ByteString -> IO ()
+llWriteFile fn bs =
+  bracket
+    (openFd fn WriteOnly Nothing defaultFileFlags)
+    (closeFd)
+    (\fd -> void $ fdWrite fd bs)
+
 -- | Export the given pin.
 exportPin :: Pin -> IO ()
-exportPin (Pin n) = BS.writeFile exportFileName (intToBS n)
+exportPin (Pin n) = llWriteFile exportFileName (intToBS n)
 
 -- | Unexport the given pin.
 --
 -- It is an error to call this function if the pin is not currently
 -- exported.
 unexportPin :: Pin -> IO ()
-unexportPin (Pin n) = BS.writeFile unexportFileName (intToBS n)
+unexportPin (Pin n) = llWriteFile unexportFileName (intToBS n)
 
 -- | Read the given pin's direction.
 --

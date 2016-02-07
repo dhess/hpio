@@ -56,6 +56,7 @@ Library
                       , KindSignatures
                       , LambdaCase
                       , OverloadedStrings
+                      , PackageImports
                       , QuasiQuotes
                       , TemplateHaskell
                       , TypeSynonymInstances
@@ -72,6 +73,7 @@ Library
                       , text
                       , transformers
                       , unix
+                      , unix-bytestring
   C-Sources:            src/System/GPIO/Linux/Sysfs/IO.c
   CC-Options:           -Wall -std=c11
 
@@ -118,6 +120,7 @@ Test-Suite spec
                       , text
                       , transformers
                       , unix
+                      , unix-bytestring
   Other-modules:        System.GPIO
                       , System.GPIO.Free
                       , System.GPIO.Linux
