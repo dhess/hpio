@@ -39,11 +39,11 @@ import Control.Monad.Catch
 import Control.Monad.Fix (MonadFix)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Trans.Class (MonadTrans(..))
-import Data.Binary (Binary, decodeOrFail, encode)
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as BS (readFile, writeFile)
-import qualified Data.ByteString.Char8 as C8 (unpack)
-import qualified Data.ByteString.Lazy as LBS (ByteString, empty, toStrict, fromStrict)
+import Data.ByteString.Builder (toLazyByteString, intDec)
+import qualified Data.ByteString.Char8 as C8 (readInt, unpack)
+import qualified Data.ByteString.Lazy as LBS (toStrict)
 import Data.List (isPrefixOf, sort)
 import Foreign.C.Error (throwErrnoIfMinus1Retry)
 import Foreign.C.Types (CInt(..))
@@ -214,14 +214,14 @@ pinHasEdge p = doesFileExist (pinEdgeFileName p)
 
 -- | Export the given pin.
 exportPin :: Pin -> IO ()
-exportPin (Pin n) = BS.writeFile exportFileName (encodeStrict n)
+exportPin (Pin n) = BS.writeFile exportFileName (intToBS n)
 
 -- | Unexport the given pin.
 --
 -- It is an error to call this function if the pin is not currently
 -- exported.
 unexportPin :: Pin -> IO ()
-unexportPin (Pin n) = BS.writeFile unexportFileName (encodeStrict n)
+unexportPin (Pin n) = BS.writeFile unexportFileName (intToBS n)
 
 -- | Read the given pin's direction.
 --
@@ -239,7 +239,7 @@ readPinDirection p =
 -- It is an error to call this function if the pin has no @direction@
 -- attribute.
 writePinDirection :: Pin -> PinDirection -> IO ()
-writePinDirection p d = BS.writeFile (pinDirectionFileName p) (encodeStrict $ toSysfsPinDirection d)
+writePinDirection p d = BS.writeFile (pinDirectionFileName p) (toSysfsPinDirection d)
 
 -- | Pins whose direction can be set may be configured for output by
 -- writing a 'PinValue' to their @direction@ attribute. This enables
@@ -250,7 +250,7 @@ writePinDirection p d = BS.writeFile (pinDirectionFileName p) (encodeStrict $ to
 -- It is an error to call this function if the pin has no
 -- @direction@ attribute.
 writePinDirectionWithValue :: Pin -> PinValue -> IO ()
-writePinDirectionWithValue p v = BS.writeFile (pinDirectionFileName p) (encodeStrict $ toSysfsPinValue v)
+writePinDirectionWithValue p v = BS.writeFile (pinDirectionFileName p) (toSysfsPinValue v)
 
 -- | Read the given pin's value.
 --
@@ -359,8 +359,8 @@ availablePins =
 -- Helper functions that aren't exported.
 --
 
-encodeStrict :: Binary a => a -> ByteString
-encodeStrict = LBS.toStrict . encode
+intToBS :: Int -> ByteString
+intToBS = LBS.toStrict . toLazyByteString . intDec
 
 toSysfsPinDirection :: PinDirection -> ByteString
 toSysfsPinDirection In = "in"
@@ -380,23 +380,11 @@ toSysfsActiveLowValue :: Bool -> ByteString
 toSysfsActiveLowValue False = "0"
 toSysfsActiveLowValue True = "1"
 
-endToken :: LBS.ByteString -> Bool
-endToken bs = bs == LBS.empty || bs == "\n"
-
-maybeDecodeInt :: ByteString -> Maybe Int
-maybeDecodeInt bs =
-  case decodeOrFail (LBS.fromStrict bs) of
-    Right (leftOver, _, n) ->
-      if (endToken leftOver)
-         then Just n
-         else Nothing
-    _ -> Nothing
-
 readIntFromFile :: FilePath -> IO Int
 readIntFromFile f =
   do contents <- BS.readFile f
-     case maybeDecodeInt contents of
-       Just n -> return n
+     case C8.readInt contents of
+       Just (n, _) -> return n
        Nothing -> throwM $ UnexpectedContents f (C8.unpack contents)
 
 chipBaseGpio :: FilePath -> IO Int

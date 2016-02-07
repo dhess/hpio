@@ -61,7 +61,6 @@ Library
                       , TypeSynonymInstances
   Build-Depends:        QuickCheck
                       , base ==4.*
-                      , binary
                       , bytestring
                       , containers
                       , directory
@@ -107,7 +106,6 @@ Test-Suite spec
   Main-Is:              Main.hs
   Build-Depends:        QuickCheck
                       , base ==4.*
-                      , binary
                       , bytestring
                       , containers
                       , directory
