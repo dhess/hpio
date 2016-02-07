@@ -295,15 +295,15 @@ userVisibleDirection p = guardedPinState p _direction _hasUserDirection
 
 -- Pin cannot be exported.
 exportErrorInvalidArgument :: IOError
-exportErrorInvalidArgument = mkErrorInvalidArgument "hClose" exportFileName
+exportErrorInvalidArgument = mkErrorInvalidArgument "System.Posix.IO.ByteString.fdWriteBuf" exportFileName
 
 -- Pin already exported.
 exportErrorResourceBusy :: IOError
-exportErrorResourceBusy = mkErrorResourceBusy "hClose" exportFileName
+exportErrorResourceBusy = mkErrorResourceBusy "System.Posix.IO.ByteString.fdWriteBuf" exportFileName
 
 -- Pin cannot be unexported.
 unexportErrorInvalidArgument :: IOError
-unexportErrorInvalidArgument = mkErrorInvalidArgument "hClose" unexportFileName
+unexportErrorInvalidArgument = mkErrorInvalidArgument "System.Posix.IO.ByteString.fdWriteBuf" unexportFileName
 
 -- Direction file doesn't exist.
 readPinDirectionErrorNoSuchThing :: Pin -> IOError
