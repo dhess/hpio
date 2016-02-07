@@ -4,7 +4,8 @@
 
 module Main where
 
-import Control.Concurrent (forkIO, threadDelay)
+import Control.Concurrent (threadDelay)
+import Control.Concurrent.Async (concurrently)
 import Control.Monad (forever, void)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.Foldable (for_)
@@ -80,8 +81,10 @@ cmds =
 
 run :: GlobalOptions -> IO ()
 run (GlobalOptions SysfsIO (ReadTrigger (ReadTriggerOptions period trigger to inputPin outputPin))) =
-  do void $ forkIO (void $ runSysfsIO $ edgeRead inputPin trigger to)
-     runSysfsIO $ driveOutput outputPin period
+  void $
+    concurrently
+      (void $ runSysfsIO $ edgeRead inputPin trigger to)
+      (runSysfsIO $ driveOutput outputPin period)
 run (GlobalOptions SysfsIO ListPins) = runSysfsIO listPins
 
 output :: (MonadIO m) => String -> m ()

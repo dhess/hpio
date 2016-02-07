@@ -4,7 +4,8 @@
 
 module Main where
 
-import Control.Concurrent (forkIO, threadDelay)
+import Control.Concurrent (threadDelay)
+import Control.Concurrent.Async (concurrently)
 import Control.Exception (bracket)
 import Control.Monad (forever, void)
 import Data.Foldable (for_)
@@ -68,8 +69,10 @@ cmds =
 
 run :: GlobalOptions -> IO ()
 run (GlobalOptions (ReadEdge (ReadEdgeOptions period edge to inputPin outputPin))) =
-  do void $ forkIO (edgeRead inputPin edge to)
-     driveOutput outputPin period
+  void $
+    concurrently
+      (edgeRead inputPin edge to)
+      (driveOutput outputPin period)
 run (GlobalOptions ListPins) = listPins
 
 withPin :: Pin -> IO a -> IO a
