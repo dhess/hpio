@@ -41,7 +41,7 @@ data SysfsEdge
   | Rising
   | Falling
   | Both
-  deriving (Bounded,Enum,Eq,Data,Ord,Read,Show,Generic)
+  deriving (Bounded,Enum,Eq,Data,Ord,Read,Show,Generic,Typeable)
 
 instance Arbitrary SysfsEdge where
   arbitrary = arbitraryBoundedEnum

@@ -39,7 +39,6 @@ module System.GPIO.Types
 import Data.Bits
 import Data.Data
 import Data.Ix
-import Data.Typeable
 import GHC.Generics
 import Test.QuickCheck (Arbitrary(..), arbitraryBoundedEnum, genericShrink)
 
