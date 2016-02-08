@@ -39,6 +39,7 @@ module System.GPIO.Types
 import Data.Bits
 import Data.Data
 import Data.Ix
+import Data.Typeable
 import GHC.Generics
 import Test.QuickCheck (Arbitrary(..), arbitraryBoundedEnum, genericShrink)
 
@@ -49,7 +50,7 @@ import Test.QuickCheck (Arbitrary(..), arbitraryBoundedEnum, genericShrink)
 -- how pin numbers are assigned to physical pins.
 newtype Pin =
   Pin Int
-  deriving (Bounded,Enum,Eq,Data,Ord,Read,Ix,Show,Generic)
+  deriving (Bounded,Enum,Eq,Data,Ord,Read,Ix,Show,Generic,Typeable)
 
 instance Arbitrary Pin where
   arbitrary = arbitraryBoundedEnum
@@ -63,7 +64,7 @@ pinNumber (Pin n) = n
 data PinDirection
   = In
   | Out
-  deriving (Bounded,Enum,Eq,Data,Ord,Read,Show,Ix,Generic)
+  deriving (Bounded,Enum,Eq,Data,Ord,Read,Show,Ix,Generic,Typeable)
 
 instance Arbitrary PinDirection where
   arbitrary = arbitraryBoundedEnum
@@ -73,7 +74,7 @@ instance Arbitrary PinDirection where
 data PinValue
   = Low
   | High
-  deriving (Bounded,Enum,Eq,Data,Ord,Read,Show,Ix,Generic)
+  deriving (Bounded,Enum,Eq,Data,Ord,Read,Show,Ix,Generic,Typeable)
 
 instance Bits PinValue where
   High .&. High = High
@@ -136,7 +137,7 @@ data PinReadTrigger
   | RisingEdge
   | FallingEdge
   | Level
-  deriving (Bounded,Enum,Eq,Data,Ord,Read,Show,Generic)
+  deriving (Bounded,Enum,Eq,Data,Ord,Read,Show,Generic,Typeable)
 
 instance Arbitrary PinReadTrigger where
   arbitrary = arbitraryBoundedEnum
