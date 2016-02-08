@@ -1,0 +1,8 @@
+require-stack-version: ">= 0.1.5"
+pvp-bounds: both
+resolver: lts-2
+packages:
+- .
+extra-deps:
+- inline-c-0.5.5.2
+- unix-bytestring-0.3.7.3
