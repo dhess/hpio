@@ -31,6 +31,12 @@ Description:
   source code distribution.
 
 Extra-Doc-Files:        README.md
+Extra-Source-Files:     .travis.yml
+                      , default.nix
+                      , shell.nix
+                      , stack.yaml
+                      , stack-lts-2.yaml
+                      , stack-lts-3.yaml                                
 
 Library
   Default-Language:     Haskell2010
