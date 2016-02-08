@@ -11,10 +11,15 @@ Basic GPIO types.
 
 -}
 
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE Trustworthy #-}
+
+#ifndef MIN_VERSION_base
+#define MIN_VERSION_base(x,y,z) 1
+#endif
 
 module System.GPIO.Types
        ( -- * GPIO pins
@@ -108,10 +113,12 @@ instance Bits PinValue where
 instance FiniteBits PinValue where
   finiteBitSize _ = 1
 
+#if MIN_VERSION_base(4,8,0)
   countTrailingZeros Low  = 1
   countTrailingZeros High = 0
 
   countLeadingZeros = countTrailingZeros
+#endif
 
 instance Arbitrary PinValue where
   arbitrary = arbitraryBoundedEnum

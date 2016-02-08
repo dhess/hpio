@@ -53,7 +53,8 @@ Library
                       , System.GPIO.Linux.Sysfs.Types
                       , System.GPIO.Linux.Sysfs.Util
                       , System.GPIO.Types
-  Other-Extensions:     DeriveDataTypeable
+  Other-Extensions:     CPP
+                      , DeriveDataTypeable
                       , DeriveGeneric
                       , FlexibleContexts
                       , FlexibleInstances

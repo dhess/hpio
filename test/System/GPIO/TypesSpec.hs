@@ -1,3 +1,9 @@
+{-# LANGUAGE CPP #-}
+
+#ifndef MIN_VERSION_base
+#define MIN_VERSION_base(x,y,z) 1
+#endif
+
 module System.GPIO.TypesSpec (spec) where
 
 import System.GPIO.Types
@@ -24,6 +30,19 @@ bbb2v f a b = boolToValue $ f (valueToBool a) (valueToBool b)
 
 bib2v :: (Bool -> Int -> Bool) -> PinValue -> Int -> PinValue
 bib2v f a n = boolToValue $ f (valueToBool a) n
+
+#if MIN_VERSION_base(4,8,0)
+newBase :: Spec
+newBase =
+  do context "implements the new base-4.8.0.0 FiniteBits typeclass methods" $
+       do it "countLeadingZeros" $ property $
+            \a -> countLeadingZeros a == bi2v countLeadingZeros a
+          it "countTrailingZeros" $ property $
+            \a -> countTrailingZeros a == bi2v countTrailingZeros a
+#else
+newBase :: Spec
+newBase = return ()
+#endif
 
 spec :: Spec
 spec =
@@ -119,8 +138,4 @@ spec =
             do it "finiteBitSize" $ property $
                  \a -> finiteBitSize a == bi2v finiteBitSize a
 
-               it "countLeadingZeros" $ property $
-                 \a -> countLeadingZeros a == bi2v countLeadingZeros a
-
-               it "countTrailingZeros" $ property $
-                 \a -> countTrailingZeros a == bi2v countTrailingZeros a
+               newBase
