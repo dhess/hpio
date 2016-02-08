@@ -31,8 +31,10 @@ import qualified Control.Monad.Trans.State.Lazy as LazyState (StateT)
 import qualified Control.Monad.Trans.State.Strict as StrictState (StateT)
 import qualified Control.Monad.Trans.Writer.Lazy as LazyWriter (WriterT)
 import qualified Control.Monad.Trans.Writer.Strict as StrictWriter (WriterT)
+import Data.Monoid ()
 import System.GPIO.Types
 import System.GPIO.Linux.Sysfs.Types
+
 
 -- | A type class for monads which implement (or mock) low-level Linux
 -- 'sysfs' GPIO operations.
