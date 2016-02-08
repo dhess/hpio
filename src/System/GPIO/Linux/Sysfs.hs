@@ -56,6 +56,7 @@ module System.GPIO.Linux.Sysfs
        , availablePins
        , pinIsExported
        , exportPin
+       , exportPin'
        , unexportPin
        , pinHasDirection
        , readPinDirection

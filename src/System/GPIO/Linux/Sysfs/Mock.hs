@@ -123,6 +123,7 @@ instance (MonadIO m) => MonadSysfs (SysfsMockT m) where
   pinHasDirection = pinHasDirectionMock
   pinHasEdge = pinHasEdgeMock
   exportPin = exportPinMock
+  exportPin' = exportPinMock'
   unexportPin = unexportPinMock
   readPinDirection = readPinDirectionMock
   writePinDirection = writePinDirectionMock
@@ -166,6 +167,12 @@ exportPinMock p =
       if (_exported s)
          then ioErr exportErrorResourceBusy
          else updatePinState p (s { _exported = True })
+
+exportPinMock' :: (MonadIO m) => Pin -> SysfsMockT m ()
+exportPinMock' p =
+  pinState p >>= \case
+    Nothing -> ioErr exportErrorInvalidArgument
+    Just s -> updatePinState p (s { _exported = True })
 
 unexportPinMock :: (MonadIO m) => Pin -> SysfsMockT m ()
 unexportPinMock p =

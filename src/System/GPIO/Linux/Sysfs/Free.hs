@@ -65,11 +65,8 @@ runSysfsT = iterT run
       sysfsIsPresent >>= \case
         False -> throwM SysfsNotPresent
         True ->
-          pinIsExported p >>= \case
-            True -> next $ PinDescriptor p
-            False ->
-              do exportPin p
-                 next $ PinDescriptor p
+          do exportPin' p
+             next $ PinDescriptor p
 
     run (ClosePin (PinDescriptor p) next) =
       do unexportPin p

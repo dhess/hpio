@@ -19,6 +19,7 @@ module System.GPIO.Linux.Sysfs.IO
          , availablePins
          , pinIsExported
          , exportPin
+         , exportPin'
          , unexportPin
          , pinHasDirection
          , readPinDirection
@@ -179,6 +180,7 @@ instance (MonadIO m, MonadThrow m) => M.MonadSysfs (SysfsIOT m) where
   pinHasDirection = liftIO . pinHasDirection
   pinHasEdge = liftIO . pinHasEdge
   exportPin = liftIO . exportPin
+  exportPin' = liftIO . exportPin'
   unexportPin = liftIO . unexportPin
   readPinDirection = liftIO . readPinDirection
   writePinDirection p d = liftIO $ writePinDirection p d
@@ -227,8 +229,20 @@ llWriteFile fn bs =
     (\fd -> void $ fdWrite fd bs)
 
 -- | Export the given pin.
+--
+-- Note that it's an error to call this function to export a pin
+-- that's already been exported.
 exportPin :: Pin -> IO ()
 exportPin (Pin n) = llWriteFile exportFileName (intToBS n)
+
+-- | Export the given pin, but, unlike 'exportPin', if the pin is
+-- already exported, this is not an error; in this situation, the pin
+-- remains exported and its state unchanged.
+exportPin' :: Pin -> IO ()
+exportPin' p =
+  pinIsExported p >>= \case
+    True -> return ()
+    False -> exportPin p
 
 -- | Unexport the given pin.
 --
