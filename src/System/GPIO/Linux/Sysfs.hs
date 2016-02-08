@@ -15,6 +15,8 @@
 -- Consult your platform documentation for the mapping of pin numbers
 -- between the two namespaces.
 
+{-# LANGUAGE Safe #-}
+
 module System.GPIO.Linux.Sysfs
        ( -- * The Linux 'sysfs' GPIO interpreter
          -- | These types and functions provide the interpreter for

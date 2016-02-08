@@ -1,5 +1,7 @@
 -- | A monad type class for Linux 'sysfs' GPIO operations.
 
+{-# LANGUAGE Safe #-}
+
 module System.GPIO.Linux.Sysfs.Monad
        ( -- * MonadSysfs class
          MonadSysfs(..)

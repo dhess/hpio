@@ -7,6 +7,8 @@
 -- GPIO system, that implementation would presumably also be exported
 -- from here.
 
+{-# LANGUAGE Safe #-}
+
 module System.GPIO.Linux
        ( -- * Linux 'sysfs' GPIO
          module System.GPIO.Linux.Sysfs

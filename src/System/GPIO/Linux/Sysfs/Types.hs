@@ -2,6 +2,7 @@
 
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE Safe #-}
 
 module System.GPIO.Linux.Sysfs.Types
        ( -- * 'sysfs'-specific types

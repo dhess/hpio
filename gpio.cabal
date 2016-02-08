@@ -58,7 +58,9 @@ Library
                       , OverloadedStrings
                       , PackageImports
                       , QuasiQuotes
+                      , Safe
                       , TemplateHaskell
+                      , Trustworthy
                       , TypeSynonymInstances
   Build-Depends:        QuickCheck
                       , base ==4.*

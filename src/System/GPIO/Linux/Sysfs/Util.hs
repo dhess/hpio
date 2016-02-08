@@ -1,5 +1,7 @@
 -- | Useful low-level Linux 'sysfs' functions.
 
+{-# LANGUAGE Safe #-}
+
 module System.GPIO.Linux.Sysfs.Util
        ( sysfsPath
        , exportFileName

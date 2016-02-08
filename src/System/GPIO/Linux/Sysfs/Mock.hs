@@ -31,6 +31,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE Trustworthy #-}
 
 module System.GPIO.Linux.Sysfs.Mock
        ( -- * The SysfsMock monad

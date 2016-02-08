@@ -5,6 +5,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE Trustworthy #-}
 
 module System.GPIO.Linux.Sysfs.Free
        ( -- * The Linux 'sysfs' GPIO interpreter

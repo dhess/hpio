@@ -8,6 +8,7 @@
 {-# LANGUAGE PackageImports #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE Trustworthy #-}
 
 module System.GPIO.Linux.Sysfs.IO
          ( -- * SysfsIOT transformer

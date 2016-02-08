@@ -1,5 +1,7 @@
 -- | Top-level re-exports for writing GPIO programs.
 
+{-# LANGUAGE Safe #-}
+
 module System.GPIO
        ( -- * GPIO types
          module System.GPIO.Types
