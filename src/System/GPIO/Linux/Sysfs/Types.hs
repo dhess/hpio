@@ -1,4 +1,15 @@
--- | Types used by the various Linux 'sysfs' GPIO implementations.
+{-|
+Module      : System.GPIO.Linux.Sysfs.Types
+Description : Types for Linux 'sysfs' GPIO
+Copyright   : (c) 2016, Drew Hess
+License     : BSD3
+Maintainer  : Drew Hess <src@drewhess.com>
+Stability   : experimental
+Portability : non-portable
+
+Types used by the various Linux 'sysfs' GPIO implementations.
+
+-}
 
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}

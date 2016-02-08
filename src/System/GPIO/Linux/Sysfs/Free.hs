@@ -1,5 +1,15 @@
--- | A 'GpioF' interpreter for Linux GPIO using the 'sysfs'
--- filesystem.
+{-|
+Module      : System.GPIO.Linux.Sysfs.Free
+Description : An interpreter for Linux 'sysfs' GPIO
+Copyright   : (c) 2016, Drew Hess
+License     : BSD3
+Maintainer  : Drew Hess <src@drewhess.com>
+Stability   : experimental
+Portability : non-portable
+
+A 'GpioF' interpreter for Linux GPIO using the 'sysfs' filesystem.
+
+-}
 
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}

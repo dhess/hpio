@@ -1,30 +1,41 @@
--- | A "mock" 'MonadSysfs' instance for testing
--- 'System.GPIO.Free.GpioF' programs in a faux-Linux environment.
---
--- The 'SysfsMockT' transformer makes a best-effort attempt to emulate
--- an actual Linux sysfs GPIO environment, including but not limited
--- to throwing the same 'IOError's that the default
--- 'System.GPIO.Linux.Sysfs.MonadSysfs' implementation throws in the
--- presence of program errors.
---
--- == TODO
---
--- The following are not properly simulated:
---
--- * The blocking behavior of 'threadWaitReadPinValue' and
--- 'threadWaitReadPinValue''.
---
--- * The timeout behavior of 'threadWaitReadPinValue''.
---
--- * A "sysfs is not present" condition.
---
--- * Insufficient permissions.
---
--- * While the program is running, a pin is exported/unexported by a
--- third party, or its direction changed.
---
--- * Generally broken 'sysfs' (e.g., files which are expected to be
--- present during standard operation are not).
+{-|
+Module      : System.GPIO.Linux.Sysfs.Mock
+Description : A mock for testing 'sysfs' GPIO programs
+Copyright   : (c) 2016, Drew Hess
+License     : BSD3
+Maintainer  : Drew Hess <src@drewhess.com>
+Stability   : experimental
+Portability : non-portable
+
+A "mock" 'MonadSysfs' instance for testing 'System.GPIO.Free.GpioF'
+programs in a faux-Linux environment.
+
+The 'SysfsMockT' transformer makes a best-effort attempt to emulate an
+actual Linux sysfs GPIO environment, including but not limited to
+throwing the same 'IOError's that the default
+'System.GPIO.Linux.Sysfs.MonadSysfs' implementation throws in the
+presence of program errors.
+
+== TODO
+
+The following are not properly simulated:
+
+* The blocking behavior of 'threadWaitReadPinValue' and
+'threadWaitReadPinValue''.
+
+* The timeout behavior of 'threadWaitReadPinValue''.
+
+* A "sysfs is not present" condition.
+
+* Insufficient permissions.
+
+* While the program is running, a pin is exported/unexported by a
+third party, or its direction changed.
+
+* Generally broken 'sysfs' (e.g., files which are expected to be
+present during standard operation are not).
+
+-}
 
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}

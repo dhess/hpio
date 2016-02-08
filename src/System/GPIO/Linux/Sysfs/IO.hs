@@ -1,6 +1,17 @@
--- | The actual Linux 'sysfs' GPIO implementation. This implementation
--- will only function properly on Linux systems with a 'sysfs' GPIO
--- subsystem, obviously.
+{-|
+Module      : System.GPIO.Linux.Sysfs.IO
+Description : The actual Linux 'sysfs' GPIO implementation
+Copyright   : (c) 2016, Drew Hess
+License     : BSD3
+Maintainer  : Drew Hess <src@drewhess.com>
+Stability   : experimental
+Portability : non-portable
+
+The actual Linux 'sysfs' GPIO implementation. This implementation will
+only function properly on Linux systems with a 'sysfs' GPIO subsystem,
+obviously.
+
+-}
 
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}

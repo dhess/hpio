@@ -1,4 +1,15 @@
--- | Basic GPIO types.
+{-|
+Module      : System.GPIO.Types
+Description : Basic GPIO types
+Copyright   : (c) 2016, Drew Hess
+License     : BSD3
+Maintainer  : Drew Hess <src@drewhess.com>
+Stability   : experimental
+Portability : non-portable
+
+Basic GPIO types.
+
+-}
 
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}

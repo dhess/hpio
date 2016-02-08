@@ -1,7 +1,18 @@
--- | An eDSL for GPIO computations.
---
--- To make it easier to use the eDSL in typical scenarios, the eDSL is
--- implemented as a functor for the 'FreeT' transformer.
+{-|
+Module      : System.GPIO.Free
+Description : An eDSL for GPIO computations
+Copyright   : (c) 2016, Drew Hess
+License     : BSD3
+Maintainer  : Drew Hess <src@drewhess.com>
+Stability   : experimental
+Portability : non-portable
+
+An eDSL for GPIO computations.
+
+To make it easier to use the eDSL in typical scenarios, the eDSL is
+implemented as a functor for the 'FreeT' transformer.
+
+-}
 
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}

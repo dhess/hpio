@@ -1,4 +1,15 @@
--- | A monad type class for Linux 'sysfs' GPIO operations.
+{-|
+Module      : System.GPIO.Linux.Sysfs.Monad
+Description : A monad type class for Linux 'sysfs' GPIO operations
+Copyright   : (c) 2016, Drew Hess
+License     : BSD3
+Maintainer  : Drew Hess <src@drewhess.com>
+Stability   : experimental
+Portability : non-portable
+
+A monad type class for Linux 'sysfs' GPIO operations.
+
+-}
 
 {-# LANGUAGE Safe #-}
 

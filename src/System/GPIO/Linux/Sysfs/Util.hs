@@ -1,4 +1,15 @@
--- | Useful low-level Linux 'sysfs' functions.
+{-|
+Module      : System.GPIO.Linux.Sysfs.Util
+Description : Useful low-level Linux 'sysfs' functions
+Copyright   : (c) 2016, Drew Hess
+License     : BSD3
+Maintainer  : Drew Hess <src@drewhess.com>
+Stability   : experimental
+Portability : non-portable
+
+Useful low-level Linux 'sysfs' functions.
+
+-}
 
 {-# LANGUAGE Safe #-}
 
