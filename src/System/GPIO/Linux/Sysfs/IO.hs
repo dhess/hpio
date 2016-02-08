@@ -182,9 +182,7 @@ runSysfsIO :: SysfsIO a -> IO a
 runSysfsIO action = runSysfsIOT $ runSysfsT action
 
 instance MonadTrans SysfsIOT where
-  lift m = SysfsIOT $
-    do a <- m
-       return a
+  lift = SysfsIOT
 
 instance (MonadIO m, MonadThrow m) => M.MonadSysfs (SysfsIOT m) where
   sysfsIsPresent = liftIO sysfsIsPresent
@@ -237,7 +235,7 @@ llWriteFile :: FilePath -> ByteString -> IO ()
 llWriteFile fn bs =
   bracket
     (openFd fn WriteOnly Nothing defaultFileFlags)
-    (closeFd)
+    closeFd
     (\fd -> void $ fdWrite fd bs)
 
 -- | Export the given pin.
@@ -335,14 +333,14 @@ threadWaitReadPinValue' :: Pin -> Int -> IO (Maybe PinValue)
 threadWaitReadPinValue' p timeout =
   do pollResult <- bracket
                      (openFd (pinValueFileName p) ReadOnly Nothing defaultFileFlags)
-                     (closeFd)
+                     closeFd
                      (\fd -> throwErrnoIfMinus1Retry "pollSysfs" $ pollSysfs fd timeout)
      -- Could use fdRead here and handle EAGAIN, but it's easier to
      -- close the fd and use nice handle-based IO, instead. If this
      -- becomes a performance problem... we probably need a
      -- non-sysfs-based interpreter in that case, anyway.
      if pollResult > 0
-       then fmap Just $ readPinValue p
+       then Just <$> readPinValue p
        else return Nothing
 
 -- | Set the given pin's value.
@@ -393,7 +391,7 @@ availablePins =
   do sysfsEntries <- getDirectoryContents sysfsPath
      let sysfsContents = fmap (sysfsPath </>) sysfsEntries
      sysfsDirectories <- filterM doesDirectoryExist sysfsContents
-     let chipDirs = filter (\f -> isPrefixOf "gpiochip" $ takeFileName f) sysfsDirectories
+     let chipDirs = filter (isPrefixOf "gpiochip" . takeFileName) sysfsDirectories
      pins <- mapM pinRange chipDirs
      return $ sort $ concat pins
 
@@ -438,6 +436,6 @@ pinRange :: FilePath -> IO [Pin]
 pinRange chipDir =
   do base <- chipBaseGpio chipDir
      ngpio <- chipNGpio chipDir
-     case (base >= 0 && ngpio > 0) of
-       False -> return []
-       True -> return $ fmap Pin [base .. (base + ngpio - 1)]
+     if base >= 0 && ngpio > 0
+        then return $ fmap Pin [base .. (base + ngpio - 1)]
+        else return []

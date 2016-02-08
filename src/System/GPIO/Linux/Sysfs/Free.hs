@@ -95,7 +95,7 @@ runSysfsT = iterT run
          next
 
     run (TogglePinDirection h next) =
-      (runSysfsT $ getPinDirection h) >>= \case
+      runSysfsT (getPinDirection h) >>= \case
         Nothing -> next Nothing
         Just dir ->
           do let newDir = invertDirection dir
@@ -153,7 +153,7 @@ runSysfsT = iterT run
 
     run (WithPin p block next) =
       bracket (runSysfsT $ openPin p)
-              (\pd -> runSysfsT $ closePin pd)
+              (runSysfsT . closePin)
               (\pd ->
                 do a <- runSysfsT $ block pd
                    next a)

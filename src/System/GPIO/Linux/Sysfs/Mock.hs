@@ -117,7 +117,7 @@ newtype SysfsMockT m a =
 -- return a tuple containing the final value and final 'MockWorld'
 -- state.
 runSysfsMockT :: (MonadIO m) => SysfsMockT m a -> MockWorld -> m (a, MockWorld)
-runSysfsMockT action world = runStateT (unSysfsMockT action) world
+runSysfsMockT action = runStateT (unSysfsMockT action)
 
 -- | A convenient specialization of 'SysfsT' which runs GPIO
 -- computations in the mock 'sysfs' environment.
@@ -127,7 +127,7 @@ type SysfsMock a = SysfsT (SysfsMockT IO) (SysfsMockT IO) a
 -- with the given 'MockWorld', and return a tuple containing the final
 -- value and final 'MockWorld' state.
 runSysfsMock :: SysfsMock a -> MockWorld -> IO (a, MockWorld)
-runSysfsMock action world = runSysfsMockT (runSysfsT action) world
+runSysfsMock action = runSysfsMockT (runSysfsT action)
 
 instance (MonadIO m) => MonadSysfs (SysfsMockT m) where
   sysfsIsPresent = sysfsIsPresentMock
@@ -142,7 +142,7 @@ instance (MonadIO m) => MonadSysfs (SysfsMockT m) where
   writePinDirectionWithValue = writePinDirectionWithValueMock
   readPinValue = readPinValueMock
   threadWaitReadPinValue = readPinValueMock -- XXX dhess: hack.
-  threadWaitReadPinValue' p _ = fmap Just $ readPinValueMock p -- XXX dhess: hack.
+  threadWaitReadPinValue' p _ = Just <$> readPinValueMock p -- XXX dhess: hack.
   writePinValue = writePinValueMock
   readPinEdge = readPinEdgeMock
   writePinEdge = writePinEdgeMock
@@ -162,21 +162,21 @@ pinIsExportedMock p =
 -- exported, or if the pin does not have a user-visible direction
 -- attribute, it's 'False', otherwise 'True'.
 pinHasDirectionMock :: (Monad m) => Pin -> SysfsMockT m Bool
-pinHasDirectionMock p = userVisibleDirection p >>= return . isJust
+pinHasDirectionMock p = fmap isJust (userVisibleDirection p)
 
 -- The way this is implemented in 'MonadSysfs' is, if the pin is not
 -- exported, or if the pin does not have an edge attribute, it's
 -- 'False', otherwise 'True'.
 pinHasEdgeMock :: (Monad m) => Pin -> SysfsMockT m Bool
 pinHasEdgeMock p =
-  guardedPinState p _edge (isJust . _edge) >>= return . isJust
+  fmap isJust (guardedPinState p _edge (isJust . _edge))
 
 exportPinMock :: (MonadIO m) => Pin -> SysfsMockT m ()
 exportPinMock p =
   pinState p >>= \case
     Nothing -> ioErr exportErrorInvalidArgument
     Just s ->
-      if (_exported s)
+      if _exported s
          then ioErr exportErrorResourceBusy
          else updatePinState p (s { _exported = True })
 
@@ -218,7 +218,7 @@ readPinValueMock p =
 writePinValueMock :: (MonadIO m) => Pin -> PinValue -> SysfsMockT m ()
 writePinValueMock p v =
   do s <- checkedPinState p id (writePinValueErrorNoSuchThing p)
-     case (_direction s) of
+     case _direction s of
        In -> ioErr (writePinValueErrorPermissionDenied p)
        Out -> updatePinState p (s { _value = logicalLevel (_activeLow s) v })
 
@@ -231,7 +231,7 @@ readPinEdgeMock p =
 writePinEdgeMock :: (MonadIO m) => Pin -> SysfsEdge -> SysfsMockT m ()
 writePinEdgeMock p t =
   do s <- checkedPinState p id (writePinEdgeErrorNoSuchThing p)
-     case (_edge s) of
+     case _edge s of
        Nothing -> ioErr (writePinEdgeErrorNoSuchThing p)
        Just _ -> updatePinState p (s { _edge = Just t })
 
