@@ -10,7 +10,7 @@ Stability:              experimental
 License:                BSD3
 License-File:           LICENSE
 Copyright:              Copyright (c) 2016, Drew Hess
-Tested-With:            GHC == 7.10.3
+Tested-With:            GHC == 7.8.4, GHC == 7.10.2, GHC == 7.10.3
 Category:               System
 Synopsis:               Monads for GPIO in Haskell
 Description:
@@ -74,6 +74,7 @@ Library
                       , mtl
                       , text
                       , transformers
+                      , transformers-compat
                       , unix
                       , unix-bytestring
   C-Sources:            src/System/GPIO/Linux/Sysfs/IO.c
@@ -88,6 +89,7 @@ Executable gpio-sysfs-example
                       , mtl
                       , optparse-applicative
                       , transformers
+                      , transformers-compat
   Default-Language:     Haskell2010
   Ghc-Options:          -Wall -threaded
 
@@ -100,6 +102,8 @@ Executable gpio-example
                       , mtl
                       , optparse-applicative
                       , transformers
+                      , transformers-compat
+
   Default-Language:     Haskell2010
   Ghc-Options:          -Wall -threaded
 
@@ -123,6 +127,7 @@ Test-Suite spec
                       , mtl
                       , text
                       , transformers
+                      , transformers-compat
                       , unix
                       , unix-bytestring
   Other-modules:        System.GPIO

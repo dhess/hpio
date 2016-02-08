@@ -7,7 +7,7 @@ let
   f = { mkDerivation, async, base, bytestring, containers
       , directory, exceptions, filepath, free, hspec, inline-c, mtl
       , optparse-applicative, QuickCheck, stdenv, text, transformers
-      , unix, unix-bytestring
+      , transformers-compat, unix, unix-bytestring
       }:
       mkDerivation {
         pname = "gpio";
@@ -17,14 +17,17 @@ let
         isExecutable = true;
         libraryHaskellDepends = [
           base bytestring containers directory exceptions filepath free
-          inline-c mtl QuickCheck text transformers unix unix-bytestring
+          inline-c mtl QuickCheck text transformers transformers-compat unix
+          unix-bytestring
         ];
         executableHaskellDepends = [
           async base mtl optparse-applicative transformers
+          transformers-compat
         ];
         testHaskellDepends = [
           base bytestring containers directory exceptions filepath free hspec
-          inline-c mtl QuickCheck text transformers unix unix-bytestring
+          inline-c mtl QuickCheck text transformers transformers-compat unix
+          unix-bytestring
         ];
         homepage = "https://github.com/dhess/gpio";
         description = "Monads for GPIO in Haskell";
