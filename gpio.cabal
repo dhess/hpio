@@ -77,7 +77,7 @@ Library
                       , unix
                       , unix-bytestring
   C-Sources:            src/System/GPIO/Linux/Sysfs/IO.c
-  CC-Options:           -Wall -std=c11
+  CC-Options:           -Wall
 
 Executable gpio-sysfs-example
   Main-Is:              Sysfs.hs
