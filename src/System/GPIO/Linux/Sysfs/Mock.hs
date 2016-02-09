@@ -129,7 +129,7 @@ type SysfsMock a = SysfsT (SysfsMockT IO) (SysfsMockT IO) a
 runSysfsMock :: SysfsMock a -> MockWorld -> IO (a, MockWorld)
 runSysfsMock action = runSysfsMockT (runSysfsT action)
 
-instance (MonadIO m) => MonadSysfs (SysfsMockT m) where
+instance (Functor m, MonadIO m) => MonadSysfs (SysfsMockT m) where
   sysfsIsPresent = sysfsIsPresentMock
   pinIsExported = pinIsExportedMock
   pinHasDirection = pinHasDirectionMock
@@ -161,13 +161,13 @@ pinIsExportedMock p =
 -- The way this is implemented in 'MonadSysfs' is, if the pin is not
 -- exported, or if the pin does not have a user-visible direction
 -- attribute, it's 'False', otherwise 'True'.
-pinHasDirectionMock :: (Monad m) => Pin -> SysfsMockT m Bool
+pinHasDirectionMock :: (Functor m, Monad m) => Pin -> SysfsMockT m Bool
 pinHasDirectionMock p = fmap isJust (userVisibleDirection p)
 
 -- The way this is implemented in 'MonadSysfs' is, if the pin is not
 -- exported, or if the pin does not have an edge attribute, it's
 -- 'False', otherwise 'True'.
-pinHasEdgeMock :: (Monad m) => Pin -> SysfsMockT m Bool
+pinHasEdgeMock :: (Functor m, Monad m) => Pin -> SysfsMockT m Bool
 pinHasEdgeMock p =
   fmap isJust (guardedPinState p _edge (isJust . _edge))
 
@@ -266,7 +266,7 @@ pinState p =
      return $ Map.lookup p pins
 
 updatePinState :: (Monad m) => Pin -> MockState -> SysfsMockT m ()
-updatePinState p s = modify' $ \world ->
+updatePinState p s = modify $! \world ->
   Map.insert p s world
 
 ioErr :: (MonadIO m) => IOError -> SysfsMockT m a

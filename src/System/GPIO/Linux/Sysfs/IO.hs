@@ -48,6 +48,7 @@ module System.GPIO.Linux.Sysfs.IO
          , writePinActiveLow
          ) where
 
+import Control.Applicative ((<$>), Applicative)
 import Control.Monad (filterM, void)
 import Control.Monad.Catch
 import Control.Monad.Fix (MonadFix)

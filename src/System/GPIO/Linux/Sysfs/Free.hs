@@ -60,10 +60,10 @@ type SysfsF m = GpioF PinDescriptor m
 -- values. Errors that could occur in the interpreter are generally
 -- limited to reading unexpected results from various 'sysfs' GPIO
 -- control files.
-runSysfsT :: (MonadMask m, MonadThrow m, MonadSysfs m) => (SysfsT m) m a -> m a
+runSysfsT :: (Functor m, MonadMask m, MonadThrow m, MonadSysfs m) => (SysfsT m) m a -> m a
 runSysfsT = iterT run
   where
-    run :: (MonadMask m, MonadThrow m, MonadSysfs m) => (SysfsF m) (m a) -> m a
+    run :: (Functor m, MonadMask m, MonadThrow m, MonadSysfs m) => (SysfsF m) (m a) -> m a
 
     run (Pins next) =
       sysfsIsPresent >>= \case
