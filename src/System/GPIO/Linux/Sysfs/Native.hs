@@ -40,6 +40,7 @@ module System.GPIO.Linux.Sysfs.Native
        ) where
 
 import Prelude hiding (readFile, writeFile)
+import Control.Applicative ((<$>))
 import Control.Monad (filterM)
 import Control.Monad.Catch
 import Data.ByteString (ByteString)
@@ -138,7 +139,7 @@ readPinValue p =
 --
 -- If the pin has no @edge@ attribute, then this function will not
 -- block and will act like 'readPinValue'.
-threadWaitReadPinValue :: (MonadSysfs m, MonadThrow m) => Pin -> m PinValue
+threadWaitReadPinValue :: (Functor m, MonadSysfs m, MonadThrow m) => Pin -> m PinValue
 threadWaitReadPinValue p =
   threadWaitReadPinValue' p (-1) >>= \case
     Just v -> return v
@@ -160,7 +161,7 @@ threadWaitReadPinValue p =
 --
 -- If the pin has no @edge@ attribute, then this function will not
 -- block and will act like 'readPinValue'.
-threadWaitReadPinValue' :: (MonadSysfs m, MonadThrow m) => Pin -> Int -> m (Maybe PinValue)
+threadWaitReadPinValue' :: (Functor m, MonadSysfs m, MonadThrow m) => Pin -> Int -> m (Maybe PinValue)
 threadWaitReadPinValue' p timeout =
   do pollResult <- pollFile (pinValueFileName p) timeout
      if pollResult > 0
