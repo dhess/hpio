@@ -94,3 +94,4 @@ module System.GPIO.Linux.Sysfs
 import System.GPIO.Linux.Sysfs.Free
 import System.GPIO.Linux.Sysfs.IO
 import System.GPIO.Linux.Sysfs.Types
+import System.GPIO.Linux.Sysfs.Native

@@ -49,7 +49,7 @@ Library
                       , System.GPIO.Linux.Sysfs.Free
                       , System.GPIO.Linux.Sysfs.IO
                       , System.GPIO.Linux.Sysfs.Monad
-                      , System.GPIO.Linux.Sysfs.Mock
+                      , System.GPIO.Linux.Sysfs.Native
                       , System.GPIO.Linux.Sysfs.Types
                       , System.GPIO.Linux.Sysfs.Util
                       , System.GPIO.Types
@@ -87,18 +87,18 @@ Library
   C-Sources:            src/System/GPIO/Linux/Sysfs/IO.c
   CC-Options:           -Wall
 
-Executable gpio-sysfs-example
-  Main-Is:              Sysfs.hs
-  HS-Source-Dirs:       examples
-  Build-Depends:        base ==4.*
-                      , async
-                      , gpio
-                      , mtl
-                      , optparse-applicative
-                      , transformers
-                      , transformers-compat
-  Default-Language:     Haskell2010
-  Ghc-Options:          -Wall -threaded
+-- Executable gpio-sysfs-example
+--   Main-Is:              Sysfs.hs
+--   HS-Source-Dirs:       examples
+--   Build-Depends:        base ==4.*
+--                       , async
+--                       , gpio
+--                       , mtl
+--                       , optparse-applicative
+--                       , transformers
+--                       , transformers-compat
+--   Default-Language:     Haskell2010
+--   Ghc-Options:          -Wall -threaded
 
 Executable gpio-example
   Main-Is:              Gpio.hs
@@ -144,7 +144,7 @@ Test-Suite spec
                       , System.GPIO.Linux.Sysfs.Free
                       , System.GPIO.Linux.Sysfs.IO
                       , System.GPIO.Linux.Sysfs.Monad
-                      , System.GPIO.Linux.Sysfs.Mock
+                      , System.GPIO.Linux.Sysfs.Native
                       , System.GPIO.Linux.Sysfs.Types
                       , System.GPIO.Linux.Sysfs.Util
                       , System.GPIO.Types

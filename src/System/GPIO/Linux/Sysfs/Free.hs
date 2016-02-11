@@ -31,8 +31,9 @@ import Control.Monad.Catch (MonadMask(..), MonadThrow(..), bracket, throwM)
 import Control.Monad.Trans.Free (iterT)
 import System.GPIO.Free (GpioF(..), GpioT, openPin, closePin, samplePin, writePin, getPinDirection, setPinDirection)
 import System.GPIO.Linux.Sysfs.Monad (MonadSysfs(..))
-import System.GPIO.Types
+import System.GPIO.Linux.Sysfs.Native
 import System.GPIO.Linux.Sysfs.Types (SysfsException( SysfsNotPresent ), toPinReadTrigger, toSysfsEdge)
+import System.GPIO.Types
 
 -- | The 'sysfs' interpreter's pin handle type. Currently it's just a
 -- newtype wrapper around a 'Pin'. The constructor is exported for
