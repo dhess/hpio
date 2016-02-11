@@ -8,9 +8,11 @@ import Control.Concurrent (threadDelay)
 import Control.Concurrent.Async (concurrently)
 import Control.Exception (bracket)
 import Control.Monad (forever, void)
+import Control.Monad.IO.Class (liftIO)
 import Data.Foldable (for_)
 import Options.Applicative
-import System.GPIO.Linux.Sysfs.IO
+import System.GPIO.Linux.Sysfs.IO (SysfsIOT(..))
+import System.GPIO.Linux.Sysfs.Native
 import System.GPIO.Linux.Sysfs.Types
 import System.GPIO.Types
 
@@ -67,24 +69,29 @@ cmds =
       (command "listPins" (info listPinsCmd (progDesc "List the GPIO pins available on the system")) <>
        command "readEdge" (info readEdgeCmd (progDesc "Drive INPIN using OUTPIN. (Make sure the pins are connected!")))
 
+type NativeSysfs a = SysfsIOT IO a
+
+runNativeSysfs :: NativeSysfs a -> IO a
+runNativeSysfs act = runSysfsIOT act
+
 run :: GlobalOptions -> IO ()
 run (GlobalOptions (ReadEdge (ReadEdgeOptions period edge to inputPin outputPin))) =
   void $
     concurrently
-      (edgeRead inputPin edge to)
-      (driveOutput outputPin period)
-run (GlobalOptions ListPins) = listPins
+      (runNativeSysfs $ edgeRead inputPin edge to)
+      (runNativeSysfs $ driveOutput outputPin period)
+run (GlobalOptions ListPins) = runNativeSysfs listPins
 
-withPin :: Pin -> IO a -> IO a
-withPin p block = bracket (exportPin p) (const $ unexportPin p) (const block)
+withPin :: Pin -> NativeSysfs a -> NativeSysfs a
+withPin p block = liftIO $ bracket (runNativeSysfs $ exportPin p) (const $ runNativeSysfs $ unexportPin p) (const $ runNativeSysfs block)
 
-listPins :: IO ()
+listPins :: NativeSysfs ()
 listPins =
   availablePins >>= \case
-    [] -> putStrLn "No GPIO pins found on this system"
-    ps -> for_ ps print
+    [] -> liftIO $ putStrLn "No GPIO pins found on this system"
+    ps -> for_ ps $ liftIO . print
 
-edgeRead :: Pin -> SysfsEdge -> Int -> IO ()
+edgeRead :: Pin -> SysfsEdge -> Int -> NativeSysfs ()
 edgeRead p edge to =
   withPin p $
     do writePinDirection p In
@@ -92,19 +99,19 @@ edgeRead p edge to =
        forever $
          do result <- threadWaitReadPinValue' p to
             case result of
-              Nothing -> putStrLn ("readPin timed out after " ++ show to ++ " microseconds")
-              Just v -> putStrLn ("Input: " ++ show v)
+              Nothing -> liftIO $ putStrLn ("readPin timed out after " ++ show to ++ " microseconds")
+              Just v -> liftIO $ putStrLn ("Input: " ++ show v)
 
-driveOutput :: Pin -> Int -> IO ()
+driveOutput :: Pin -> Int -> NativeSysfs ()
 driveOutput p delay =
   withPin p $
     do writePinDirection p Out
        forever $
-         do threadDelay delay
+         do liftIO $ threadDelay delay
             v <- readPinValue p
             let notv = invertValue v
             writePinValue p notv
-            putStrLn ("Output: " ++ show notv)
+            liftIO $ putStrLn ("Output: " ++ show notv)
 
 main :: IO ()
 main =execParser opts >>= run
