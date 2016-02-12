@@ -38,26 +38,29 @@ import Foreign.C.Types (CInt(..))
 
 -- | A type class for monads which implement (or mock) low-level Linux
 -- @sysfs@ GPIO operations.
---
--- This type class chiefly exists in order to use a @sysfs@ mock for
--- testing with the 'System.GPIO.Linux.Sysfs.SysfsT'
--- transformer/interpreter (see
--- 'System.GPIO.Linux.Sysfs.Mock.SysfsMockT'). Typically, you will not
--- need to use it directly. If you want to write Linux @sysfs@ GPIO
--- programs that run in 'IO', see the "System.GPIO.Linux.Sysfs.IO"
--- module.
---
--- To see the documentation for this type class's methods, see the
--- canonical implementations of these methods in
--- "System.GPIO.Linux.Sysfs.IO". (The low-level GPIO functions in that
--- module have the same name as the methods in this type class.)
 class (Monad m) => MonadSysfs m where
+  -- | Equivalent to 'System.Directory.doesDirectoryExist'.
   doesDirectoryExist :: FilePath -> m Bool
+  -- | Equivalent to 'System.Directory.doesFileExist'.
   doesFileExist :: FilePath -> m Bool
+  -- | Equivalent to 'System.Directory.getDirectoryContents'.
   getDirectoryContents :: FilePath -> m [FilePath]
+  -- | Equivalent to 'Data.ByteString.readFile'.
   readFile :: FilePath -> m ByteString
+  -- | Equivalent to 'Data.ByteString.writeFile'.
   writeFile :: FilePath -> ByteString -> m ()
+  -- | @sysfs@ control files which are global shared resources may be
+  -- written simultaneously by multiple threads. This is fine --
+  -- @sysfs@ can handle this -- but Haskell's writeFile cannot, as it
+  -- locks the file and prevents multiple writers. We don't want this
+  -- behavior, so we use low-level operations to get around it.
   unlockedWriteFile :: FilePath -> ByteString -> m ()
+  -- | Poll a @sysfs@ file for reading, as in POSIX.1-2001 @poll(2)@.
+  --
+  -- Note that the implementation of this function is only guaranteed
+  -- to work for @sysfs@ files, which have a peculiar way of signaling
+  -- readiness for reads, and you should not use it for any other
+  -- purpose.
   pollFile :: FilePath -> Int -> m CInt
 
 instance (MonadSysfs m) => MonadSysfs (IdentityT m) where

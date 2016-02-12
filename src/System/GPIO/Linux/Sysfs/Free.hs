@@ -1,13 +1,13 @@
 {-|
 Module      : System.GPIO.Linux.Sysfs.Free
-Description : An interpreter for Linux 'sysfs' GPIO
+Description : An interpreter for Linux @sysfs@ GPIO
 Copyright   : (c) 2016, Drew Hess
 License     : BSD3
 Maintainer  : Drew Hess <src@drewhess.com>
 Stability   : experimental
 Portability : non-portable
 
-A 'GpioF' interpreter for Linux GPIO using the 'sysfs' filesystem.
+A 'GpioF' interpreter for Linux GPIO using the @sysfs@ filesystem.
 
 -}
 
@@ -18,11 +18,11 @@ A 'GpioF' interpreter for Linux GPIO using the 'sysfs' filesystem.
 {-# LANGUAGE Trustworthy #-}
 
 module System.GPIO.Linux.Sysfs.Free
-       ( -- * The Linux 'sysfs' GPIO interpreter
+       ( -- * The Linux @sysfs@ GPIO interpreter
          SysfsF
        , SysfsT
        , runSysfsT
-         -- * Linux 'sysfs' GPIO types
+         -- * Linux @sysfs@ GPIO types
        , PinDescriptor(..)
        ) where
 
@@ -35,7 +35,7 @@ import System.GPIO.Linux.Sysfs.Native
 import System.GPIO.Linux.Sysfs.Types (SysfsException( SysfsNotPresent ), toPinReadTrigger, toSysfsEdge)
 import System.GPIO.Types
 
--- | The 'sysfs' interpreter's pin handle type. Currently it's just a
+-- | The @sysfs@ interpreter's pin handle type. Currently it's just a
 -- newtype wrapper around a 'Pin'. The constructor is exported for
 -- convenience, but note that the implementation may change in future
 -- versions of the package.
@@ -45,7 +45,7 @@ newtype PinDescriptor = PinDescriptor { _pin :: Pin } deriving (Show, Eq, Ord)
 -- monads.
 type SysfsT m = GpioT PinDescriptor m
 
--- | A 'GpioF' eDSL type for Linux 'sysfs'-based GPIO.
+-- | A 'GpioF' eDSL type for Linux @sysfs@-based GPIO.
 type SysfsF m = GpioF PinDescriptor m
 
 -- | Run (interpret) a 'SysfsT' computation embedded in monad 'm' and
@@ -53,13 +53,13 @@ type SysfsF m = GpioF PinDescriptor m
 --
 -- This function interprets cross-platform 'GpioF' eDSL programs by
 -- translating 'GpioF' commands to their native equivalents on the
--- Linux 'sysfs' GPIO filesystem. The actual 'sysfs' GPIO operations
+-- Linux @sysfs@ GPIO filesystem. The actual @sysfs@ GPIO operations
 -- are provided by the wrapped monad 'm', which must be an instance of
 -- 'MonadSysfs'.
 --
 -- Errors that occur in the interpreter are thrown as 'SysfsException'
 -- values. Errors that could occur in the interpreter are generally
--- limited to reading unexpected results from various 'sysfs' GPIO
+-- limited to reading unexpected results from various @sysfs@ GPIO
 -- control files.
 runSysfsT :: (Functor m, MonadMask m, MonadThrow m, MonadSysfs m) => (SysfsT m) m a -> m a
 runSysfsT = iterT run

@@ -1,13 +1,13 @@
 {-|
 Module      : System.GPIO.Linux.Sysfs.Types
-Description : Types for Linux 'sysfs' GPIO
+Description : Types for Linux @sysfs@ GPIO
 Copyright   : (c) 2016, Drew Hess
 License     : BSD3
 Maintainer  : Drew Hess <src@drewhess.com>
 Stability   : experimental
 Portability : non-portable
 
-Types used by the various Linux 'sysfs' GPIO implementations.
+Types used by the various Linux @sysfs@ GPIO implementations.
 
 -}
 
@@ -16,7 +16,7 @@ Types used by the various Linux 'sysfs' GPIO implementations.
 {-# LANGUAGE Safe #-}
 
 module System.GPIO.Linux.Sysfs.Types
-       ( -- * 'sysfs'-specific types
+       ( -- * @sysfs@-specific types
         SysfsEdge(..)
        , toPinReadTrigger
        , toSysfsEdge
@@ -31,7 +31,7 @@ import System.GPIO.Types
 import Test.QuickCheck (Arbitrary(..), arbitraryBoundedEnum, genericShrink)
 
 -- | Linux GPIO pins that can be configured to generate inputs have an
--- @edge@ attribute in the 'sysfs' GPIO filesystem. This type
+-- @edge@ attribute in the @sysfs@ GPIO filesystem. This type
 -- represents the values that the @edge@ attribute can take.
 --
 -- This type is isomorphic to the 'PinReadTrigger' type in the
@@ -63,16 +63,13 @@ toSysfsEdge RisingEdge = Rising
 toSysfsEdge FallingEdge = Falling
 toSysfsEdge Level = Both
 
--- | Exceptions that can be thrown by 'sysfs' computations (in
+-- | Exceptions that can be thrown by @sysfs@ computations (in
 -- addition to standard 'System.IO.Error.IOError' exceptions, of
 -- course).
 --
 -- The @UnexpectedX@ values are truly exceptional and mean that, while
--- the 'sysfs' attribute for the given pin exists, the contents of the
--- attribute do not match any expected value for that attribute. (This
--- would probably be indicative of a fundamental kernel-level GPIO
--- change or enhancement, and the need for an updated 'SysfsT'
--- interpreter to handle the new value(s).)
+-- the @sysfs@ attribute for the given pin exists, the contents of the
+-- attribute do not match any expected value for that attribute.
 data SysfsException
   = SysfsNotPresent
   | UnexpectedDirection Pin String

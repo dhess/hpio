@@ -9,9 +9,6 @@ Portability : non-portable
 
 An eDSL for GPIO computations.
 
-To make it easier to use the eDSL in typical scenarios, the eDSL is
-implemented as a functor for the 'FreeT' transformer.
-
 -}
 
 {-# LANGUAGE DeriveGeneric #-}

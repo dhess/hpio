@@ -7,8 +7,16 @@ Maintainer  : Drew Hess <src@drewhess.com>
 Stability   : experimental
 Portability : non-portable
 
-Provides functions for performing native GPIO operations using the
-Linux @sysfs@ filesystem.
+Functions for performing native GPIO operations using the Linux
+@sysfs@ filesystem.
+
+Note that these functions do not run directly in the 'System.IO.IO'
+monad; they run in the 'MonadSysfs' monad. We use this abstraction
+primarily to allow for testing/mocking of the @sysfs@ filesystem API
+without needing an actual @sysfs@ filesystem to run against.
+
+See the "System.GPIO.Linux.Sysfs.IO" module for an instance of
+'MonadSysfs' which runs the actual @sysfs@ actions in 'System.IO.IO'.
 
 -}
 

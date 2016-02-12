@@ -1,14 +1,14 @@
 {-|
 Module      : System.GPIO.Linux.Sysfs.IO
-Description : The actual Linux 'sysfs' GPIO implementation
+Description : The actual Linux @sysfs@ GPIO implementation
 Copyright   : (c) 2016, Drew Hess
 License     : BSD3
 Maintainer  : Drew Hess <src@drewhess.com>
 Stability   : experimental
 Portability : non-portable
 
-The actual Linux 'sysfs' GPIO implementation. This implementation will
-only function properly on Linux systems with a 'sysfs' GPIO subsystem,
+The actual Linux @sysfs@ GPIO implementation. This implementation will
+only function properly on Linux systems with a @sysfs@ GPIO subsystem,
 obviously.
 
 -}
@@ -75,7 +75,7 @@ C.include "<unistd.h>"
 -- cases, anyway.
 --
 -- The Linux man page for poll(2) states that setting POLLERR in the
--- 'events' field is meaningless. However, the kernel GPIO
+-- @events@ field is meaningless. However, the kernel GPIO
 -- documentation states: "If you use poll(2), set the events POLLPRI
 -- and POLLERR." Here we do what the kernel documentation says.
 --
@@ -83,7 +83,7 @@ C.include "<unistd.h>"
 -- Linux kernel documentation.
 --
 -- It appears that poll(2) on the GPIO sysfs pin's "value" file always
--- returns POLLERR in 'revents', even if there is no error. (This is
+-- returns POLLERR in @revents@, even if there is no error. (This is
 -- supposedly true for all sysfs files, not just for GPIO.) We simply
 -- ignore that bit and only consider the return value of poll(2) to
 -- determine whether an error has occurred. (Presumably, if POLLERR is
@@ -121,7 +121,7 @@ pollSysfs fd timeout =
          return poll_result;
      } |]
 
--- | A monad transformer which adds Linux 'sysfs' GPIO computations to
+-- | A monad transformer which adds Linux @sysfs@ GPIO computations to
 -- an inner monad 'm'.
 --
 -- == Interactions with threads
@@ -166,11 +166,6 @@ instance (MonadIO m, MonadThrow m) => MonadSysfs (SysfsIOT m) where
   unlockedWriteFile fn bs = liftIO $ unlockedWriteFileIO fn bs
   pollFile fn timeout = liftIO $ pollFileIO fn timeout
 
--- @sysfs@ control files which are global shared resources may be
--- written simultaneously by multiple threads. This is fine -- @sysfs@
--- can handle this -- but Haskell's writeFile cannot, as it locks the
--- file and prevents multiple writers. We don't want this behavior, so
--- we use low-level operations to get around it.
 unlockedWriteFileIO :: FilePath -> ByteString -> IO ()
 unlockedWriteFileIO fn bs =
   bracket

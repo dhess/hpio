@@ -69,7 +69,7 @@ instance Arbitrary PinDirection where
   arbitrary = arbitraryBoundedEnum
   shrink = genericShrink
 
--- | Pin value (high/low voltage).
+-- | Binary pin value.
 data PinValue
   = Low
   | High

@@ -1,13 +1,13 @@
 {-|
 Module      : System.GPIO.Linux.Sysfs.Util
-Description : Useful low-level Linux 'sysfs' functions
+Description : Useful low-level Linux @sysfs@ functions
 Copyright   : (c) 2016, Drew Hess
 License     : BSD3
 Maintainer  : Drew Hess <src@drewhess.com>
 Stability   : experimental
 Portability : non-portable
 
-Useful low-level Linux 'sysfs' functions.
+Useful low-level Linux @sysfs@ functions.
 
 -}
 
@@ -27,21 +27,21 @@ module System.GPIO.Linux.Sysfs.Util
 import System.FilePath ((</>))
 import System.GPIO.Types (Pin(..))
 
--- | The base path to Linux's 'sysfs' GPIO filesystem.
+-- | The base path to Linux's @sysfs@ GPIO filesystem.
 sysfsPath :: FilePath
 sysfsPath = "/sys/class/gpio"
 
 -- | The name of the control file used to export GPIO pins via
--- 'sysfs'.
+-- @sysfs@.
 exportFileName :: FilePath
 exportFileName = sysfsPath </> "export"
 
 -- | The name of the control file used to "unexport" GPIO pins via
--- 'sysfs'.
+-- @sysfs@.
 unexportFileName :: FilePath
 unexportFileName = sysfsPath </> "unexport"
 
--- | Exporting a GPIO pin via 'sysfs' creates a control directory
+-- | Exporting a GPIO pin via @sysfs@ creates a control directory
 -- corresponding to that pin. 'pinDirName' gives the name of that
 -- directory for a given pin number.
 pinDirName :: Pin -> FilePath
@@ -52,7 +52,7 @@ pinDirName (Pin n) = sysfsPath </> ("gpio" ++ show n)
 pinActiveLowFileName :: Pin -> FilePath
 pinActiveLowFileName p = pinDirName p </> "active_low"
 
--- | Pins whose direction can be controlled via 'sysfs' provide a
+-- | Pins whose direction can be controlled via @sysfs@ provide a
 -- @direction@ attribute file. 'pinDirectionFileName' gives the name
 -- of that file for a given pin number. Note that some pins' direction
 -- cannot be set. In these cases, the file named by this function does
