@@ -20,6 +20,8 @@ addons:
 # matrix, you can use a line such as:
 #     addons: {apt: {packages: [libfcgi-dev,libgmp-dev]}}
 matrix:
+  allow_failures:
+  - env: ARGS="--resolver nightly"
   include:
   - env: ARGS=""
     compiler: ": # Default"
