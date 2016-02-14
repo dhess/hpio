@@ -151,6 +151,14 @@ fsName (File n _) = n
 
 type MockFSZipper = (MockFS, [MockFSCrumb])
 
+isDirectory :: MockFSZipper -> Bool
+isDirectory (Directory _ _, _) = True
+isDirectory _ = False
+
+isFile :: MockFSZipper -> Bool
+isFile (File _ _, _) = True
+isFile _ = False
+
 -- Logically equivalent to "cd .."
 up :: MockFSZipper -> Either MockFSException MockFSZipper
 up (item, MockFSCrumb parent ls rs:bs) = Right (Directory parent (ls ++ [item] ++ rs), bs)
@@ -168,7 +176,11 @@ goto name dir@(Directory dirName items, bs) =
 goto _ (File fileName _, _) = Left $ NotADirectory fileName
 
 cd :: FilePath -> MockFSZipper -> Either MockFSException MockFSZipper
-cd path zipper = foldlM (flip goto) zipper (splitDirectories path)
+cd path zipper =
+  do focus <- foldlM (flip goto) zipper (splitDirectories path)
+     if isDirectory focus
+        then Right focus
+        else Left $ NotADirectory path
 
 sysfsRoot :: MockFS
 sysfsRoot =
