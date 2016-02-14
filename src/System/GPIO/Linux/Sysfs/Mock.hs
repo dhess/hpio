@@ -45,9 +45,11 @@ import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Trans.Class (MonadTrans(..))
 import Data.ByteString (ByteString)
 import Data.Data
+import Data.Foldable (foldlM)
 import Data.List (break)
 import Foreign.C.Types (CInt(..))
 import GHC.Generics
+import System.FilePath (splitDirectories)
 import System.GPIO.Linux.Sysfs.Free (SysfsT)
 import System.GPIO.Linux.Sysfs.Monad (MonadSysfs)
 import qualified System.GPIO.Linux.Sysfs.Monad as M (MonadSysfs(..))
@@ -155,19 +157,25 @@ up (item, MockFSCrumb parent ls rs:bs) = Right (Directory parent (ls ++ [item] +
 up (item, []) = Right (item, []) -- cd /.. == /
 
 goto :: Name -> MockFSZipper -> Either MockFSException MockFSZipper
-goto name (Directory dirName items, bs) =
-  case break (\item -> fsName item == name) items of
-    (ls, item:rs) -> Right (item, MockFSCrumb dirName ls rs:bs)
-    (_, []) -> Left $ NoSuchFileOrDirectory name
+goto name dir@(Directory dirName items, bs) =
+  case name of
+    "." -> Right dir
+    ".." -> up dir
+    _ ->
+      case break (\item -> fsName item == name) items of
+        (ls, item:rs) -> Right (item, MockFSCrumb dirName ls rs:bs)
+        (_, []) -> Left $ NoSuchFileOrDirectory name
 goto _ (File fileName _, _) = Left $ NotADirectory fileName
+
+cd :: FilePath -> MockFSZipper -> Either MockFSException MockFSZipper
+cd path zipper = foldlM (flip goto) zipper (splitDirectories path)
 
 sysfsRoot :: MockFS
 sysfsRoot =
-  Directory "sys" [
-    Directory "class" [
-      Directory "gpio" [
-          File "export" ["Export"]
-        , File "unexport" ["Unexport"]
-        ]
-      ]
-    ]
+  Directory "."
+            [Directory "/"
+                       [Directory "sys"
+                                  [Directory "class"
+                                             [Directory "gpio"
+                                                        [File "export" ["Export"]
+                                                        ,File "unexport" ["Unexport"]]]]]]
