@@ -11,6 +11,8 @@ A mock 'MonadSysfs' instance, for testing GPIO programs.
 
 -}
 
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -23,7 +25,7 @@ module System.GPIO.Linux.Sysfs.Mock
        , MockPinState(..)
        , defaultState
        , MockGpioChip(..)
-       , MockFileSystem
+       , MockFS
          -- * Mock @sysfs@ operations
        , doesDirectoryExist
        , doesFileExist
@@ -42,8 +44,10 @@ import Control.Monad.Fix (MonadFix)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Trans.Class (MonadTrans(..))
 import Data.ByteString (ByteString)
-import Data.Tree (Tree(..))
+import Data.Data
+import Data.List (break)
 import Foreign.C.Types (CInt(..))
+import GHC.Generics
 import System.GPIO.Linux.Sysfs.Free (SysfsT)
 import System.GPIO.Linux.Sysfs.Monad (MonadSysfs)
 import qualified System.GPIO.Linux.Sysfs.Monad as M (MonadSysfs(..))
@@ -121,15 +125,49 @@ unlockedWriteFile = writeFile
 pollFile :: (MonadSysfs m) => FilePath -> Int -> m CInt
 pollFile fn timeout = undefined
 
-type MockFileSystem = Tree String
+type Name = String
 
-sysfsRoot :: MockFileSystem
+data MockFS
+  = Directory Name [MockFS]
+  | File Name [String]
+  deriving (Show, Eq)
+
+data MockFSException
+  = ReadError FilePath
+  | WriteError FilePath
+  | NotADirectory FilePath
+  | NotAFile FilePath
+  | NoSuchFileOrDirectory FilePath
+  deriving (Show,Typeable)
+
+data MockFSCrumb
+  = MockFSCrumb Name [MockFS] [MockFS] deriving (Show, Eq)
+
+fsName :: MockFS -> Name
+fsName (Directory n _) = n
+fsName (File n _) = n
+
+type MockFSZipper = (MockFS, [MockFSCrumb])
+
+-- Logically equivalent to "cd .."
+up :: MockFSZipper -> Either MockFSException MockFSZipper
+up (item, MockFSCrumb parent ls rs:bs) = Right (Directory parent (ls ++ [item] ++ rs), bs)
+up (item, []) = Right (item, []) -- cd /.. == /
+
+goto :: Name -> MockFSZipper -> Either MockFSException MockFSZipper
+goto name (Directory dirName items, bs) =
+  case break (\item -> fsName item == name) items of
+    (ls, item:rs) -> Right (item, MockFSCrumb dirName ls rs:bs)
+    (_, []) -> Left $ NoSuchFileOrDirectory name
+goto _ (File fileName _, _) = Left $ NotADirectory fileName
+
+sysfsRoot :: MockFS
 sysfsRoot =
-  Node "sys" [
-    Node "class" [
-      Node "gpio" [
-          Node "export" []
-        , Node "unexport" []
+  Directory "sys" [
+    Directory "class" [
+      Directory "gpio" [
+          File "export" ["Export"]
+        , File "unexport" ["Unexport"]
+        ]
       ]
     ]
-  ]
