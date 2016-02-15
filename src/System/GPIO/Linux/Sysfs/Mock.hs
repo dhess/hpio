@@ -160,15 +160,15 @@ isFile (File _ _, _) = True
 isFile _ = False
 
 -- Logically equivalent to "cd .."
-up :: MockFSZipper -> Either MockFSException MockFSZipper
-up (item, MockFSCrumb parent ls rs:bs) = Right (Directory parent (ls ++ [item] ++ rs), bs)
-up (item, []) = Right (item, []) -- cd /.. == /
+up :: MockFSZipper -> MockFSZipper
+up (item, MockFSCrumb parent ls rs:bs) = (Directory parent (ls ++ [item] ++ rs), bs)
+up (item, []) = (item, []) -- cd /.. == /
 
 goto :: Name -> MockFSZipper -> Either MockFSException MockFSZipper
 goto name dir@(Directory dirName items, bs) =
   case name of
     "." -> Right dir
-    ".." -> up dir
+    ".." -> return $ up dir
     _ ->
       case break (\item -> fsName item == name) items of
         (ls, item:rs) -> Right (item, MockFSCrumb dirName ls rs:bs)
