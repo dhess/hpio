@@ -177,10 +177,12 @@ goto _ (File fileName _, _) = Left $ NotADirectory fileName
 
 cd :: FilePath -> MockFSZipper -> Either MockFSException MockFSZipper
 cd path zipper =
-  do focus <- foldlM (flip goto) zipper (splitDirectories path)
-     if isDirectory focus
-        then Right focus
-        else Left $ NotADirectory path
+  let
+    result = foldlM (flip goto) zipper (splitDirectories path)
+  in
+    case result of
+      Right dir@ (Directory _ _, _) -> Right dir
+      _ -> Left $ NotADirectory path
 
 sysfsRoot :: MockFS
 sysfsRoot =
