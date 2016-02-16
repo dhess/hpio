@@ -45,7 +45,8 @@ import Control.Monad.Trans.Class (MonadTrans(..))
 import Data.ByteString (ByteString)
 import Data.Data
 import Data.Foldable (foldlM)
-import Data.List (break)
+import Data.List (break, find)
+import Data.Maybe (maybe)
 import Foreign.C.Types (CInt(..))
 import GHC.Generics
 import System.FilePath (isAbsolute, splitDirectories)
@@ -165,6 +166,9 @@ root :: MockFSZipper -> MockFSZipper
 root (top, []) = (top, [])
 root z = root $ up z
 
+findFile :: Name -> Directory -> Maybe File
+findFile name dir = find (\file -> _fileName file == name) (_files dir)
+
 cd :: FilePath -> MockFSZipper -> Either MockFSException MockFSZipper
 cd p z =
   let (path, fs) =
@@ -187,10 +191,10 @@ cd p z =
                                      ls
                                      rs :
                          bs)
-                -- Strictly speaking, this should be 'NotADirectory' if
-                -- 'name' is the name of an existing file, and
-                -- 'NoSuchFileOrDirectory' if neither.
-                (_,[]) -> Left $ NotADirectory name
+                (_,[]) ->
+                  maybe (Left $ NoSuchFileOrDirectory p)
+                        (const $ Left $ NotADirectory p)
+                        (findFile name cwd)
 
 sysfsRoot :: Directory
 sysfsRoot =
