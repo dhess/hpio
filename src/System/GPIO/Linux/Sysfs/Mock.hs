@@ -162,10 +162,10 @@ up (cwd, MockFSCrumb parent files ls rs:bs) = (Directory parent files (ls ++ [cw
 up (cwd, []) = (cwd, []) -- cd /.. == /
 
 cd :: FilePath -> MockFSZipper -> Either MockFSException MockFSZipper
-cd path fs = foldlM (flip cd') fs (splitDirectories path)
+cd path fs = foldlM cd' fs (splitDirectories path)
  where
-    cd' :: Name -> MockFSZipper -> Either MockFSException MockFSZipper
-    cd' name zipper@(cwd, bs) =
+    cd' :: MockFSZipper -> Name -> Either MockFSException MockFSZipper
+    cd' zipper@(cwd, bs) name =
       case name of
         "." -> Right zipper
         ".." -> return $ up zipper
