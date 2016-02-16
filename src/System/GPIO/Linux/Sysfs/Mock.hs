@@ -48,7 +48,7 @@ import Data.Foldable (foldlM)
 import Data.List (break)
 import Foreign.C.Types (CInt(..))
 import GHC.Generics
-import System.FilePath (splitDirectories)
+import System.FilePath (isAbsolute, splitDirectories)
 import System.GPIO.Linux.Sysfs.Free (SysfsT)
 import System.GPIO.Linux.Sysfs.Monad (MonadSysfs)
 import qualified System.GPIO.Linux.Sysfs.Monad as M (MonadSysfs(..))
@@ -161,21 +161,36 @@ up :: MockFSZipper -> MockFSZipper
 up (cwd, MockFSCrumb parent files ls rs:bs) = (Directory parent files (ls ++ [cwd] ++ rs), bs)
 up (cwd, []) = (cwd, []) -- cd /.. == /
 
+root :: MockFSZipper -> MockFSZipper
+root (top, []) = (top, [])
+root z = root $ up z
+
 cd :: FilePath -> MockFSZipper -> Either MockFSException MockFSZipper
-cd path fs = foldlM cd' fs (splitDirectories path)
- where
-    cd' :: MockFSZipper -> Name -> Either MockFSException MockFSZipper
-    cd' zipper@(cwd, bs) name =
-      case name of
-        "." -> Right zipper
-        ".." -> return $ up zipper
-        _ ->
-          case break (\dir -> _dirName dir == name) (_subdirs cwd) of
-            (ls, subdir:rs) -> Right (subdir, MockFSCrumb (_dirName cwd) (_files cwd) ls rs:bs)
-            -- Strictly speaking, this should be 'NotADirectory' if
-            -- 'name' is the name of an existing file, and
-            -- 'NoSuchFileOrDirectory' if neither.
-            (_, []) -> Left $ NotADirectory name
+cd p z =
+  let (path, fs) =
+        if isAbsolute p
+           then (drop 1 p, root z)
+           else (p, z)
+  in foldlM cd' fs (splitDirectories path)
+  where cd' :: MockFSZipper -> Name -> Either MockFSException MockFSZipper
+        cd' zipper@(cwd,bs) name =
+          case name of
+            "." -> Right zipper
+            ".." -> return $ up zipper
+            _ ->
+              case break (\dir -> _dirName dir == name)
+                         (_subdirs cwd) of
+                (ls,subdir:rs) ->
+                  Right (subdir
+                        ,MockFSCrumb (_dirName cwd)
+                                     (_files cwd)
+                                     ls
+                                     rs :
+                         bs)
+                -- Strictly speaking, this should be 'NotADirectory' if
+                -- 'name' is the name of an existing file, and
+                -- 'NoSuchFileOrDirectory' if neither.
+                (_,[]) -> Left $ NotADirectory name
 
 sysfsRoot :: Directory
 sysfsRoot =
