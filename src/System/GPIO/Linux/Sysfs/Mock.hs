@@ -172,9 +172,10 @@ cd path fs = foldlM cd' fs (splitDirectories path)
         _ ->
           case break (\dir -> _dirName dir == name) (_subdirs cwd) of
             (ls, subdir:rs) -> Right (subdir, MockFSCrumb (_dirName cwd) (_files cwd) ls rs:bs)
-            -- Strictly speaking, should search for 'name' as a 'File'
-            -- here and report 'NotADirectory' if found.
-            (_, []) -> Left $ NoSuchFileOrDirectory name
+            -- Strictly speaking, this should be 'NotADirectory' if
+            -- 'name' is the name of an existing file, and
+            -- 'NoSuchFileOrDirectory' if neither.
+            (_, []) -> Left $ NotADirectory name
 
 sysfsRoot :: Directory
 sysfsRoot =
