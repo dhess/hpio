@@ -25,7 +25,6 @@ module System.GPIO.Linux.Sysfs.Mock
        , MockPinState(..)
        , defaultState
        , MockGpioChip(..)
-       , MockFS
          -- * Mock @sysfs@ operations
        , doesDirectoryExist
        , doesFileExist
@@ -129,10 +128,16 @@ pollFile fn timeout = undefined
 
 type Name = String
 
-data MockFS
-  = Directory Name [MockFS]
-  | File Name [String]
-  deriving (Show, Eq)
+data File =
+  File {_fileName :: Name
+       ,_contents :: [String]}
+  deriving (Show,Eq)
+
+data Directory =
+  Directory {_dirName :: Name
+            ,_files :: [File]
+            ,_subdirs :: [Directory]}
+  deriving (Show,Eq)
 
 data MockFSException
   = ReadError FilePath
@@ -142,54 +147,44 @@ data MockFSException
   | NoSuchFileOrDirectory FilePath
   deriving (Show,Typeable)
 
-data MockFSCrumb
-  = MockFSCrumb Name [MockFS] [MockFS] deriving (Show, Eq)
+data MockFSCrumb =
+  MockFSCrumb {_parentName :: Name
+              ,_parentFiles :: [File]
+              ,_pred :: [Directory]
+              ,_succ :: [Directory]}
+  deriving (Show,Eq)
 
-fsName :: MockFS -> Name
-fsName (Directory n _) = n
-fsName (File n _) = n
-
-type MockFSZipper = (MockFS, [MockFSCrumb])
-
-isDirectory :: MockFSZipper -> Bool
-isDirectory (Directory _ _, _) = True
-isDirectory _ = False
-
-isFile :: MockFSZipper -> Bool
-isFile (File _ _, _) = True
-isFile _ = False
+type MockFSZipper = (Directory, [MockFSCrumb])
 
 -- Logically equivalent to "cd .."
 up :: MockFSZipper -> MockFSZipper
-up (item, MockFSCrumb parent ls rs:bs) = (Directory parent (ls ++ [item] ++ rs), bs)
-up (item, []) = (item, []) -- cd /.. == /
-
-goto :: Name -> MockFSZipper -> Either MockFSException MockFSZipper
-goto name dir@(Directory dirName items, bs) =
-  case name of
-    "." -> Right dir
-    ".." -> return $ up dir
-    _ ->
-      case break (\item -> fsName item == name) items of
-        (ls, item:rs) -> Right (item, MockFSCrumb dirName ls rs:bs)
-        (_, []) -> Left $ NoSuchFileOrDirectory name
-goto _ (File fileName _, _) = Left $ NotADirectory fileName
+up (cwd, MockFSCrumb parent files ls rs:bs) = (Directory parent files (ls ++ [cwd] ++ rs), bs)
+up (cwd, []) = (cwd, []) -- cd /.. == /
 
 cd :: FilePath -> MockFSZipper -> Either MockFSException MockFSZipper
-cd path zipper =
-  let
-    result = foldlM (flip goto) zipper (splitDirectories path)
-  in
-    case result of
-      Right dir@ (Directory _ _, _) -> Right dir
-      _ -> Left $ NotADirectory path
+cd path fs = foldlM (flip cd') fs (splitDirectories path)
+ where
+    cd' :: Name -> MockFSZipper -> Either MockFSException MockFSZipper
+    cd' name zipper@(cwd, bs) =
+      case name of
+        "." -> Right zipper
+        ".." -> return $ up zipper
+        _ ->
+          case break (\dir -> _dirName dir == name) (_subdirs cwd) of
+            (ls, subdir:rs) -> Right (subdir, MockFSCrumb (_dirName cwd) (_files cwd) ls rs:bs)
+            -- Strictly speaking, should search for 'name' as a 'File'
+            -- here and report 'NotADirectory' if found.
+            (_, []) -> Left $ NoSuchFileOrDirectory name
 
-sysfsRoot :: MockFS
+sysfsRoot :: Directory
 sysfsRoot =
-  Directory "."
-            [Directory "/"
-                       [Directory "sys"
-                                  [Directory "class"
-                                             [Directory "gpio"
-                                                        [File "export" ["Export"]
-                                                        ,File "unexport" ["Unexport"]]]]]]
+  Directory "/"
+            []
+            [Directory "sys"
+                       []
+                       [Directory "class"
+                                  []
+                                  [Directory "gpio"
+                                             [File "export" ["Export"]
+                                             ,File "unexport" ["Unexport"]]
+                                             []]]]
