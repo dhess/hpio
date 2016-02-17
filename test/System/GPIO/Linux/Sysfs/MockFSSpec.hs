@@ -82,6 +82,10 @@ spec =
            it "cd / is root" $
              cd "/" sysfsRootZ `shouldBe` Right sysfsRootZ
 
+           it "cd / from deeper starts at root" $ do
+             (cd "/sys/class/gpio" sysfsRootZ >>= cd "/") `shouldBe` Right sysfsRootZ
+             (cd "/sys/class/gpio" sysfsRootZ >>= cd "/sys/class") `shouldBe` cd "/sys/class" sysfsRootZ
+
            it "'.' in paths" $
              do cd "/sys/." sysfsRootZ `shouldBe` cd "/sys" sysfsRootZ
                 cd "/sys/./class" sysfsRootZ `shouldBe` cd "/sys/class" sysfsRootZ
