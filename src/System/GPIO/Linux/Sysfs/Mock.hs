@@ -33,6 +33,19 @@ module System.GPIO.Linux.Sysfs.Mock
        , writeFile
        , unlockedWriteFile
        , pollFile
+         -- * A mock @sysfs@ filesystem
+       , sysfsRoot
+       , up
+       , cd
+       , root
+       , findFile
+         -- * Mock filesystem types
+       , Name
+       , File(..)
+       , Directory(..)
+       , MockFSException(..)
+       , MockFSCrumb(..)
+       , MockFSZipper
        ) where
 
 import Prelude hiding (readFile, writeFile)
@@ -146,7 +159,7 @@ data MockFSException
   | NotADirectory FilePath
   | NotAFile FilePath
   | NoSuchFileOrDirectory FilePath
-  deriving (Show,Typeable)
+  deriving (Show,Eq,Typeable)
 
 data MockFSCrumb =
   MockFSCrumb {_parentName :: Name
