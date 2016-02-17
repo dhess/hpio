@@ -42,6 +42,20 @@ spec =
                 cd "sys/class/gpio/unexport" sysfsRootZ `shouldBe` (Left $ NotADirectory "sys/class/gpio/unexport")
                 cd "sys/class/gpio/unexport/baz" sysfsRootZ `shouldBe` (Left $ NotADirectory "sys/class/gpio/unexport/baz")
 
+           it "'.' in paths" $
+             do cd "sys/." sysfsRootZ `shouldBe` cd "sys" sysfsRootZ
+                cd "sys/./class" sysfsRootZ `shouldBe` cd "sys/class" sysfsRootZ
+
+           it "'..' in paths" $
+             do cd "sys/.." sysfsRootZ `shouldBe` Right sysfsRootZ
+                cd "sys/class/../class" sysfsRootZ `shouldBe` cd "sys/class" sysfsRootZ
+                cd "sys/class/gpio/../../class" sysfsRootZ `shouldBe` cd "sys/../sys/class/../class/gpio/.." sysfsRootZ
+                cd "sys/class/gpio/../../.." sysfsRootZ `shouldBe` Right sysfsRootZ
+
+           it "'..' beyond root clamps to root" $
+             do cd "sys/class/../../../.." sysfsRootZ `shouldBe` Right sysfsRootZ
+                cd "../.." sysfsRootZ `shouldBe` Right sysfsRootZ
+
          context "absolute paths" $ do
            it "can traverse downwards one directory at a time" $
              do let Right z1@(dir1, crumb1:_) = cd "/sys" sysfsRootZ
@@ -64,3 +78,25 @@ spec =
            it "fails when changing to a file name rather than a directory name" $
              do cd "/sys/class/gpio/export" sysfsRootZ `shouldBe` (Left $ NotADirectory "/sys/class/gpio/export")
                 cd "/sys/class/gpio/unexport/baz" sysfsRootZ `shouldBe` (Left $ NotADirectory "/sys/class/gpio/unexport/baz")
+
+           it "cd / is root" $
+             cd "/" sysfsRootZ `shouldBe` Right sysfsRootZ
+
+           it "'.' in paths" $
+             do cd "/sys/." sysfsRootZ `shouldBe` cd "/sys" sysfsRootZ
+                cd "/sys/./class" sysfsRootZ `shouldBe` cd "/sys/class" sysfsRootZ
+           it "'..' in paths" $
+             do cd "/sys/.." sysfsRootZ `shouldBe` Right sysfsRootZ
+                cd "/sys/class/../class" sysfsRootZ `shouldBe` cd "/sys/class" sysfsRootZ
+                cd "/sys/class/gpio/../../class" sysfsRootZ `shouldBe` cd "/sys/../sys/class/../class/gpio/.." sysfsRootZ
+                cd "/sys/class/gpio/../../.." sysfsRootZ `shouldBe` Right sysfsRootZ
+           it "'..' beyond root clamps to root" $
+             do cd "/sys/class/../../../.." sysfsRootZ `shouldBe` Right sysfsRootZ
+                cd "/../.." sysfsRootZ `shouldBe` Right sysfsRootZ
+
+         context "absolute and relative paths" $ do
+           it "produce the same result when they lead to the same directory" $
+             do cd "sys/class/gpio" sysfsRootZ `shouldBe` cd "/sys/class/gpio" sysfsRootZ
+                cd "sys/class/gpio/.." sysfsRootZ `shouldBe` cd "/sys/class/gpio/.." sysfsRootZ
+                cd "sys/class/gpio/../../." sysfsRootZ `shouldBe` cd "/sys/class/gpio/../../." sysfsRootZ
+                cd "sys/class/.././class/../../sys" sysfsRootZ `shouldBe` cd "/sys/../sys/class/./gpio/../.." sysfsRootZ
