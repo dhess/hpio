@@ -40,6 +40,7 @@ module System.GPIO.Linux.Sysfs.Mock
        , root
        , findFile
        , mkdir
+       , mkfile
          -- * Mock filesystem types
        , Name
        , File(..)
@@ -218,18 +219,35 @@ cd p z =
                         (findFile name cwd)
 
 mkdir :: Name -> MockFSZipper -> Either MockFSException MockFSZipper
-mkdir name (parent, bs) =
+mkdir name zipper =
+  mkobject name mkdir' zipper
+  where
+    mkdir' :: Directory -> Directory
+    mkdir' parent =
+      let child = Directory name [] []
+          subdirs = _subdirs parent
+      in parent { _subdirs = (child:subdirs)}
+
+mkfile :: Name -> [String] -> MockFSZipper -> Either MockFSException MockFSZipper
+mkfile name contents zipper =
+  mkobject name mkfile' zipper
+  where
+    mkfile' :: Directory -> Directory
+    mkfile' parent =
+      let file = File name contents
+          files = _files parent
+      in
+        parent { _files = (file:files)}
+
+mkobject :: Name -> (Directory -> Directory) -> MockFSZipper -> Either MockFSException MockFSZipper
+mkobject name modify (parent, bs) =
   if (isJust $ findFile name parent)
     then Left $ FileExists name
     else
       case findDir name parent of
         (_, []) ->
           if isValidName name
-             then
-               let child = Directory name [] []
-                   subdirs = _subdirs parent
-               in
-                 Right (parent { _subdirs = (child:subdirs)}, bs)
+             then Right $ (modify parent, bs)
              else Left $ InvalidName name
         _ -> Left $ FileExists name
 

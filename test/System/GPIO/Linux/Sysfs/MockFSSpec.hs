@@ -145,3 +145,27 @@ spec =
             it "fails when the name contains a '/'" $
               do mkdir "/abc" sysfsRootZ `shouldBe` (Left $ InvalidName "/abc")
                  mkdir "sys/foobar" sysfsRootZ `shouldBe` (Left $ InvalidName "sys/foobar")
+
+       describe "mkfile" $
+         do it "creates a file in the current directory" $
+              do let Right z1 = cd "/sys/class/gpio" sysfsRootZ
+                 let Right (dir2, crumb2:_) = mkfile "gpio1" ["Hey!", "This is gpio1"] z1
+                 _dirName dir2 `shouldBe` "gpio"
+                 _parentName crumb2 `shouldBe` "class"
+                 let file:rest = _files dir2
+                 _fileName file `shouldBe` "gpio1"
+                 _contents file `shouldBe` ["Hey!", "This is gpio1"]
+                 rest `shouldBe` [File {_fileName = "export", _contents = ["Export"]},File {_fileName = "unexport", _contents = ["Unexport"]}]
+
+            it "fails when a subdir with the same name already exists" $
+              mkfile "sys" [] sysfsRootZ `shouldBe` (Left $ FileExists "sys")
+
+            it "fails when a file with the same name already exists" $
+              (cd "/sys/class/gpio" sysfsRootZ >>= mkfile "export" []) `shouldBe` (Left $ FileExists "export")
+
+            it "fails with an invalid name" $
+              mkfile "" [] sysfsRootZ `shouldBe` (Left $ InvalidName "")
+
+            it "fails when the name contains a '/'" $
+              do mkfile "/abc" [] sysfsRootZ `shouldBe` (Left $ InvalidName "/abc")
+                 mkfile "sys/foobar" [] sysfsRootZ `shouldBe` (Left $ InvalidName "sys/foobar")
