@@ -169,3 +169,44 @@ spec =
             it "fails when the name contains a '/'" $
               do mkfile "/abc" [] sysfsRootZ `shouldBe` (Left $ InvalidName "/abc")
                  mkfile "sys/foobar" [] sysfsRootZ `shouldBe` (Left $ InvalidName "sys/foobar")
+
+       describe "rmdir" $
+         do it "removes a subdirectory of the current directory" $
+              do let Right z1 = cd "/sys" sysfsRootZ >>= mkdir "xyzzy" >>= mkdir "plugh"
+                 let Right z2@(dir2, crumb2:_) = rmdir "xyzzy" z1
+                 _dirName dir2 `shouldBe` "sys"
+                 _parentName crumb2 `shouldBe` "/"
+                 let Right (dir3, crumb3:_) = rmdir "plugh" z2
+                 _dirName dir3 `shouldBe` "sys"
+                 _parentName crumb3 `shouldBe` "/"
+
+            it "fails when no subdir with the name exists" $
+              rmdir "foo" sysfsRootZ `shouldBe` (Left $ NoSuchFileOrDirectory "foo")
+
+            it "fails when a file is named" $
+              (cd "/sys/class/gpio" sysfsRootZ >>= rmdir "export") `shouldBe` (Left $ NotADirectory "export")
+
+            it "fails when the name contains a '/'" $
+              do rmdir "/sys" sysfsRootZ `shouldBe` (Left $ NoSuchFileOrDirectory "/sys")
+                 rmdir "sys/class" sysfsRootZ `shouldBe` (Left $ NoSuchFileOrDirectory "sys/class")
+
+       describe "rmfile" $
+         do it "removes a file in the current directory" $
+              do let Right z1 = cd "/sys" sysfsRootZ >>= mkfile "abc" [] >>= mkfile "def" []
+                 let Right z2@(dir2, crumb2:_) = rmfile "abc" z1
+                 _dirName dir2 `shouldBe` "sys"
+                 _parentName crumb2 `shouldBe` "/"
+                 _files dir2 `shouldBe` [File {_fileName = "def", _contents = []}]
+                 let Right (dir3, crumb3:_) = rmfile "def" z2
+                 _dirName dir3 `shouldBe` "sys"
+                 _parentName crumb3 `shouldBe` "/"
+                 _files dir3 `shouldBe` []
+
+            it "fails when no file with the name exists" $
+              rmfile "foo" sysfsRootZ `shouldBe` (Left $ NoSuchFileOrDirectory "foo")
+
+            it "fails when a directory is named" $
+              (cd "/sys/class" sysfsRootZ >>= rmfile "gpio") `shouldBe` (Left $ NotAFile "gpio")
+
+            it "fails when the name contains a '/'" $
+              rmfile "/sys/class/gpio/export" sysfsRootZ `shouldBe` (Left $ NoSuchFileOrDirectory "/sys/class/gpio/export")
