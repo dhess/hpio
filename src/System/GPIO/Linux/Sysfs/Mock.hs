@@ -39,6 +39,7 @@ module System.GPIO.Linux.Sysfs.Mock
        , cd
        , root
        , findFile
+       , mkdir
          -- * Mock filesystem types
        , Name
        , File(..)
@@ -59,10 +60,10 @@ import Data.ByteString (ByteString)
 import Data.Data
 import Data.Foldable (foldlM)
 import Data.List (break, find)
-import Data.Maybe (maybe)
+import Data.Maybe (isJust, maybe)
 import Foreign.C.Types (CInt(..))
 import GHC.Generics
-import System.FilePath (isAbsolute, splitDirectories)
+import System.FilePath (isAbsolute, isValid, splitDirectories)
 import System.GPIO.Linux.Sysfs.Free (SysfsT)
 import System.GPIO.Linux.Sysfs.Monad (MonadSysfs)
 import qualified System.GPIO.Linux.Sysfs.Monad as M (MonadSysfs(..))
@@ -159,6 +160,8 @@ data MockFSException
   | NotADirectory FilePath
   | NotAFile FilePath
   | NoSuchFileOrDirectory FilePath
+  | FileExists Name
+  | InvalidName Name
   deriving (Show,Eq,Typeable)
 
 data MockFSCrumb =
@@ -180,7 +183,13 @@ root (top, []) = (top, [])
 root z = root $ up z
 
 findFile :: Name -> Directory -> Maybe File
-findFile name dir = find (\file -> _fileName file == name) (_files dir)
+findFile name cwd = find (\file -> _fileName file == name) (_files cwd)
+
+findDir :: Name -> Directory -> ([Directory], [Directory])
+findDir name cwd = break (\dir -> _dirName dir == name) (_subdirs cwd)
+
+isValidName :: Name -> Bool
+isValidName name = isValid name && notElem '/' name
 
 cd :: FilePath -> MockFSZipper -> Either MockFSException MockFSZipper
 cd p z =
@@ -195,8 +204,7 @@ cd p z =
             "." -> Right zipper
             ".." -> return $ up zipper
             _ ->
-              case break (\dir -> _dirName dir == name)
-                         (_subdirs cwd) of
+              case findDir name cwd of
                 (ls,subdir:rs) ->
                   Right (subdir
                         ,MockFSCrumb (_dirName cwd)
@@ -208,6 +216,22 @@ cd p z =
                   maybe (Left $ NoSuchFileOrDirectory p)
                         (const $ Left $ NotADirectory p)
                         (findFile name cwd)
+
+mkdir :: Name -> MockFSZipper -> Either MockFSException MockFSZipper
+mkdir name (parent, bs) =
+  if (isJust $ findFile name parent)
+    then Left $ FileExists name
+    else
+      case findDir name parent of
+        (_, []) ->
+          if isValidName name
+             then
+               let child = Directory name [] []
+                   subdirs = _subdirs parent
+               in
+                 Right (parent { _subdirs = (child:subdirs)}, bs)
+             else Left $ InvalidName name
+        _ -> Left $ FileExists name
 
 sysfsRoot :: Directory
 sysfsRoot =

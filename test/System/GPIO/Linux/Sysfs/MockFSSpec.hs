@@ -104,3 +104,44 @@ spec =
                 cd "sys/class/gpio/.." sysfsRootZ `shouldBe` cd "/sys/class/gpio/.." sysfsRootZ
                 cd "sys/class/gpio/../../." sysfsRootZ `shouldBe` cd "/sys/class/gpio/../../." sysfsRootZ
                 cd "sys/class/.././class/../../sys" sysfsRootZ `shouldBe` cd "/sys/../sys/class/./gpio/../.." sysfsRootZ
+
+       describe "mkdir" $
+         do it "creates a subdirectory in the current directory" $
+              do let Right z1@(dir1, crumb1) = mkdir "xyzzy" sysfsRootZ
+                 _dirName dir1 `shouldBe` "/"
+                 crumb1 `shouldBe` []
+                 let Right (dir2, crumb2:_) = cd "xyzzy" z1
+                 _dirName dir2 `shouldBe` "xyzzy"
+                 _parentName crumb2 `shouldBe` "/"
+
+            it "can create multiple subdirectories in the same directory" $
+              do let Right z1@(dir1, crumb1) = mkdir "xyzzy" sysfsRootZ
+                 _dirName dir1 `shouldBe` "/"
+                 crumb1 `shouldBe` []
+                 let Right z2@(dir2, crumb2) = mkdir "plugh" z1
+                 _dirName dir2 `shouldBe` "/"
+                 crumb2 `shouldBe` []
+                 let Right z3@(dir3, crumb3:_) = cd "xyzzy" z2
+                 _dirName dir3 `shouldBe` "xyzzy"
+                 _parentName crumb3 `shouldBe` "/"
+                 let Right (dir4, crumb4:_) = cd "../plugh" z3
+                 _dirName dir4 `shouldBe` "plugh"
+                 _parentName crumb4 `shouldBe` "/"
+
+            it "works when nested" $
+              do let Right (dir, crumb:_) = mkdir "abc" sysfsRootZ >>= cd "/abc" >>= mkdir "def" >>= cd "/abc/def"
+                 _dirName dir `shouldBe` "def"
+                 _parentName crumb `shouldBe` "abc"
+
+            it "fails when a subdir with the same name already exists" $
+              mkdir "sys" sysfsRootZ `shouldBe` (Left $ FileExists "sys")
+
+            it "fails when a file with the same name already exists" $
+              (cd "/sys/class/gpio" sysfsRootZ >>= mkdir "export") `shouldBe` (Left $ FileExists "export")
+
+            it "fails with an invalid name" $
+              mkdir "" sysfsRootZ `shouldBe` (Left $ InvalidName "")
+
+            it "fails when the name contains a '/'" $
+              do mkdir "/abc" sysfsRootZ `shouldBe` (Left $ InvalidName "/abc")
+                 mkdir "sys/foobar" sysfsRootZ `shouldBe` (Left $ InvalidName "sys/foobar")
