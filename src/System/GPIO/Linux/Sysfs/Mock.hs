@@ -22,6 +22,9 @@ module System.GPIO.Linux.Sysfs.Mock
        ( -- * The SysfsMock monad
          SysfsMockT(..)
        , runSysfsMockT
+       , runSysfsMock
+       , evalSysfsMock
+       , execSysfsMock
          -- * SysfsMock types
        , MockPinState(..)
        , defaultState
@@ -71,8 +74,10 @@ import qualified Data.ByteString.Char8 as C8 (lines, unlines)
 import Data.Data
 import Data.Either (isRight)
 import Data.Foldable (foldlM)
+import Data.Functor.Identity (Identity(..))
 import Data.List (break, delete, find)
 import Data.Maybe (isJust, maybe)
+import Data.Tuple (fst, snd)
 import Foreign.C.Types (CInt(..))
 import GHC.Generics
 import System.FilePath (isAbsolute, isValid, splitDirectories, splitFileName)
@@ -120,11 +125,31 @@ newtype SysfsMockT m a =
   SysfsMockT {unSysfsMockT :: StateT MockFSZipper m a}
   deriving (Alternative,Applicative,Functor,Monad,MonadFix,MonadIO,MonadThrow,MonadCatch,MonadMask,MonadState MockFSZipper,MonadReader r,MonadWriter w)
 
--- | Run a mock @sysfs@ computation with the given 'MockFSZipper', and
--- return a tuple containing the computation's value and the final
--- 'MockFSZipper' state.
+-- | Run a mock @sysfs@ computation in monad 'm' with the given
+-- 'MockFSZipper', and return a tuple containing the computation's
+-- value and the final 'MockFSZipper' state.
 runSysfsMockT :: (Monad m) => SysfsMockT m a -> MockFSZipper -> m (a, MockFSZipper)
 runSysfsMockT action = runStateT (unSysfsMockT action)
+
+-- | The simplest possible mock @sysfs@ monad.
+type SysfsMock a = SysfsMockT Identity a
+
+-- | Run a 'SysfsMock' computation with the given 'MockFSZipper', and
+-- return a tuple containing the computation's value and the final
+-- 'MockFSZipper' state.
+runSysfsMock :: SysfsMock a -> MockFSZipper -> (a, MockFSZipper)
+runSysfsMock action zipper = runIdentity $ runSysfsMockT action zipper
+
+-- | Run a 'SysfsMock' computation with the given 'MockFSZipper', and
+-- return the computation's value, discarding the final state.
+evalSysfsMock :: SysfsMock a -> MockFSZipper -> a
+evalSysfsMock a z = fst $ runSysfsMock a z
+
+-- | Run a 'SysfsMock' computation with the given 'MockFSZipper', and
+-- return the final 'MockFSZipper' state, discarding the computation's
+-- value.
+execSysfsMock :: SysfsMock a -> MockFSZipper -> MockFSZipper
+execSysfsMock a z = snd $ runSysfsMock a z
 
 instance (MonadSysfs m, MonadThrow m) => M.MonadSysfs (SysfsMockT m) where
   doesDirectoryExist = doesDirectoryExist
