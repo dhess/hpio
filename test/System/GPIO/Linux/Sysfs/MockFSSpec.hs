@@ -147,9 +147,9 @@ spec =
                  mkdir "sys/foobar" sysfsRootZ `shouldBe` (Left $ InvalidName "sys/foobar")
 
        describe "mkfile" $
-         do it "creates a file in the current directory" $
+         do it "creates a file in the current directory when clobber is False" $
               do let Right z1 = cd "/sys/class/gpio" sysfsRootZ
-                 let Right (dir2, crumb2:_) = mkfile "gpio1" ["Hey!", "This is gpio1"] z1
+                 let Right (dir2, crumb2:_) = mkfile "gpio1" ["Hey!", "This is gpio1"] False z1
                  _dirName dir2 `shouldBe` "gpio"
                  _parentName crumb2 `shouldBe` "class"
                  let file:rest = _files dir2
@@ -157,18 +157,43 @@ spec =
                  _contents file `shouldBe` ["Hey!", "This is gpio1"]
                  rest `shouldBe` [File {_fileName = "export", _contents = ["Export"]},File {_fileName = "unexport", _contents = ["Unexport"]}]
 
-            it "fails when a subdir with the same name already exists" $
-              mkfile "sys" [] sysfsRootZ `shouldBe` (Left $ FileExists "sys")
+            it "creates a file in the current directory when clobber is True" $
+              do let Right z1 = cd "/sys/class/gpio" sysfsRootZ
+                 let Right (dir2, crumb2:_) = mkfile "gpio1" ["Hey!", "This is gpio1"] True z1
+                 _dirName dir2 `shouldBe` "gpio"
+                 _parentName crumb2 `shouldBe` "class"
+                 let file:rest = _files dir2
+                 _fileName file `shouldBe` "gpio1"
+                 _contents file `shouldBe` ["Hey!", "This is gpio1"]
+                 rest `shouldBe` [File {_fileName = "export", _contents = ["Export"]},File {_fileName = "unexport", _contents = ["Unexport"]}]
 
-            it "fails when a file with the same name already exists" $
-              (cd "/sys/class/gpio" sysfsRootZ >>= mkfile "export" []) `shouldBe` (Left $ FileExists "export")
+            it "fails when a subdir with the same name already exists" $ do
+              mkfile "sys" [] True sysfsRootZ `shouldBe` (Left $ FileExists "sys")
+              mkfile "sys" [] False sysfsRootZ `shouldBe` (Left $ FileExists "sys")
 
-            it "fails with an invalid name" $
-              mkfile "" [] sysfsRootZ `shouldBe` (Left $ InvalidName "")
+            it "fails when a file with the same name already exists and clobber is False" $
+              (cd "/sys/class/gpio" sysfsRootZ >>= mkfile "export" [] False) `shouldBe` (Left $ FileExists "export")
+
+            it "overwrites an existing file's contents when a file with the same name already exists and clobber is True" $
+              do let Right z1 = cd "/sys/class/gpio" sysfsRootZ
+                 let Right z2 = mkfile "gpio1" ["Hey!", "This is gpio1"] False z1
+                 let Right (dir3, crumb3:_) = mkfile "gpio1" ["Hey!", "Now I'm gpio1"] True z2
+                 _dirName dir3 `shouldBe` "gpio"
+                 _parentName crumb3 `shouldBe` "class"
+                 let file:rest = _files dir3
+                 _fileName file `shouldBe` "gpio1"
+                 _contents file `shouldBe` ["Hey!", "Now I'm gpio1"]
+                 rest `shouldBe` [File {_fileName = "export", _contents = ["Export"]},File {_fileName = "unexport", _contents = ["Unexport"]}]
+
+            it "fails with an invalid name" $ do
+              mkfile "" [] False sysfsRootZ `shouldBe` (Left $ InvalidName "")
+              mkfile "" [] True sysfsRootZ `shouldBe` (Left $ InvalidName "")
 
             it "fails when the name contains a '/'" $
-              do mkfile "/abc" [] sysfsRootZ `shouldBe` (Left $ InvalidName "/abc")
-                 mkfile "sys/foobar" [] sysfsRootZ `shouldBe` (Left $ InvalidName "sys/foobar")
+              do mkfile "/abc" [] False sysfsRootZ `shouldBe` (Left $ InvalidName "/abc")
+                 mkfile "/abc" [] True sysfsRootZ `shouldBe` (Left $ InvalidName "/abc")
+                 mkfile "sys/foobar" [] False sysfsRootZ `shouldBe` (Left $ InvalidName "sys/foobar")
+                 mkfile "sys/foobar" [] True sysfsRootZ `shouldBe` (Left $ InvalidName "sys/foobar")
 
        describe "rmdir" $
          do it "removes a subdirectory of the current directory" $
@@ -192,7 +217,7 @@ spec =
 
        describe "rmfile" $
          do it "removes a file in the current directory" $
-              do let Right z1 = cd "/sys" sysfsRootZ >>= mkfile "abc" [] >>= mkfile "def" []
+              do let Right z1 = cd "/sys" sysfsRootZ >>= mkfile "abc" [] False >>= mkfile "def" [] False
                  let Right z2@(dir2, crumb2:_) = rmfile "abc" z1
                  _dirName dir2 `shouldBe` "sys"
                  _parentName crumb2 `shouldBe` "/"

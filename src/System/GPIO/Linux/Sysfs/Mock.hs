@@ -21,6 +21,7 @@ A mock 'MonadSysfs' instance, for testing GPIO programs.
 module System.GPIO.Linux.Sysfs.Mock
        ( -- * The SysfsMock monad
          SysfsMockT(..)
+       , runSysfsMockT
          -- * SysfsMock types
        , MockPinState(..)
        , defaultState
@@ -56,20 +57,25 @@ module System.GPIO.Linux.Sysfs.Mock
        ) where
 
 import Prelude hiding (readFile, writeFile)
-import Control.Applicative (Applicative)
+import Control.Applicative (Alternative, Applicative)
 import Control.Monad (void)
 import Control.Monad.Catch
 import Control.Monad.Fix (MonadFix)
 import Control.Monad.IO.Class (MonadIO, liftIO)
+import Control.Monad.Reader (MonadReader(..))
+import Control.Monad.State.Strict
+import Control.Monad.Writer (MonadWriter(..))
 import Control.Monad.Trans.Class (MonadTrans(..))
 import Data.ByteString (ByteString)
+import qualified Data.ByteString.Char8 as C8 (lines, unlines)
 import Data.Data
+import Data.Either (isRight)
 import Data.Foldable (foldlM)
-import Data.List (break, find)
+import Data.List (break, delete, find)
 import Data.Maybe (isJust, maybe)
 import Foreign.C.Types (CInt(..))
 import GHC.Generics
-import System.FilePath (isAbsolute, isValid, splitDirectories)
+import System.FilePath (isAbsolute, isValid, splitDirectories, splitFileName)
 import System.GPIO.Linux.Sysfs.Free (SysfsT)
 import System.GPIO.Linux.Sysfs.Monad (MonadSysfs)
 import qualified System.GPIO.Linux.Sysfs.Monad as M (MonadSysfs(..))
@@ -111,13 +117,16 @@ data MockGpioChip =
 -- | A monad transformer which adds mock @sysfs@ computations to an
 -- inner monad 'm'.
 newtype SysfsMockT m a =
-  SysfsMockT {runSysfsMockT :: m a}
-  deriving (Applicative,Functor,Monad,MonadFix,MonadIO,MonadThrow,MonadCatch,MonadMask)
+  SysfsMockT {unSysfsMockT :: StateT MockFSZipper m a}
+  deriving (Alternative,Applicative,Functor,Monad,MonadFix,MonadIO,MonadThrow,MonadCatch,MonadMask,MonadState MockFSZipper,MonadReader r,MonadWriter w)
 
-instance MonadTrans SysfsMockT where
-  lift = SysfsMockT
+-- | Run a mock @sysfs@ computation with the given 'MockFSZipper', and
+-- return a tuple containing the computation's value and the final
+-- 'MockFSZipper' state.
+runSysfsMockT :: (Monad m) => SysfsMockT m a -> MockFSZipper -> m (a, MockFSZipper)
+runSysfsMockT action = runStateT (unSysfsMockT action)
 
-instance (MonadSysfs m) => M.MonadSysfs (SysfsMockT m) where
+instance (MonadSysfs m, MonadThrow m) => M.MonadSysfs (SysfsMockT m) where
   doesDirectoryExist = doesDirectoryExist
   doesFileExist = doesFileExist
   getDirectoryContents = getDirectoryContents
@@ -126,32 +135,58 @@ instance (MonadSysfs m) => M.MonadSysfs (SysfsMockT m) where
   unlockedWriteFile = unlockedWriteFile
   pollFile = pollFile
 
-doesDirectoryExist :: (MonadSysfs m) => FilePath -> m Bool
-doesDirectoryExist fn = return False
+mcd :: (Monad m) => FilePath -> SysfsMockT m (Either MockFSException MockFSZipper)
+mcd dirName =
+  do fsz <- get
+     return $ cd dirName fsz
 
-doesFileExist :: (MonadSysfs m) => FilePath -> m Bool
-doesFileExist fn = return False
+doesDirectoryExist :: (Monad m) => FilePath -> SysfsMockT m Bool
+doesDirectoryExist path =
+  mcd path >>= \case
+    Left _ -> return False
+    Right _ -> return True
 
-getDirectoryContents :: (MonadSysfs m) => FilePath -> m [FilePath]
-getDirectoryContents fn = return []
+doesFileExist :: (Monad m) => FilePath -> SysfsMockT m Bool
+doesFileExist path =
+  let (dirName, fileName) = splitFileName path
+  in
+    mcd dirName >>= \case
+      Left _ -> return False
+      Right (parent, _) ->
+        return (isJust $ findFile' fileName parent)
 
-readFile :: (MonadSysfs m) => FilePath -> m ByteString
-readFile fn = return ""
+getDirectoryContents :: (MonadThrow m) => FilePath -> SysfsMockT m [FilePath]
+getDirectoryContents path =
+  mcd path >>= \case
+    Left e -> throwM e
+    Right (parent, _) ->
+      return $ fmap _dirName (_subdirs parent) ++ fmap _fileName (_files parent)
 
-writeFile :: (MonadSysfs m) => FilePath -> ByteString -> m ()
-writeFile fn bs = undefined
+readFile :: (MonadThrow m) => FilePath -> SysfsMockT m ByteString
+readFile path =
+  let (dirName, fileName) = splitFileName path
+  in
+    mcd dirName >>= \case
+      Left  e -> throwM e
+      Right (parent, _) ->
+        case findFile' fileName parent of
+          Nothing -> throwM $ NotAFile path
+          Just file -> return $ C8.unlines $ _contents file
 
-unlockedWriteFile :: (MonadSysfs m) => FilePath -> ByteString -> m ()
+writeFile :: (MonadThrow m) => FilePath -> ByteString -> SysfsMockT m ()
+writeFile = undefined
+
+unlockedWriteFile :: (MonadThrow m) => FilePath -> ByteString -> SysfsMockT m ()
 unlockedWriteFile = writeFile
 
-pollFile :: (MonadSysfs m) => FilePath -> Int -> m CInt
-pollFile fn timeout = undefined
+pollFile :: (Monad m) => FilePath -> Int -> SysfsMockT m CInt
+pollFile _ _ = return 1
 
 type Name = String
 
 data File =
   File {_fileName :: Name
-       ,_contents :: [String]}
+       ,_contents :: [ByteString]}
   deriving (Show,Eq)
 
 data Directory =
@@ -169,6 +204,8 @@ data MockFSException
   | FileExists Name
   | InvalidName Name
   deriving (Show,Eq,Typeable)
+
+instance Exception MockFSException
 
 data MockFSCrumb =
   MockFSCrumb {_parentName :: Name
@@ -230,37 +267,41 @@ cd p z =
                         (findFile' name cwd)
 
 mkdir :: Name -> MockFSZipper -> Either MockFSException MockFSZipper
-mkdir name zipper =
-  mkobject name mkdir' zipper
-  where
-    mkdir' :: Directory -> Directory
-    mkdir' parent =
-      let child = Directory name [] []
-          subdirs = _subdirs parent
-      in parent { _subdirs = (child:subdirs)}
-
-mkfile :: Name -> [String] -> MockFSZipper -> Either MockFSException MockFSZipper
-mkfile name contents zipper =
-  mkobject name mkfile' zipper
-  where
-    mkfile' :: Directory -> Directory
-    mkfile' parent =
-      let file = File name contents
-          files = _files parent
-      in
-        parent { _files = (file:files)}
-
-mkobject :: Name -> (Directory -> Directory) -> MockFSZipper -> Either MockFSException MockFSZipper
-mkobject name modify (parent, bs) =
+mkdir name (parent, bs) =
   if (isJust $ findFile' name parent)
     then Left $ FileExists name
     else
       case findDir name parent of
         (_, []) ->
           if isValidName name
-             then Right $ (modify parent, bs)
-             else Left $ InvalidName name
+            then
+              let child = Directory name [] []
+                  subdirs = _subdirs parent
+              in
+                Right $ (parent { _subdirs = (child:subdirs)}, bs)
+            else Left $ InvalidName name
         _ -> Left $ FileExists name
+
+mkfile :: Name -> [ByteString] -> Bool -> MockFSZipper -> Either MockFSException MockFSZipper
+mkfile name contents clobber (parent, bs) =
+  case findFile name parent of
+    (ls, _:rs) ->
+      if clobber
+         then mkfile' $ ls ++ rs
+         else Left $ FileExists name
+    _ ->
+      maybe (mkfile' $ _files parent)
+            (const $ Left (FileExists name))
+            (findDir' name parent)
+  where
+    mkfile' :: [File] -> Either MockFSException MockFSZipper
+    mkfile' files =
+      if isValidName name
+        then
+          let file = File name contents
+          in
+            Right $ (parent { _files = (file:files)}, bs)
+        else Left $ InvalidName name
 
 rmfile :: Name -> MockFSZipper -> Either MockFSException MockFSZipper
 rmfile name (parent, bs) =
