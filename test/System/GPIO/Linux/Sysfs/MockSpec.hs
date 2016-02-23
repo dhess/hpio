@@ -4,6 +4,7 @@ module System.GPIO.Linux.Sysfs.MockSpec (spec) where
 
 import Data.List (sort)
 import System.GPIO.Linux.Sysfs.Mock
+import System.GPIO.Linux.Sysfs.Mock.Internal (cd)
 import Test.Hspec
 
 

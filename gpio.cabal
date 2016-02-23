@@ -46,6 +46,7 @@ Library
                       , System.GPIO.Linux.Sysfs.IO
                       , System.GPIO.Linux.Sysfs.Monad
                       , System.GPIO.Linux.Sysfs.Mock
+                      , System.GPIO.Linux.Sysfs.Mock.Internal
                       , System.GPIO.Linux.Sysfs.Native
                       , System.GPIO.Linux.Sysfs.Types
                       , System.GPIO.Linux.Sysfs.Util
@@ -142,6 +143,7 @@ Test-Suite spec
                       , System.GPIO.Linux.Sysfs.IO
                       , System.GPIO.Linux.Sysfs.Monad
                       , System.GPIO.Linux.Sysfs.Mock
+                      , System.GPIO.Linux.Sysfs.Mock.Internal
                       , System.GPIO.Linux.Sysfs.Native
                       , System.GPIO.Linux.Sysfs.Types
                       , System.GPIO.Linux.Sysfs.Util

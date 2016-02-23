@@ -1,8 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module System.GPIO.Linux.Sysfs.MockFSSpec (spec) where
+module System.GPIO.Linux.Sysfs.MockInternalSpec (spec) where
 
-import System.GPIO.Linux.Sysfs.Mock
+import System.GPIO.Linux.Sysfs.Mock (sysfsRoot)
+import System.GPIO.Linux.Sysfs.Mock.Internal
 import Test.Hspec
 
 spec :: Spec
