@@ -42,7 +42,7 @@ module System.GPIO.Linux.Sysfs.Mock
        ) where
 
 import Prelude hiding (readFile, writeFile)
-import Control.Applicative (Alternative, Applicative)
+import Control.Applicative ((<$>), Alternative, Applicative)
 import Control.Monad (void)
 import Control.Monad.Catch
 import Control.Monad.Catch.Pure (Catch, runCatch)
@@ -124,7 +124,7 @@ runSysfsMock a z =
   -- 'SomeException', and 'SomeException' has no 'Eq' instance, which
   -- makes this monad not very useful for testing. Therefore, we convert the
   -- exception type back to 'MockFSException'.
-  case (runCatch $ runSysfsMockT a z) of
+  case runCatch $ runSysfsMockT a z of
     Right result -> return result
     Left e ->
       -- Should be safe as there's no other exception type in this
@@ -134,13 +134,13 @@ runSysfsMock a z =
 -- | Run a 'SysfsMock' computation with the given 'MockFSZipper', and
 -- return the computation's value, discarding the final state.
 evalSysfsMock :: SysfsMock a -> MockFSZipper -> Either MockFSException a
-evalSysfsMock a z = fmap fst $ runSysfsMock a z
+evalSysfsMock a z = fst <$> runSysfsMock a z
 
 -- | Run a 'SysfsMock' computation with the given 'MockFSZipper', and
 -- return the final 'MockFSZipper' state, discarding the computation's
 -- value.
 execSysfsMock :: SysfsMock a -> MockFSZipper -> Either MockFSException MockFSZipper
-execSysfsMock a z = fmap snd $ runSysfsMock a z
+execSysfsMock a z = snd <$> runSysfsMock a z
 
 instance (MonadSysfs m, MonadThrow m) => M.MonadSysfs (SysfsMockT m) where
   doesDirectoryExist = doesDirectoryExist
