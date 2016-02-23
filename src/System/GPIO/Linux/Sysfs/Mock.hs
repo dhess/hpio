@@ -63,6 +63,7 @@ import Prelude hiding (readFile, writeFile)
 import Control.Applicative (Alternative, Applicative)
 import Control.Monad (void)
 import Control.Monad.Catch
+import Control.Monad.Catch.Pure (Catch, runCatch)
 import Control.Monad.Fix (MonadFix)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Reader (MonadReader(..))
@@ -76,7 +77,7 @@ import Data.Either (isRight)
 import Data.Foldable (foldlM)
 import Data.Functor.Identity (Identity(..))
 import Data.List (break, delete, find)
-import Data.Maybe (isJust, maybe)
+import Data.Maybe (fromJust, isJust, maybe)
 import Data.Tuple (fst, snd)
 import Foreign.C.Types (CInt(..))
 import GHC.Generics
@@ -131,25 +132,35 @@ newtype SysfsMockT m a =
 runSysfsMockT :: (Monad m) => SysfsMockT m a -> MockFSZipper -> m (a, MockFSZipper)
 runSysfsMockT action = runStateT (unSysfsMockT action)
 
--- | The simplest possible mock @sysfs@ monad.
-type SysfsMock a = SysfsMockT Identity a
+-- | The simplest possible (pure) mock @sysfs@ monad.
+type SysfsMock a = SysfsMockT Catch a
 
 -- | Run a 'SysfsMock' computation with the given 'MockFSZipper', and
 -- return a tuple containing the computation's value and the final
 -- 'MockFSZipper' state.
-runSysfsMock :: SysfsMock a -> MockFSZipper -> (a, MockFSZipper)
-runSysfsMock action zipper = runIdentity $ runSysfsMockT action zipper
+runSysfsMock :: SysfsMock a -> MockFSZipper -> Either MockFSException (a, MockFSZipper)
+runSysfsMock a z =
+  -- The 'MonadThrow' instance for 'Either' 'e' requires that 'e' '~'
+  -- 'SomeException', and 'SomeException' has no 'Eq' instance, which
+  -- makes this monad not very useful for testing. Therefore, we convert the
+  -- exception type back to 'MockFSException'.
+  case (runCatch $ runSysfsMockT a z) of
+    Right result -> return result
+    Left e ->
+      -- Should be safe as there's no other exception type in this
+      -- stack.
+      Left $ fromJust $ fromException e
 
 -- | Run a 'SysfsMock' computation with the given 'MockFSZipper', and
 -- return the computation's value, discarding the final state.
-evalSysfsMock :: SysfsMock a -> MockFSZipper -> a
-evalSysfsMock a z = fst $ runSysfsMock a z
+evalSysfsMock :: SysfsMock a -> MockFSZipper -> Either MockFSException a
+evalSysfsMock a z = fmap fst $ runSysfsMock a z
 
 -- | Run a 'SysfsMock' computation with the given 'MockFSZipper', and
 -- return the final 'MockFSZipper' state, discarding the computation's
 -- value.
-execSysfsMock :: SysfsMock a -> MockFSZipper -> MockFSZipper
-execSysfsMock a z = snd $ runSysfsMock a z
+execSysfsMock :: SysfsMock a -> MockFSZipper -> Either MockFSException MockFSZipper
+execSysfsMock a z = fmap snd $ runSysfsMock a z
 
 instance (MonadSysfs m, MonadThrow m) => M.MonadSysfs (SysfsMockT m) where
   doesDirectoryExist = doesDirectoryExist
