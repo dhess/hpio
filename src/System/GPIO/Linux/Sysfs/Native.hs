@@ -128,7 +128,7 @@ writePinDirection p d = writeFile (pinDirectionFileName p) (toSysfsPinDirection 
 -- It is an error to call this function if the pin has no
 -- @direction@ attribute.
 writePinDirectionWithValue :: (MonadSysfs m) => Pin -> PinValue -> m ()
-writePinDirectionWithValue p v = writeFile (pinDirectionFileName p) (toSysfsPinValue v)
+writePinDirectionWithValue p v = writeFile (pinDirectionFileName p) (valueToPinDirection v)
 
 -- | Read the given pin's value.
 --
@@ -256,6 +256,11 @@ toSysfsPinValue High = "1"
 toSysfsActiveLowValue :: Bool -> ByteString
 toSysfsActiveLowValue False = "0"
 toSysfsActiveLowValue True = "1"
+
+-- Used for writing pin direction with a value.
+valueToPinDirection :: PinValue -> ByteString
+valueToPinDirection Low = "low"
+valueToPinDirection High = "high"
 
 readIntFromFile :: (MonadSysfs m, MonadThrow m) => FilePath -> m Int
 readIntFromFile f =
