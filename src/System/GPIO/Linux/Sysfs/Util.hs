@@ -22,8 +22,12 @@ module System.GPIO.Linux.Sysfs.Util
        , pinDirectionFileName
        , pinEdgeFileName
        , pinValueFileName
+       , intToByteString
        ) where
 
+import Data.ByteString (ByteString)
+import Data.ByteString.Builder (toLazyByteString, intDec)
+import qualified Data.ByteString.Lazy as LBS (toStrict)
 import System.FilePath ((</>))
 import System.GPIO.Types (Pin(..))
 
@@ -72,3 +76,8 @@ pinEdgeFileName p = pinDirName p </> "edge"
 -- logical signal value.
 pinValueFileName :: Pin -> FilePath
 pinValueFileName p = pinDirName p </> "value"
+
+-- | Convert an 'Int' to a decimal ASCII encoding in a strict
+-- 'ByteString'.
+intToByteString :: Int -> ByteString
+intToByteString = LBS.toStrict . toLazyByteString . intDec

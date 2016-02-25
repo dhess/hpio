@@ -30,7 +30,9 @@ module System.GPIO.Linux.Sysfs.Mock.Internal
          -- * Mock filesystem operations
        , up
        , cd
+       , cwd
        , root
+       , pathFromRoot
        , findFile
        , findFile'
        , findDir
@@ -44,10 +46,10 @@ module System.GPIO.Linux.Sysfs.Mock.Internal
 import Control.Exception (Exception)
 import Data.ByteString (ByteString)
 import Data.Foldable (foldlM)
-import Data.List (break, delete, find)
+import Data.List (break, delete, find, reverse, unfoldr)
 import Data.Maybe (isJust)
 import Data.Typeable (Typeable)
-import System.FilePath (isAbsolute, isValid, splitDirectories)
+import System.FilePath (isAbsolute, isValid, joinPath, splitDirectories)
 
 type Name = String
 
@@ -85,24 +87,35 @@ type MockFSZipper = (Directory, [MockFSCrumb])
 
 -- Logically equivalent to "cd .."
 up :: MockFSZipper -> MockFSZipper
-up (cwd, MockFSCrumb parent files ls rs:bs) = (Directory parent files (ls ++ [cwd] ++ rs), bs)
-up (cwd, []) = (cwd, []) -- cd /.. == /
+up (dir, MockFSCrumb parent files ls rs:bs) = (Directory parent files (ls ++ [dir] ++ rs), bs)
+up (dir, []) = (dir, []) -- cd /.. == /
 
 root :: MockFSZipper -> MockFSZipper
 root (top, []) = (top, [])
 root z = root $ up z
 
+pathFromRoot :: MockFSZipper -> FilePath
+pathFromRoot zipper =
+  joinPath $ ["/"] ++ reverse (unfoldr walkUp zipper)
+  where
+    walkUp :: MockFSZipper -> Maybe (Name, MockFSZipper)
+    walkUp z@(dir, _:_) = Just (_dirName dir, up z)
+    walkUp (_, []) = Nothing
+
+cwd :: MockFSZipper -> Directory
+cwd (dir, _) = dir
+
 findFile :: Name -> Directory -> ([File], [File])
-findFile name cwd = break (\file -> _fileName file == name) (_files cwd)
+findFile name dir = break (\file -> _fileName file == name) (_files dir)
 
 findFile' :: Name -> Directory -> Maybe File
-findFile' name cwd = find (\file -> _fileName file == name) (_files cwd)
+findFile' name dir = find (\file -> _fileName file == name) (_files dir)
 
 findDir :: Name -> Directory -> ([Directory], [Directory])
-findDir name cwd = break (\dir -> _dirName dir == name) (_subdirs cwd)
+findDir name dir = break (\d -> _dirName d == name) (_subdirs dir)
 
 findDir' :: Name -> Directory -> Maybe Directory
-findDir' name cwd = find (\dir -> _dirName dir == name) (_subdirs cwd)
+findDir' name dir = find (\d -> _dirName d == name) (_subdirs dir)
 
 isValidName :: Name -> Bool
 isValidName name = isValid name && notElem '/' name
@@ -115,23 +128,24 @@ cd p z =
            else (p, z)
   in foldlM cd' fs (splitDirectories path)
   where cd' :: MockFSZipper -> Name -> Either MockFSException MockFSZipper
-        cd' zipper@(cwd,bs) name =
+        cd' zipper@(dir,bs) name =
           case name of
             "." -> Right zipper
             ".." -> return $ up zipper
             _ ->
-              case findDir name cwd of
+              case findDir name dir of
                 (ls,subdir:rs) ->
                   Right (subdir
-                        ,MockFSCrumb (_dirName cwd)
-                                     (_files cwd)
+                        ,MockFSCrumb (_dirName dir)
+                                     (_files dir)
                                      ls
                                      rs :
                          bs)
                 (_,[]) ->
                   maybe (Left $ NoSuchFileOrDirectory p)
                         (const $ Left $ NotADirectory p)
-                        (findFile' name cwd)
+                        (findFile' name dir)
+
 
 mkdir :: Name -> MockFSZipper -> Either MockFSException MockFSZipper
 mkdir name (parent, bs) =

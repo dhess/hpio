@@ -236,3 +236,11 @@ spec =
 
             it "fails when the name contains a '/'" $
               rmfile "/sys/class/gpio/export" sysfsRootZ `shouldBe` (Left $ NoSuchFileOrDirectory "/sys/class/gpio/export")
+
+       describe "pathFromRoot" $
+         do it "returns the path from the current directory to the root directory" $
+              do pathFromRoot sysfsRootZ `shouldBe` "/"
+                 let Right z1 = cd "/sys/class/gpio" sysfsRootZ
+                 pathFromRoot z1 `shouldBe` "/sys/class/gpio"
+                 let Right z2 = cd "/sys/class/gpio/../../class" sysfsRootZ
+                 pathFromRoot z2 `shouldBe` "/sys/class"

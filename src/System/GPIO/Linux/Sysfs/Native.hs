@@ -52,9 +52,7 @@ import Control.Applicative ((<$>))
 import Control.Monad (filterM)
 import Control.Monad.Catch
 import Data.ByteString (ByteString)
-import Data.ByteString.Builder (toLazyByteString, intDec)
 import qualified Data.ByteString.Char8 as C8 (readInt, unpack)
-import qualified Data.ByteString.Lazy as LBS (toStrict)
 import Data.List (isPrefixOf, sort)
 import System.FilePath ((</>), takeFileName)
 import System.GPIO.Linux.Sysfs.Monad (MonadSysfs(..))
@@ -75,7 +73,7 @@ pinIsExported = doesDirectoryExist . pinDirName
 -- Note that it's an error to call this function to export a pin
 -- that's already been exported.
 exportPin :: (MonadSysfs m) => Pin -> m ()
-exportPin (Pin n) = unlockedWriteFile exportFileName (intToBS n)
+exportPin (Pin n) = unlockedWriteFile exportFileName (intToByteString n)
 
 -- | Export the given pin, but, unlike 'exportPin', if the pin is
 -- already exported, this is not an error; in this situation, the pin
@@ -91,7 +89,7 @@ exportPin' p =
 -- It is an error to call this function if the pin is not currently
 -- exported.
 unexportPin :: (MonadSysfs m) => Pin -> m ()
-unexportPin (Pin n) = unlockedWriteFile unexportFileName (intToBS n)
+unexportPin (Pin n) = unlockedWriteFile unexportFileName (intToByteString n)
 
 -- | Test whether the given pin's direction can be set via the
 -- @sysfs@ GPIO filesystem. (Some pins have a hard-wired direction,
@@ -235,9 +233,6 @@ availablePins =
 
 -- Helper functions that aren't exported.
 --
-
-intToBS :: Int -> ByteString
-intToBS = LBS.toStrict . toLazyByteString . intDec
 
 toSysfsPinDirection :: PinDirection -> ByteString
 toSysfsPinDirection In = "in"

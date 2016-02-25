@@ -53,19 +53,23 @@ import Control.Monad.State.Strict
 import Control.Monad.Writer (MonadWriter(..))
 import Control.Monad.Trans.Class (MonadTrans(..))
 import Data.ByteString (ByteString)
-import qualified Data.ByteString.Char8 as C8 (lines, unlines)
+import qualified Data.ByteString.Char8 as C8 (lines, pack, unlines)
 import Data.Data
-import Data.Either (isRight)
+import Data.Either (either, isRight)
 import Data.Functor.Identity (Identity(..))
 import Data.Maybe (fromJust, isJust, maybe)
+import Data.Map.Strict (Map)
+import qualified Data.Map.Strict as Map (fromList)
 import Data.Tuple (fst, snd)
 import Foreign.C.Types (CInt(..))
-import System.FilePath (splitFileName)
+import System.FilePath ((</>), splitFileName)
 import System.GPIO.Linux.Sysfs.Free (SysfsT)
-import System.GPIO.Linux.Sysfs.Mock.Internal
+import System.GPIO.Linux.Sysfs.Mock.Internal (Directory(..), File(..), MockFSZipper(..), MockFSException(..), findFile, findFile')
+import qualified System.GPIO.Linux.Sysfs.Mock.Internal as Internal (cd, mkdir, mkfile, pathFromRoot)
 import System.GPIO.Linux.Sysfs.Monad (MonadSysfs)
 import qualified System.GPIO.Linux.Sysfs.Monad as M (MonadSysfs(..))
 import System.GPIO.Linux.Sysfs.Types (SysfsEdge(..))
+import System.GPIO.Linux.Sysfs.Util (sysfsPath, intToByteString)
 import System.GPIO.Types (PinDirection(..), PinValue(..))
 
 -- | A mock pin.
@@ -108,23 +112,38 @@ newtype SysfsMockT m a =
 
 -- | Run a mock @sysfs@ computation in monad 'm' with the given
 -- 'MockFSZipper', and return a tuple containing the computation's
--- value and the final 'MockFSZipper' state.
-runSysfsMockT :: (Monad m) => SysfsMockT m a -> MockFSZipper -> m (a, MockFSZipper)
-runSysfsMockT action = runStateT (unSysfsMockT action)
+-- value and the final 'MockFSZipper' state. If an exception occurs in
+-- the mock computation, a 'MockFSException' is thrown.
+--
+-- Before running the computation, the mock filesystem is populated
+-- with the GPIO pins as specified by the list of 'MockGpioChip's. If
+-- any of the chips in the list are already present in the filesystem,
+-- or if any of the chips' pin ranges overlap, a 'MockFSException' is
+-- thrown.
+runSysfsMockT :: (MonadThrow m) => SysfsMockT m a -> MockFSZipper -> [MockGpioChip] -> m (a, MockFSZipper)
+runSysfsMockT action startfs chips =
+  do newfs <- execStateT (unSysfsMockT $ withCwd "/" (makeFileSystem chips)) startfs
+     runStateT (unSysfsMockT action) newfs
 
 -- | The simplest possible (pure) mock @sysfs@ monad.
 type SysfsMock a = SysfsMockT Catch a
 
 -- | Run a 'SysfsMock' computation with the given 'MockFSZipper', and
 -- return a tuple containing the computation's value and the final
--- 'MockFSZipper' state.
-runSysfsMock :: SysfsMock a -> MockFSZipper -> Either MockFSException (a, MockFSZipper)
-runSysfsMock a z =
+-- 'MockFSZipper' state. Any exceptions that occur in the mock
+-- computation are returned as a 'Left' value.
+--
+-- Before running the computation, the mock filesystem is populated
+-- with the GPIO pins as specified by the list of 'MockGpioChip's. If
+-- any of the chips in the list are already present in the filesystem,
+-- or if any of the chips' pin ranges overlap, an error is returned.
+runSysfsMock :: SysfsMock a -> MockFSZipper -> [MockGpioChip] -> Either MockFSException (a, MockFSZipper)
+runSysfsMock a z chips =
   -- The 'MonadThrow' instance for 'Either' 'e' requires that 'e' '~'
   -- 'SomeException', and 'SomeException' has no 'Eq' instance, which
   -- makes this monad not very useful for testing. Therefore, we convert the
   -- exception type back to 'MockFSException'.
-  case runCatch $ runSysfsMockT a z of
+  case runCatch $ runSysfsMockT a z chips of
     Right result -> return result
     Left e ->
       -- Should be safe as there's no other exception type in this
@@ -132,15 +151,28 @@ runSysfsMock a z =
       Left $ fromJust $ fromException e
 
 -- | Run a 'SysfsMock' computation with the given 'MockFSZipper', and
--- return the computation's value, discarding the final state.
-evalSysfsMock :: SysfsMock a -> MockFSZipper -> Either MockFSException a
-evalSysfsMock a z = fst <$> runSysfsMock a z
+-- return the computation's value, discarding the final state. Any
+-- exceptions that occur in the mock computation are returned as a
+-- 'Left' value.
+--
+-- Before running the computation, the mock filesystem is populated
+-- with the GPIO pins as specified by the list of 'MockGpioChip's. If
+-- any of the chips in the list are already present in the filesystem,
+-- or if any of the chips' pin ranges overlap, an error is returned.
+evalSysfsMock :: SysfsMock a -> MockFSZipper -> [MockGpioChip] -> Either MockFSException a
+evalSysfsMock a z chips = fst <$> runSysfsMock a z chips
 
 -- | Run a 'SysfsMock' computation with the given 'MockFSZipper', and
 -- return the final 'MockFSZipper' state, discarding the computation's
--- value.
-execSysfsMock :: SysfsMock a -> MockFSZipper -> Either MockFSException MockFSZipper
-execSysfsMock a z = snd <$> runSysfsMock a z
+-- value. Any exceptions that occur in the mock computation are
+-- returned as a 'Left' value.
+--
+-- Before running the computation, the mock filesystem is populated
+-- with the GPIO pins as specified by the list of 'MockGpioChip's. If
+-- any of the chips in the list are already present in the filesystem,
+-- or if any of the chips' pin ranges overlap, an error is returned.
+execSysfsMock :: SysfsMock a -> MockFSZipper -> [MockGpioChip] -> Either MockFSException MockFSZipper
+execSysfsMock a z chips = snd <$> runSysfsMock a z chips
 
 instance (MonadSysfs m, MonadThrow m) => M.MonadSysfs (SysfsMockT m) where
   doesDirectoryExist = doesDirectoryExist
@@ -151,14 +183,59 @@ instance (MonadSysfs m, MonadThrow m) => M.MonadSysfs (SysfsMockT m) where
   unlockedWriteFile = unlockedWriteFile
   pollFile = pollFile
 
-mcd :: (Monad m) => FilePath -> SysfsMockT m (Either MockFSException MockFSZipper)
-mcd dirName =
+makeFileSystem :: (MonadThrow m) => [MockGpioChip] -> SysfsMockT m MockFSZipper
+makeFileSystem chips =
+  do mapM_ makeChip chips
+     get
+
+makeChip :: (MonadThrow m) => MockGpioChip -> SysfsMockT m ()
+makeChip chip =
+  let chipdir = sysfsPath </> ("gpiochip" ++ show (_base chip))
+  in
+    do mkdir chipdir
+       mkfile (chipdir </> "base") [intToByteString $ _base chip] False
+       mkfile (chipdir </> "ngpio") [intToByteString $ length (_initialPinStates chip)] False
+       mkfile (chipdir </> "label") [C8.pack $ _label chip] False
+
+withCwd :: (MonadThrow m) => FilePath -> SysfsMockT m a -> SysfsMockT m a
+withCwd path action =
+  do z <- get
+     let restorePath = Internal.pathFromRoot z
+     cd path >>= \case
+       Left e -> throwM e
+       Right cwz ->
+         do put cwz
+            result <- action
+            cd restorePath >>= \case
+              Left e1 -> throwM e1
+              Right restoredZ ->
+                do put restoredZ
+                   return result
+
+cd :: (Monad m) => FilePath -> SysfsMockT m (Either MockFSException MockFSZipper)
+cd dirName =
   do fsz <- get
-     return $ cd dirName fsz
+     return $ Internal.cd dirName fsz
+
+mkdir :: (MonadThrow m) => FilePath -> SysfsMockT m ()
+mkdir path =
+  let (parentName, childName) = splitFileName path
+  in
+    cd parentName >>= \case
+      Left e -> throwM e
+      Right z -> either throwM put (Internal.mkdir childName z)
+
+mkfile :: (MonadThrow m) => FilePath -> [ByteString] -> Bool -> SysfsMockT m ()
+mkfile path contents clobber =
+  let (parentName, childName) = splitFileName path
+  in
+    cd parentName >>= \case
+      Left e -> throwM e
+      Right z -> either throwM put (Internal.mkfile childName contents clobber z)
 
 doesDirectoryExist :: (Monad m) => FilePath -> SysfsMockT m Bool
 doesDirectoryExist path =
-  mcd path >>= \case
+  cd path >>= \case
     Left _ -> return False
     Right _ -> return True
 
@@ -166,14 +243,14 @@ doesFileExist :: (Monad m) => FilePath -> SysfsMockT m Bool
 doesFileExist path =
   let (dirName, fileName) = splitFileName path
   in
-    mcd dirName >>= \case
+    cd dirName >>= \case
       Left _ -> return False
       Right (parent, _) ->
         return (isJust $ findFile' fileName parent)
 
 getDirectoryContents :: (MonadThrow m) => FilePath -> SysfsMockT m [FilePath]
 getDirectoryContents path =
-  mcd path >>= \case
+  cd path >>= \case
     Left e -> throwM e
     Right (parent, _) ->
       return $ fmap _dirName (_subdirs parent) ++ fmap _fileName (_files parent)
@@ -182,7 +259,7 @@ readFile :: (MonadThrow m) => FilePath -> SysfsMockT m ByteString
 readFile path =
   let (dirName, fileName) = splitFileName path
   in
-    mcd dirName >>= \case
+     cd dirName >>= \case
       Left  e -> throwM e
       Right (parent, _) ->
         case findFile' fileName parent of
