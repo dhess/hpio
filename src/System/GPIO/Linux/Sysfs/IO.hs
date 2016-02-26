@@ -28,7 +28,6 @@ module System.GPIO.Linux.Sysfs.IO
          , runSysfsIO
          ) where
 
-import Control.Applicative (Applicative)
 import Control.Monad (void)
 import Control.Monad.Catch
 import Control.Monad.Fix (MonadFix)

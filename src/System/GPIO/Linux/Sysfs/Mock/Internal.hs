@@ -46,7 +46,7 @@ module System.GPIO.Linux.Sysfs.Mock.Internal
 import Control.Exception (Exception)
 import Data.ByteString (ByteString)
 import Data.Foldable (foldlM)
-import Data.List (break, delete, find, reverse, unfoldr)
+import Data.List (find, unfoldr)
 import Data.Maybe (isJust)
 import Data.Typeable (Typeable)
 import System.FilePath (isAbsolute, isValid, joinPath, splitDirectories)

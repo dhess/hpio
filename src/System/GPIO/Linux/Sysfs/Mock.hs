@@ -42,29 +42,18 @@ module System.GPIO.Linux.Sysfs.Mock
        ) where
 
 import Prelude hiding (readFile, writeFile)
-import Control.Applicative ((<$>), Alternative, Applicative)
-import Control.Monad (void)
+import Control.Applicative (Alternative)
 import Control.Monad.Catch
 import Control.Monad.Catch.Pure (Catch, runCatch)
-import Control.Monad.Fix (MonadFix)
-import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Reader (MonadReader(..))
 import Control.Monad.State.Strict
 import Control.Monad.Writer (MonadWriter(..))
-import Control.Monad.Trans.Class (MonadTrans(..))
 import Data.ByteString (ByteString)
-import qualified Data.ByteString.Char8 as C8 (lines, pack, unlines)
-import Data.Data
-import Data.Either (either, isRight)
-import Data.Functor.Identity (Identity(..))
-import Data.Maybe (fromJust, isJust, maybe)
-import Data.Map.Strict (Map)
-import qualified Data.Map.Strict as Map (fromList)
-import Data.Tuple (fst, snd)
+import qualified Data.ByteString.Char8 as C8 (pack, unlines)
+import Data.Maybe (fromJust, isJust)
 import Foreign.C.Types (CInt(..))
 import System.FilePath ((</>), splitFileName)
-import System.GPIO.Linux.Sysfs.Free (SysfsT)
-import System.GPIO.Linux.Sysfs.Mock.Internal (Directory(..), File(..), MockFSZipper(..), MockFSException(..), findFile, findFile')
+import System.GPIO.Linux.Sysfs.Mock.Internal (Directory(..), File(..), MockFSZipper, MockFSException(..), findFile')
 import qualified System.GPIO.Linux.Sysfs.Mock.Internal as Internal (cd, mkdir, mkfile, pathFromRoot)
 import System.GPIO.Linux.Sysfs.Monad (MonadSysfs)
 import qualified System.GPIO.Linux.Sysfs.Monad as M (MonadSysfs(..))

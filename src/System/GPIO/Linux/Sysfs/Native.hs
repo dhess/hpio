@@ -48,7 +48,6 @@ module System.GPIO.Linux.Sysfs.Native
        ) where
 
 import Prelude hiding (readFile, writeFile)
-import Control.Applicative ((<$>))
 import Control.Monad (filterM)
 import Control.Monad.Catch
 import Data.ByteString (ByteString)

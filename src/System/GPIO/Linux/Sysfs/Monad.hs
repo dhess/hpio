@@ -33,7 +33,6 @@ import qualified Control.Monad.Trans.State.Strict as StrictState (StateT)
 import qualified Control.Monad.Trans.Writer.Lazy as LazyWriter (WriterT)
 import qualified Control.Monad.Trans.Writer.Strict as StrictWriter (WriterT)
 import Data.ByteString (ByteString)
-import Data.Monoid (Monoid)
 import Foreign.C.Types (CInt(..))
 
 -- | A type class for monads which implement (or mock) low-level Linux
