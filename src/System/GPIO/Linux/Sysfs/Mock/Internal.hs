@@ -96,7 +96,7 @@ root z = root $ up z
 
 pathFromRoot :: MockFSZipper -> FilePath
 pathFromRoot zipper =
-  joinPath $ ["/"] ++ reverse (unfoldr walkUp zipper)
+  joinPath $ "/" : reverse (unfoldr walkUp zipper)
   where
     walkUp :: MockFSZipper -> Maybe (Name, MockFSZipper)
     walkUp z@(dir, _:_) = Just (_dirName dir, up z)
@@ -149,7 +149,7 @@ cd p z =
 
 mkdir :: Name -> MockFSZipper -> Either MockFSException MockFSZipper
 mkdir name (parent, bs) =
-  if (isJust $ findFile' name parent)
+  if isJust $ findFile' name parent
     then Left $ FileExists name
     else
       case findDir name parent of
@@ -159,7 +159,7 @@ mkdir name (parent, bs) =
               let child = Directory name [] []
                   subdirs = _subdirs parent
               in
-                Right $ (parent { _subdirs = (child:subdirs)}, bs)
+                Right (parent { _subdirs = child:subdirs}, bs)
             else Left $ InvalidName name
         _ -> Left $ FileExists name
 
@@ -181,24 +181,24 @@ mkfile name contents clobber (parent, bs) =
         then
           let file = File name contents
           in
-            Right $ (parent { _files = (file:files)}, bs)
+            Right (parent { _files = file:files}, bs)
         else Left $ InvalidName name
 
 rmfile :: Name -> MockFSZipper -> Either MockFSException MockFSZipper
 rmfile name (parent, bs) =
-  if (isJust $ findDir' name parent)
+  if isJust $ findDir' name parent
      then Left $ NotAFile name
      else
        case findFile name parent of
-         (ls, _:rs) -> Right $ (parent {_files = ls ++ rs}, bs)
+         (ls, _:rs) -> Right (parent {_files = ls ++ rs}, bs)
          _ -> Left $ NoSuchFileOrDirectory name
 
 -- Note: recursive!
 rmdir :: Name -> MockFSZipper -> Either MockFSException MockFSZipper
 rmdir name (parent, bs) =
-  if (isJust $ findFile' name parent)
+  if isJust $ findFile' name parent
      then Left $ NotADirectory name
      else
        case findDir name parent of
-         (ls, _:rs) -> Right $ (parent {_subdirs = ls ++ rs}, bs)
+         (ls, _:rs) -> Right (parent {_subdirs = ls ++ rs}, bs)
          _ -> Left $ NoSuchFileOrDirectory name
