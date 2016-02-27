@@ -53,7 +53,7 @@ import qualified Data.ByteString.Char8 as C8 (pack, unlines)
 import Data.Maybe (fromJust, isJust)
 import Foreign.C.Types (CInt(..))
 import System.FilePath ((</>), splitFileName)
-import System.GPIO.Linux.Sysfs.Mock.Internal (Directory(..), File(..), MockFSZipper, MockFSException(..), findFile')
+import System.GPIO.Linux.Sysfs.Mock.Internal (Directory, File(..), MockFSZipper, MockFSException(..), directory, dirName, files, subdirs, findFile')
 import qualified System.GPIO.Linux.Sysfs.Mock.Internal as Internal (cd, mkdir, mkfile, pathFromRoot)
 import System.GPIO.Linux.Sysfs.Monad (MonadSysfs)
 import qualified System.GPIO.Linux.Sysfs.Monad as M (MonadSysfs(..))
@@ -202,9 +202,9 @@ withCwd path action =
                    return result
 
 cd :: (Monad m) => FilePath -> SysfsMockT m (Either MockFSException MockFSZipper)
-cd dirName =
+cd name =
   do fsz <- get
-     return $ Internal.cd dirName fsz
+     return $ Internal.cd name fsz
 
 mkdir :: (MonadThrow m) => FilePath -> SysfsMockT m ()
 mkdir path =
@@ -230,9 +230,9 @@ doesDirectoryExist path =
 
 doesFileExist :: (Monad m) => FilePath -> SysfsMockT m Bool
 doesFileExist path =
-  let (dirName, fileName) = splitFileName path
+  let (dirPath, fileName) = splitFileName path
   in
-    cd dirName >>= \case
+    cd dirPath >>= \case
       Left _ -> return False
       Right (parent, _) ->
         return (isJust $ findFile' fileName parent)
@@ -242,13 +242,13 @@ getDirectoryContents path =
   cd path >>= \case
     Left e -> throwM e
     Right (parent, _) ->
-      return $ fmap _dirName (_subdirs parent) ++ fmap _fileName (_files parent)
+      return $ fmap dirName (subdirs parent) ++ fmap _fileName (files parent)
 
 readFile :: (MonadThrow m) => FilePath -> SysfsMockT m ByteString
 readFile path =
-  let (dirName, fileName) = splitFileName path
+  let (dirPath, fileName) = splitFileName path
   in
-     cd dirName >>= \case
+     cd dirPath >>= \case
       Left  e -> throwM e
       Right (parent, _) ->
         case findFile' fileName parent of
@@ -266,13 +266,13 @@ pollFile _ _ = return 1
 
 sysfsRoot :: Directory
 sysfsRoot =
-  Directory "/"
+  directory "/"
             []
-            [Directory "sys"
+            [directory "sys"
                        []
-                       [Directory "class"
+                       [directory "class"
                                   []
-                                  [Directory "gpio"
+                                  [directory "gpio"
                                              [File "export" ["Export"]
                                              ,File "unexport" ["Unexport"]]
                                              []]]]

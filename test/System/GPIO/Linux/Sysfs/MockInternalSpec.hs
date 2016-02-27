@@ -6,6 +6,9 @@ import System.GPIO.Linux.Sysfs.Mock (sysfsRoot)
 import System.GPIO.Linux.Sysfs.Mock.Internal
 import Test.Hspec
 
+parentName :: MockFSCrumb -> Name
+parentName = _dirName . _root
+
 spec :: Spec
 spec =
   let sysfsRootZ = (sysfsRoot, [])
@@ -16,19 +19,19 @@ spec =
 
            it "can traverse downwards one directory at a time" $
              do let Right z1@(dir1, crumb1:_) = cd "sys" sysfsRootZ
-                _dirName dir1 `shouldBe` "sys"
-                _parentName crumb1 `shouldBe` "/"
+                dirName dir1 `shouldBe` "sys"
+                parentName crumb1 `shouldBe` "/"
                 let Right z2@(dir2, crumb2:_) = cd "class" z1
-                _dirName dir2 `shouldBe` "class"
-                _parentName crumb2 `shouldBe` "sys"
+                dirName dir2 `shouldBe` "class"
+                parentName crumb2 `shouldBe` "sys"
                 let Right (dir3, crumb3:_) = cd "gpio" z2
-                _dirName dir3 `shouldBe` "gpio"
-                _parentName crumb3 `shouldBe` "class"
+                dirName dir3 `shouldBe` "gpio"
+                parentName crumb3 `shouldBe` "class"
 
            it "can traverse downwards multiple directories at a time" $
              do let Right (dir1, crumb1:_) = cd "sys/class/gpio" sysfsRootZ
-                _dirName dir1 `shouldBe` "gpio"
-                _parentName crumb1 `shouldBe` "class"
+                dirName dir1 `shouldBe` "gpio"
+                parentName crumb1 `shouldBe` "class"
 
            it "fails when changing to a non-existent child" $
              do cd "foobar" sysfsRootZ `shouldBe` (Left $ NoSuchFileOrDirectory "foobar")
@@ -60,18 +63,18 @@ spec =
          context "absolute paths" $ do
            it "can traverse downwards one directory at a time" $
              do let Right z1@(dir1, crumb1:_) = cd "/sys" sysfsRootZ
-                _dirName dir1 `shouldBe` "sys"
-                _parentName crumb1 `shouldBe` "/"
+                dirName dir1 `shouldBe` "sys"
+                parentName crumb1 `shouldBe` "/"
                 let Right z2@(dir2, crumb2:_) = cd "class" z1
-                _dirName dir2 `shouldBe` "class"
-                _parentName crumb2 `shouldBe` "sys"
+                dirName dir2 `shouldBe` "class"
+                parentName crumb2 `shouldBe` "sys"
                 let Right (dir3, crumb3:_) = cd "gpio" z2
-                _dirName dir3 `shouldBe` "gpio"
-                _parentName crumb3 `shouldBe` "class"
+                dirName dir3 `shouldBe` "gpio"
+                parentName crumb3 `shouldBe` "class"
            it "can traverse downwards multiple directories at a time" $
              do let Right (dir1, crumb1:_) = cd "/sys/class/gpio" sysfsRootZ
-                _dirName dir1 `shouldBe` "gpio"
-                _parentName crumb1 `shouldBe` "class"
+                dirName dir1 `shouldBe` "gpio"
+                parentName crumb1 `shouldBe` "class"
            it "fails when changing to a non-existent child" $
              do cd "/foobar" sysfsRootZ `shouldBe` (Left $ NoSuchFileOrDirectory "/foobar")
            it "fails when changing to a non-existent grandchild" $
@@ -109,30 +112,30 @@ spec =
        describe "mkdir" $
          do it "creates a subdirectory in the current directory" $
               do let Right z1@(dir1, crumb1) = mkdir "xyzzy" sysfsRootZ
-                 _dirName dir1 `shouldBe` "/"
+                 dirName dir1 `shouldBe` "/"
                  crumb1 `shouldBe` []
                  let Right (dir2, crumb2:_) = cd "xyzzy" z1
-                 _dirName dir2 `shouldBe` "xyzzy"
-                 _parentName crumb2 `shouldBe` "/"
+                 dirName dir2 `shouldBe` "xyzzy"
+                 parentName crumb2 `shouldBe` "/"
 
             it "can create multiple subdirectories in the same directory" $
               do let Right z1@(dir1, crumb1) = mkdir "xyzzy" sysfsRootZ
-                 _dirName dir1 `shouldBe` "/"
+                 dirName dir1 `shouldBe` "/"
                  crumb1 `shouldBe` []
                  let Right z2@(dir2, crumb2) = mkdir "plugh" z1
-                 _dirName dir2 `shouldBe` "/"
+                 dirName dir2 `shouldBe` "/"
                  crumb2 `shouldBe` []
                  let Right z3@(dir3, crumb3:_) = cd "xyzzy" z2
-                 _dirName dir3 `shouldBe` "xyzzy"
-                 _parentName crumb3 `shouldBe` "/"
+                 dirName dir3 `shouldBe` "xyzzy"
+                 parentName crumb3 `shouldBe` "/"
                  let Right (dir4, crumb4:_) = cd "../plugh" z3
-                 _dirName dir4 `shouldBe` "plugh"
-                 _parentName crumb4 `shouldBe` "/"
+                 dirName dir4 `shouldBe` "plugh"
+                 parentName crumb4 `shouldBe` "/"
 
             it "works when nested" $
               do let Right (dir, crumb:_) = mkdir "abc" sysfsRootZ >>= cd "/abc" >>= mkdir "def" >>= cd "/abc/def"
-                 _dirName dir `shouldBe` "def"
-                 _parentName crumb `shouldBe` "abc"
+                 dirName dir `shouldBe` "def"
+                 parentName crumb `shouldBe` "abc"
 
             it "fails when a subdir with the same name already exists" $
               mkdir "sys" sysfsRootZ `shouldBe` (Left $ FileExists "sys")
@@ -151,9 +154,9 @@ spec =
          do it "creates a file in the current directory when clobber is False" $
               do let Right z1 = cd "/sys/class/gpio" sysfsRootZ
                  let Right (dir2, crumb2:_) = mkfile "gpio1" ["Hey!", "This is gpio1"] False z1
-                 _dirName dir2 `shouldBe` "gpio"
-                 _parentName crumb2 `shouldBe` "class"
-                 let file:rest = _files dir2
+                 dirName dir2 `shouldBe` "gpio"
+                 parentName crumb2 `shouldBe` "class"
+                 let file:rest = files dir2
                  _fileName file `shouldBe` "gpio1"
                  _contents file `shouldBe` ["Hey!", "This is gpio1"]
                  rest `shouldBe` [File {_fileName = "export", _contents = ["Export"]},File {_fileName = "unexport", _contents = ["Unexport"]}]
@@ -161,9 +164,9 @@ spec =
             it "creates a file in the current directory when clobber is True" $
               do let Right z1 = cd "/sys/class/gpio" sysfsRootZ
                  let Right (dir2, crumb2:_) = mkfile "gpio1" ["Hey!", "This is gpio1"] True z1
-                 _dirName dir2 `shouldBe` "gpio"
-                 _parentName crumb2 `shouldBe` "class"
-                 let file:rest = _files dir2
+                 dirName dir2 `shouldBe` "gpio"
+                 parentName crumb2 `shouldBe` "class"
+                 let file:rest = files dir2
                  _fileName file `shouldBe` "gpio1"
                  _contents file `shouldBe` ["Hey!", "This is gpio1"]
                  rest `shouldBe` [File {_fileName = "export", _contents = ["Export"]},File {_fileName = "unexport", _contents = ["Unexport"]}]
@@ -179,9 +182,9 @@ spec =
               do let Right z1 = cd "/sys/class/gpio" sysfsRootZ
                  let Right z2 = mkfile "gpio1" ["Hey!", "This is gpio1"] False z1
                  let Right (dir3, crumb3:_) = mkfile "gpio1" ["Hey!", "Now I'm gpio1"] True z2
-                 _dirName dir3 `shouldBe` "gpio"
-                 _parentName crumb3 `shouldBe` "class"
-                 let file:rest = _files dir3
+                 dirName dir3 `shouldBe` "gpio"
+                 parentName crumb3 `shouldBe` "class"
+                 let file:rest = files dir3
                  _fileName file `shouldBe` "gpio1"
                  _contents file `shouldBe` ["Hey!", "Now I'm gpio1"]
                  rest `shouldBe` [File {_fileName = "export", _contents = ["Export"]},File {_fileName = "unexport", _contents = ["Unexport"]}]
@@ -200,11 +203,11 @@ spec =
          do it "removes a subdirectory of the current directory" $
               do let Right z1 = cd "/sys" sysfsRootZ >>= mkdir "xyzzy" >>= mkdir "plugh"
                  let Right z2@(dir2, crumb2:_) = rmdir "xyzzy" z1
-                 _dirName dir2 `shouldBe` "sys"
-                 _parentName crumb2 `shouldBe` "/"
+                 dirName dir2 `shouldBe` "sys"
+                 parentName crumb2 `shouldBe` "/"
                  let Right (dir3, crumb3:_) = rmdir "plugh" z2
-                 _dirName dir3 `shouldBe` "sys"
-                 _parentName crumb3 `shouldBe` "/"
+                 dirName dir3 `shouldBe` "sys"
+                 parentName crumb3 `shouldBe` "/"
 
             it "fails when no subdir with the name exists" $
               rmdir "foo" sysfsRootZ `shouldBe` (Left $ NoSuchFileOrDirectory "foo")
@@ -220,13 +223,13 @@ spec =
          do it "removes a file in the current directory" $
               do let Right z1 = cd "/sys" sysfsRootZ >>= mkfile "abc" [] False >>= mkfile "def" [] False
                  let Right z2@(dir2, crumb2:_) = rmfile "abc" z1
-                 _dirName dir2 `shouldBe` "sys"
-                 _parentName crumb2 `shouldBe` "/"
-                 _files dir2 `shouldBe` [File {_fileName = "def", _contents = []}]
+                 dirName dir2 `shouldBe` "sys"
+                 parentName crumb2 `shouldBe` "/"
+                 files dir2 `shouldBe` [File {_fileName = "def", _contents = []}]
                  let Right (dir3, crumb3:_) = rmfile "def" z2
-                 _dirName dir3 `shouldBe` "sys"
-                 _parentName crumb3 `shouldBe` "/"
-                 _files dir3 `shouldBe` []
+                 dirName dir3 `shouldBe` "sys"
+                 parentName crumb3 `shouldBe` "/"
+                 files dir3 `shouldBe` []
 
             it "fails when no file with the name exists" $
               rmfile "foo" sysfsRootZ `shouldBe` (Left $ NoSuchFileOrDirectory "foo")

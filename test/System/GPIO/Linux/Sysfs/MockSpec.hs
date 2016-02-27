@@ -5,7 +5,7 @@ module System.GPIO.Linux.Sysfs.MockSpec (spec) where
 import Prelude hiding (readFile, writeFile)
 import Data.List (sort)
 import System.GPIO.Linux.Sysfs.Mock
-import System.GPIO.Linux.Sysfs.Mock.Internal (Directory(..), cd, cwd)
+import System.GPIO.Linux.Sysfs.Mock.Internal (cd, cwd, dirName)
 import Test.Hspec
 
 
@@ -88,5 +88,5 @@ spec =
           evalSysfsMock (readFile "/sys/class/gpio/gpiochip64/label") rootz [chip0, chip16, chip64] `shouldBe` Right "abc\n"
           fmap sort (evalSysfsMock (getDirectoryContents "/sys/class/gpio") sysz [chip0, chip16, chip64]) `shouldBe` Right ["export", "gpiochip0", "gpiochip16", "gpiochip64", "unexport"]
         it "doesn't change the current working directory after creating gpiochip dirs" $ do
-          fmap (_dirName . cwd) (execSysfsMock (getDirectoryContents "/") rootz [chip0]) `shouldBe` Right "/"
-          fmap (_dirName . cwd) (execSysfsMock (getDirectoryContents "/") sysz [chip0]) `shouldBe` Right "sys"
+          fmap (dirName . cwd) (execSysfsMock (getDirectoryContents "/") rootz [chip0]) `shouldBe` Right "/"
+          fmap (dirName . cwd) (execSysfsMock (getDirectoryContents "/") sysz [chip0]) `shouldBe` Right "sys"
