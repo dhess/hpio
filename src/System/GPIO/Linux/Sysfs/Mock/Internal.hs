@@ -151,21 +151,19 @@ cd p z =
            then (drop 1 p, top z)
            else (p, z)
   in foldlM cd' fs (splitDirectories path)
-  where cd' :: MockFSZipper -> Name -> Either MockFSException MockFSZipper
-        cd' zipper@(dir,bs) name =
-          case name of
-            "." -> Right zipper
-            ".." -> return $ up zipper
-            _ ->
-              case findDir name dir of
-                (ls,subdir:rs) ->
-                  Right (subdir
-                        ,MockFSCrumb (root dir) ls rs:bs)
-                (_,[]) ->
-                  maybe (Left $ NoSuchFileOrDirectory p)
-                        (const $ Left $ NotADirectory p)
-                        (findFile' name dir)
-
+  where
+    cd' :: MockFSZipper -> Name -> Either MockFSException MockFSZipper
+    cd' zipper "." = Right zipper
+    cd' zipper ".." = return $ up zipper
+    cd' (dir,bs) name =
+      case findDir name dir of
+        (ls,subdir:rs) ->
+          Right (subdir
+                ,MockFSCrumb (root dir) ls rs:bs)
+        (_,[]) ->
+          maybe (Left $ NoSuchFileOrDirectory p)
+                (const $ Left $ NotADirectory p)
+                (findFile' name dir)
 
 mkdir :: Name -> MockFSZipper -> Either MockFSException MockFSZipper
 mkdir name (parent, bs) =
