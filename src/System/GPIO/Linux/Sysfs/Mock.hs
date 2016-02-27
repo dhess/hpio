@@ -53,7 +53,7 @@ import qualified Data.ByteString.Char8 as C8 (pack, unlines)
 import Data.Maybe (fromJust, isJust)
 import Foreign.C.Types (CInt(..))
 import System.FilePath ((</>), splitFileName)
-import System.GPIO.Linux.Sysfs.Mock.Internal (Directory, File(..), MockFSZipper, MockFSException(..), directory, dirName, files, subdirs, findFile')
+import System.GPIO.Linux.Sysfs.Mock.Internal (Directory, File(..), FileType(..), MockFSZipper, MockFSException(..), directory, dirName, files, subdirs, findFile')
 import qualified System.GPIO.Linux.Sysfs.Mock.Internal as Internal (cd, mkdir, mkfile, pathFromRoot)
 import System.GPIO.Linux.Sysfs.Monad (MonadSysfs)
 import qualified System.GPIO.Linux.Sysfs.Monad as M (MonadSysfs(..))
@@ -182,9 +182,9 @@ makeChip chip =
   let chipdir = sysfsPath </> ("gpiochip" ++ show (_base chip))
   in
     do mkdir chipdir
-       mkfile (chipdir </> "base") [intToByteString $ _base chip] False
-       mkfile (chipdir </> "ngpio") [intToByteString $ length (_initialPinStates chip)] False
-       mkfile (chipdir </> "label") [C8.pack $ _label chip] False
+       mkfile (chipdir </> "base") (Const [intToByteString $ _base chip]) False
+       mkfile (chipdir </> "ngpio") (Const [intToByteString $ length (_initialPinStates chip)]) False
+       mkfile (chipdir </> "label") (Const [C8.pack $ _label chip]) False
 
 pushd :: (MonadThrow m) => FilePath -> SysfsMockT m a -> SysfsMockT m a
 pushd path action =
@@ -209,12 +209,12 @@ mkdir path =
     do parent <- cd parentName
        either throwM put (Internal.mkdir childName parent)
 
-mkfile :: (MonadThrow m) => FilePath -> [ByteString] -> Bool -> SysfsMockT m ()
-mkfile path contents clobber =
+mkfile :: (MonadThrow m) => FilePath -> FileType -> Bool -> SysfsMockT m ()
+mkfile path filetype clobber =
   let (parentName, childName) = splitFileName path
   in
     do parent <- cd parentName
-       either throwM put (Internal.mkfile childName contents clobber parent)
+       either throwM put (Internal.mkfile childName filetype clobber parent)
 
 doesDirectoryExist :: (Monad m) => FilePath -> SysfsMockT m Bool
 doesDirectoryExist path =
@@ -243,7 +243,8 @@ readFile path =
     do parent <- fst <$> cd dirPath
        case findFile' fileName parent of
          Nothing -> throwM $ NotAFile path
-         Just file -> return $ C8.unlines $ _contents file
+         Just (Const contents) -> return $ C8.unlines contents
+         Just _ -> throwM $ ReadError path
 
 writeFile :: (MonadThrow m) => FilePath -> ByteString -> SysfsMockT m ()
 writeFile = undefined
@@ -263,6 +264,6 @@ sysfsRoot =
                        [directory "class"
                                   []
                                   [directory "gpio"
-                                             [File "export" ["Export"]
-                                             ,File "unexport" ["Unexport"]]
+                                             [File "export" Export
+                                             ,File "unexport" Unexport]
                                              []]]]

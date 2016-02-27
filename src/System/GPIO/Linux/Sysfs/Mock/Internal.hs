@@ -23,6 +23,7 @@ module System.GPIO.Linux.Sysfs.Mock.Internal
        ( -- * Mock filesystem types
          Name
        , File(..)
+       , FileType(..)
        , DirNode(..)
        , Directory
        , directory
@@ -60,9 +61,15 @@ import System.FilePath (isAbsolute, isValid, joinPath, splitDirectories)
 
 type Name = String
 
+data FileType
+  = Const [ByteString]
+  | Export
+  | Unexport
+  deriving (Show,Eq)
+
 data File =
   File {_fileName :: Name
-       ,_contents :: [ByteString]}
+       ,_fileType :: FileType}
   deriving (Show,Eq)
 
 data DirNode =
@@ -132,8 +139,8 @@ cwd (dir, _) = dir
 findFile :: Name -> Directory -> ([File], [File])
 findFile name dir = break (\file -> _fileName file == name) (files dir)
 
-findFile' :: Name -> Directory -> Maybe File
-findFile' name dir = find (\file -> _fileName file == name) (files dir)
+findFile' :: Name -> Directory -> Maybe FileType
+findFile' name dir = _fileType <$> find (\file -> _fileName file == name) (files dir)
 
 findDir :: Name -> Directory -> ([Directory], [Directory])
 findDir name dir = break (\d -> dirName d == name) (subdirs dir)
@@ -180,8 +187,8 @@ mkdir name (parent, bs) =
             else Left $ InvalidName name
         _ -> Left $ FileExists name
 
-mkfile :: Name -> [ByteString] -> Bool -> MockFSZipper -> Either MockFSException MockFSZipper
-mkfile name contents clobber (parent, bs) =
+mkfile :: Name -> FileType -> Bool -> MockFSZipper -> Either MockFSException MockFSZipper
+mkfile name filetype clobber (parent, bs) =
   case findFile name parent of
     (ls, _:rs) ->
       if clobber
@@ -196,7 +203,7 @@ mkfile name contents clobber (parent, bs) =
     mkfile' fs =
       if isValidName name
         then
-          let file = File name contents
+          let file = File name filetype
           in
             Right (directory (dirName parent) (file:fs) (subdirs parent), bs)
         else Left $ InvalidName name

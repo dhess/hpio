@@ -153,51 +153,51 @@ spec =
        describe "mkfile" $
          do it "creates a file in the current directory when clobber is False" $
               do let Right z1 = cd "/sys/class/gpio" sysfsRootZ
-                 let Right (dir2, crumb2:_) = mkfile "gpio1" ["Hey!", "This is gpio1"] False z1
+                 let Right (dir2, crumb2:_) = mkfile "gpio1" (Const ["Hey!", "This is gpio1"]) False z1
                  dirName dir2 `shouldBe` "gpio"
                  parentName crumb2 `shouldBe` "class"
                  let file:rest = files dir2
                  _fileName file `shouldBe` "gpio1"
-                 _contents file `shouldBe` ["Hey!", "This is gpio1"]
-                 rest `shouldBe` [File {_fileName = "export", _contents = ["Export"]},File {_fileName = "unexport", _contents = ["Unexport"]}]
+                 _fileType file `shouldBe` (Const ["Hey!", "This is gpio1"])
+                 rest `shouldBe` [File {_fileName = "export", _fileType = Export},File {_fileName = "unexport", _fileType = Unexport}]
 
             it "creates a file in the current directory when clobber is True" $
               do let Right z1 = cd "/sys/class/gpio" sysfsRootZ
-                 let Right (dir2, crumb2:_) = mkfile "gpio1" ["Hey!", "This is gpio1"] True z1
+                 let Right (dir2, crumb2:_) = mkfile "gpio1" (Const ["Hey!", "This is gpio1"]) True z1
                  dirName dir2 `shouldBe` "gpio"
                  parentName crumb2 `shouldBe` "class"
                  let file:rest = files dir2
                  _fileName file `shouldBe` "gpio1"
-                 _contents file `shouldBe` ["Hey!", "This is gpio1"]
-                 rest `shouldBe` [File {_fileName = "export", _contents = ["Export"]},File {_fileName = "unexport", _contents = ["Unexport"]}]
+                 _fileType file `shouldBe` (Const ["Hey!", "This is gpio1"])
+                 rest `shouldBe` [File {_fileName = "export", _fileType = Export},File {_fileName = "unexport", _fileType = Unexport}]
 
             it "fails when a subdir with the same name already exists" $ do
-              mkfile "sys" [] True sysfsRootZ `shouldBe` (Left $ FileExists "sys")
-              mkfile "sys" [] False sysfsRootZ `shouldBe` (Left $ FileExists "sys")
+              mkfile "sys" (Const []) True sysfsRootZ `shouldBe` (Left $ FileExists "sys")
+              mkfile "sys" (Const []) False sysfsRootZ `shouldBe` (Left $ FileExists "sys")
 
             it "fails when a file with the same name already exists and clobber is False" $
-              (cd "/sys/class/gpio" sysfsRootZ >>= mkfile "export" [] False) `shouldBe` (Left $ FileExists "export")
+              (cd "/sys/class/gpio" sysfsRootZ >>= mkfile "export" (Const []) False) `shouldBe` (Left $ FileExists "export")
 
             it "overwrites an existing file's contents when a file with the same name already exists and clobber is True" $
               do let Right z1 = cd "/sys/class/gpio" sysfsRootZ
-                 let Right z2 = mkfile "gpio1" ["Hey!", "This is gpio1"] False z1
-                 let Right (dir3, crumb3:_) = mkfile "gpio1" ["Hey!", "Now I'm gpio1"] True z2
+                 let Right z2 = mkfile "gpio1" (Const ["Hey!", "This is gpio1"]) False z1
+                 let Right (dir3, crumb3:_) = mkfile "gpio1" (Const ["Hey!", "Now I'm gpio1"]) True z2
                  dirName dir3 `shouldBe` "gpio"
                  parentName crumb3 `shouldBe` "class"
                  let file:rest = files dir3
                  _fileName file `shouldBe` "gpio1"
-                 _contents file `shouldBe` ["Hey!", "Now I'm gpio1"]
-                 rest `shouldBe` [File {_fileName = "export", _contents = ["Export"]},File {_fileName = "unexport", _contents = ["Unexport"]}]
+                 _fileType file `shouldBe` (Const ["Hey!", "Now I'm gpio1"])
+                 rest `shouldBe` [File {_fileName = "export", _fileType = Export},File {_fileName = "unexport", _fileType = Unexport}]
 
             it "fails with an invalid name" $ do
-              mkfile "" [] False sysfsRootZ `shouldBe` (Left $ InvalidName "")
-              mkfile "" [] True sysfsRootZ `shouldBe` (Left $ InvalidName "")
+              mkfile "" (Const []) False sysfsRootZ `shouldBe` (Left $ InvalidName "")
+              mkfile "" (Const []) True sysfsRootZ `shouldBe` (Left $ InvalidName "")
 
             it "fails when the name contains a '/'" $
-              do mkfile "/abc" [] False sysfsRootZ `shouldBe` (Left $ InvalidName "/abc")
-                 mkfile "/abc" [] True sysfsRootZ `shouldBe` (Left $ InvalidName "/abc")
-                 mkfile "sys/foobar" [] False sysfsRootZ `shouldBe` (Left $ InvalidName "sys/foobar")
-                 mkfile "sys/foobar" [] True sysfsRootZ `shouldBe` (Left $ InvalidName "sys/foobar")
+              do mkfile "/abc" (Const []) False sysfsRootZ `shouldBe` (Left $ InvalidName "/abc")
+                 mkfile "/abc" (Const []) True sysfsRootZ `shouldBe` (Left $ InvalidName "/abc")
+                 mkfile "sys/foobar" (Const []) False sysfsRootZ `shouldBe` (Left $ InvalidName "sys/foobar")
+                 mkfile "sys/foobar" (Const []) True sysfsRootZ `shouldBe` (Left $ InvalidName "sys/foobar")
 
        describe "rmdir" $
          do it "removes a subdirectory of the current directory" $
@@ -221,11 +221,11 @@ spec =
 
        describe "rmfile" $
          do it "removes a file in the current directory" $
-              do let Right z1 = cd "/sys" sysfsRootZ >>= mkfile "abc" [] False >>= mkfile "def" [] False
+              do let Right z1 = cd "/sys" sysfsRootZ >>= mkfile "abc" (Const []) False >>= mkfile "def" (Const []) False
                  let Right z2@(dir2, crumb2:_) = rmfile "abc" z1
                  dirName dir2 `shouldBe` "sys"
                  parentName crumb2 `shouldBe` "/"
-                 files dir2 `shouldBe` [File {_fileName = "def", _contents = []}]
+                 files dir2 `shouldBe` [File {_fileName = "def", _fileType = (Const [])}]
                  let Right (dir3, crumb3:_) = rmfile "def" z2
                  dirName dir3 `shouldBe` "sys"
                  parentName crumb3 `shouldBe` "/"
