@@ -111,7 +111,7 @@ newtype SysfsMockT m a =
 -- thrown.
 runSysfsMockT :: (MonadThrow m) => SysfsMockT m a -> MockFSZipper -> [MockGpioChip] -> m (a, MockFSZipper)
 runSysfsMockT action startfs chips =
-  do newfs <- execStateT (unSysfsMockT $ withCwd "/" (makeFileSystem chips)) startfs
+  do newfs <- execStateT (unSysfsMockT $ pushd "/" (makeFileSystem chips)) startfs
      runStateT (unSysfsMockT action) newfs
 
 -- | The simplest possible (pure) mock @sysfs@ monad.
@@ -186,74 +186,64 @@ makeChip chip =
        mkfile (chipdir </> "ngpio") [intToByteString $ length (_initialPinStates chip)] False
        mkfile (chipdir </> "label") [C8.pack $ _label chip] False
 
-withCwd :: (MonadThrow m) => FilePath -> SysfsMockT m a -> SysfsMockT m a
-withCwd path action =
+pushd :: (MonadThrow m) => FilePath -> SysfsMockT m a -> SysfsMockT m a
+pushd path action =
   do z <- get
      let restorePath = Internal.pathFromRoot z
-     cd path >>= \case
-       Left e -> throwM e
-       Right cwz ->
-         do put cwz
-            result <- action
-            cd restorePath >>= \case
-              Left e1 -> throwM e1
-              Right restoredZ ->
-                do put restoredZ
-                   return result
+     cd path >>= put
+     result <- action
+     cd restorePath >>= put
+     return result
 
-cd :: (Monad m) => FilePath -> SysfsMockT m (Either MockFSException MockFSZipper)
+cd :: (MonadThrow m) => FilePath -> SysfsMockT m MockFSZipper
 cd name =
   do fsz <- get
-     return $ Internal.cd name fsz
+     case Internal.cd name fsz of
+       Left e -> throwM e
+       Right newz -> return newz
 
 mkdir :: (MonadThrow m) => FilePath -> SysfsMockT m ()
 mkdir path =
   let (parentName, childName) = splitFileName path
   in
-    cd parentName >>= \case
-      Left e -> throwM e
-      Right z -> either throwM put (Internal.mkdir childName z)
+    do parent <- cd parentName
+       either throwM put (Internal.mkdir childName parent)
 
 mkfile :: (MonadThrow m) => FilePath -> [ByteString] -> Bool -> SysfsMockT m ()
 mkfile path contents clobber =
   let (parentName, childName) = splitFileName path
   in
-    cd parentName >>= \case
-      Left e -> throwM e
-      Right z -> either throwM put (Internal.mkfile childName contents clobber z)
+    do parent <- cd parentName
+       either throwM put (Internal.mkfile childName contents clobber parent)
 
 doesDirectoryExist :: (Monad m) => FilePath -> SysfsMockT m Bool
 doesDirectoryExist path =
-  cd path >>= \case
-    Left _ -> return False
-    Right _ -> return True
+  do cwd <- get
+     return $ either (const False) (const True) (Internal.cd path cwd)
 
 doesFileExist :: (Monad m) => FilePath -> SysfsMockT m Bool
 doesFileExist path =
   let (dirPath, fileName) = splitFileName path
   in
-    cd dirPath >>= \case
-      Left _ -> return False
-      Right (parent, _) ->
-        return (isJust $ findFile' fileName parent)
+    do cwd <- get
+       case Internal.cd dirPath cwd of
+         Left _ -> return False
+         Right (parent, _) ->
+           return $ isJust (findFile' fileName parent)
 
 getDirectoryContents :: (MonadThrow m) => FilePath -> SysfsMockT m [FilePath]
 getDirectoryContents path =
-  cd path >>= \case
-    Left e -> throwM e
-    Right (parent, _) ->
-      return $ fmap dirName (subdirs parent) ++ fmap _fileName (files parent)
+  do parent <- fst <$> cd path
+     return $ fmap dirName (subdirs parent) ++ fmap _fileName (files parent)
 
 readFile :: (MonadThrow m) => FilePath -> SysfsMockT m ByteString
 readFile path =
   let (dirPath, fileName) = splitFileName path
   in
-     cd dirPath >>= \case
-      Left  e -> throwM e
-      Right (parent, _) ->
-        case findFile' fileName parent of
-          Nothing -> throwM $ NotAFile path
-          Just file -> return $ C8.unlines $ _contents file
+    do parent <- fst <$> cd dirPath
+       case findFile' fileName parent of
+         Nothing -> throwM $ NotAFile path
+         Just file -> return $ C8.unlines $ _contents file
 
 writeFile :: (MonadThrow m) => FilePath -> ByteString -> SysfsMockT m ()
 writeFile = undefined
