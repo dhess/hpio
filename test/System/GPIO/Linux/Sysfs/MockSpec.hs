@@ -15,6 +15,7 @@ spec =
       Right sysz = cd "/sys" rootz
   in do
     describe "SysfsMockT" $ do
+
       context "doesDirectoryExist" $ do
         it "relative paths are relative to the initial zipper's working directory" $ do
           evalSysfsMock (doesDirectoryExist "sys/class/gpio") rootz [] `shouldBe` Right True
@@ -32,6 +33,7 @@ spec =
         it "returns False on non-existent names" $ do
           evalSysfsMock (doesDirectoryExist "/sys/class/foobar") rootz [] `shouldBe` Right False
           evalSysfsMock (doesDirectoryExist "foobar") sysz [] `shouldBe` Right False
+
       context "doesFileExist" $ do
         it "relative paths are relative to the initial zipper's working directory" $ do
           evalSysfsMock (doesFileExist "sys/class/gpio/export") rootz [] `shouldBe` Right True
@@ -49,6 +51,7 @@ spec =
         it "returns False on non-existent names" $ do
           evalSysfsMock (doesFileExist "/sys/class/foobar") rootz [] `shouldBe` Right False
           evalSysfsMock (doesFileExist "foobar") sysz [] `shouldBe` Right False
+
       context "getDirectoryContents" $ do
         it "relative paths are relative to the initial zipper's working directory" $ do
           fmap sort (evalSysfsMock (getDirectoryContents "sys/class") rootz []) `shouldBe` Right ["gpio"]
@@ -71,6 +74,7 @@ spec =
         it "returns failure on non-existent names" $ do
           evalSysfsMock (getDirectoryContents "/sys/class/foobar") rootz [] `shouldBe` Left (NoSuchFileOrDirectory "/sys/class/foobar")
           evalSysfsMock (getDirectoryContents "sys/class/gpio") sysz [] `shouldBe` Left (NoSuchFileOrDirectory "sys/class/gpio")
+
       context "runSysfsMockT" $ do
         let chip0 = MockGpioChip "chip0" 0 (replicate 16 defaultState)
             chip16 = MockGpioChip "xyz" 16 (replicate 32 defaultState)
