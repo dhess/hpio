@@ -75,6 +75,16 @@ spec =
           evalSysfsMock (getDirectoryContents "/sys/class/foobar") rootz [] `shouldBe` Left (NoSuchFileOrDirectory "/sys/class/foobar")
           evalSysfsMock (getDirectoryContents "sys/class/gpio") sysz [] `shouldBe` Left (NoSuchFileOrDirectory "sys/class/gpio")
 
+      context "readFile" $ do
+        it "fails on /sys/class/gpio/export" $
+          evalSysfsMock (readFile "/sys/class/gpio/export") rootz [] `shouldBe` Left (ReadError "/sys/class/gpio/export")
+        it "fails on /sys/class/gpio/unexport" $
+          evalSysfsMock (readFile "/sys/class/gpio/unexport") rootz [] `shouldBe` Left (ReadError "/sys/class/gpio/unexport")
+        it "fails on non-existent file" $
+          evalSysfsMock (readFile "/sys/class/gpio/foo") rootz [] `shouldBe` Left (NotAFile "/sys/class/gpio/foo")
+        it "fails on a directory" $
+          evalSysfsMock (readFile "/sys/class/gpio") rootz [] `shouldBe` Left (NotAFile "/sys/class/gpio")
+
       context "runSysfsMockT" $ do
         let chip0 = MockGpioChip "chip0" 0 (replicate 16 defaultState)
             chip16 = MockGpioChip "xyz" 16 (replicate 32 defaultState)
