@@ -58,6 +58,7 @@ import Data.Maybe (isJust)
 import Data.Tree (Tree(..))
 import Data.Typeable (Typeable)
 import System.FilePath (isAbsolute, isValid, joinPath, splitDirectories)
+import System.GPIO.Types (Pin)
 
 type Name = String
 
@@ -104,6 +105,7 @@ data MockFSException
   | NoSuchFileOrDirectory FilePath
   | FileExists Name
   | InvalidName Name
+  | PinAlreadyExists Pin
   deriving (Show,Eq,Typeable)
 
 instance Exception MockFSException
