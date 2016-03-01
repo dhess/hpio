@@ -53,6 +53,7 @@ import Control.Monad.State.Strict
 import Control.Monad.Writer (MonadWriter(..))
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Char8 as C8 (pack, unlines)
+import Data.Foldable (foldrM)
 import Data.Maybe (fromJust, isJust)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map (empty, insertLookupWithKey)
@@ -212,23 +213,25 @@ makeChip :: (MonadThrow m) => MockGpioChip -> SysfsMockT m ()
 makeChip chip =
   let chipdir = sysfsPath </> ("gpiochip" ++ show (_base chip))
   in
-    do result <- addPins (_base chip) (_initialPinStates chip) <$> pins
-       putPins result
-       mkdir chipdir
-       mkfile (chipdir </> "base") (Const [intToByteString $ _base chip]) False
-       mkfile (chipdir </> "ngpio") (Const [intToByteString $ length (_initialPinStates chip)]) False
-       mkfile (chipdir </> "label") (Const [C8.pack $ _label chip]) False
+    addPins (_base chip) (_initialPinStates chip) <$> pins >>= \case
+      Left e -> throwM e
+      Right newPinState ->
+        do putPins newPinState
+           mkdir chipdir
+           mkfile (chipdir </> "base") (Const [intToByteString $ _base chip]) False
+           mkfile (chipdir </> "ngpio") (Const [intToByteString $ length (_initialPinStates chip)]) False
+           mkfile (chipdir </> "label") (Const [C8.pack $ _label chip]) False
 
-addPins :: Int -> [MockPinState] -> MockPins -> MockPins
-addPins base states pm = foldr addPin pm (zip (map Pin [base..]) states)
+addPins :: Int -> [MockPinState] -> MockPins -> Either MockFSException MockPins
+addPins base states pm = foldrM addPin pm (zip (map Pin [base..]) states)
 
-addPin :: (Pin, MockPinState) -> MockPins -> MockPins
+addPin :: (Pin, MockPinState) -> MockPins -> Either MockFSException MockPins
 addPin (pin, st) pm =
   let insertLookup = Map.insertLookupWithKey (\_ a _ -> a)
   in
     case insertLookup pin st pm of
-      (Nothing, newPm) -> newPm
-      (Just _, _) -> error "Nope" -- Left $ PinAlreadyExists pin
+      (Nothing, newPm) -> Right newPm
+      (Just _, _) -> Left $ PinAlreadyExists pin
 
 pushd :: (MonadThrow m) => FilePath -> SysfsMockT m a -> SysfsMockT m a
 pushd path action =
