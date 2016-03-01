@@ -99,6 +99,7 @@ subdirs = subForest
 
 data MockFSException
   = ReadError FilePath
+  | ReadOnlyFile FilePath
   | WriteError FilePath
   | NotADirectory FilePath
   | NotAFile FilePath
@@ -106,6 +107,9 @@ data MockFSException
   | FileExists Name
   | InvalidName Name
   | PinAlreadyExists Pin
+  | InvalidPin Pin
+  | AlreadyExported Pin
+  | NotExported Pin
   deriving (Show,Eq,Typeable)
 
 instance Exception MockFSException

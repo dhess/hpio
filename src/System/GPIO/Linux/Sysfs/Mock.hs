@@ -56,15 +56,15 @@ import qualified Data.ByteString.Char8 as C8 (pack, unlines)
 import Data.Foldable (foldrM)
 import Data.Maybe (fromJust, isJust)
 import Data.Map.Strict (Map)
-import qualified Data.Map.Strict as Map (empty, insertLookupWithKey)
+import qualified Data.Map.Strict as Map (empty, insertLookupWithKey, lookup)
 import Foreign.C.Types (CInt(..))
 import System.FilePath ((</>), splitFileName)
 import System.GPIO.Linux.Sysfs.Mock.Internal (Directory, File(..), FileType(..), MockFSZipper, MockFSException(..), directory, dirName, files, subdirs, findFile')
-import qualified System.GPIO.Linux.Sysfs.Mock.Internal as Internal (cd, mkdir, mkfile, pathFromRoot)
+import qualified System.GPIO.Linux.Sysfs.Mock.Internal as Internal (cd, mkdir, mkfile, pathFromRoot, rmdir)
 import System.GPIO.Linux.Sysfs.Monad (MonadSysfs)
 import qualified System.GPIO.Linux.Sysfs.Monad as M (MonadSysfs(..))
 import System.GPIO.Linux.Sysfs.Types (SysfsEdge(..))
-import System.GPIO.Linux.Sysfs.Util (sysfsPath, intToByteString)
+import System.GPIO.Linux.Sysfs.Util (byteStringToInt, intToByteString, pinDirName, sysfsPath)
 import System.GPIO.Types (Pin(..), PinDirection(..), PinValue(..))
 
 -- | A mock pin.
@@ -124,6 +124,9 @@ putZipper z =
 
 pins :: (Monad m) => SysfsMockT m MockPins
 pins = gets _pins
+
+pinState :: (Monad m) => Pin -> SysfsMockT m (Maybe MockPinState)
+pinState p = Map.lookup p <$> pins
 
 putPins :: (Monad m) => MockPins -> SysfsMockT m ()
 putPins ps =
@@ -256,6 +259,13 @@ mkdir path =
     do parent <- cd parentName
        either throwM putZipper (Internal.mkdir childName parent)
 
+rmdir :: (MonadThrow m) => FilePath -> SysfsMockT m ()
+rmdir path =
+  let (parentName, childName) = splitFileName path
+  in
+    do parent <- cd parentName
+       either throwM putZipper (Internal.rmdir childName parent)
+
 mkfile :: (MonadThrow m) => FilePath -> FileType -> Bool -> SysfsMockT m ()
 mkfile path filetype clobber =
   let (parentName, childName) = splitFileName path
@@ -293,10 +303,16 @@ readFile path =
 writeFile :: (MonadThrow m) => FilePath -> ByteString -> SysfsMockT m ()
 writeFile path bs =
   fileAt path >>= \case
+    Just Export ->
+      case byteStringToInt bs of
+        Just n -> export (Pin n)
+        Nothing -> throwM $ WriteError path
+    Just Unexport ->
+      case byteStringToInt bs of
+        Just n -> unexport (Pin n)
+        Nothing -> throwM $ WriteError path
+    Just _ -> throwM $ ReadOnlyFile path
     Nothing -> throwM $ NotAFile path
-    Just Export -> throwM $ ReadError path
-    Just Unexport -> throwM $ ReadError path
-    Just _ -> throwM $ WriteError path
 
 fileAt :: (MonadThrow m) => FilePath -> SysfsMockT m (Maybe FileType)
 fileAt path =
@@ -328,3 +344,29 @@ sysfsRoot =
 -- | The initial @sysfs@ filesystem zipper.
 sysfsRootZipper :: MockFSZipper
 sysfsRootZipper = (sysfsRoot, [])
+
+-- Helper functions which aren't exported
+--
+
+export :: (MonadThrow m) => Pin -> SysfsMockT m ()
+export pin =
+  pinState pin >>= \case
+    Nothing -> throwM $ InvalidPin pin
+    Just _ ->
+      -- Already exported?
+      let pindir = pinDirName pin
+      in
+        doesDirectoryExist pindir >>= \case
+          True -> throwM $ AlreadyExported pin
+          False -> mkdir pindir
+
+unexport :: (MonadThrow m) => Pin -> SysfsMockT m ()
+unexport pin =
+  pinState pin >>= \case
+    Nothing -> throwM $ InvalidPin pin
+    Just _ ->
+      let pindir = pinDirName pin
+      in
+        doesDirectoryExist pindir >>= \case
+          True -> rmdir pindir
+          False -> throwM $ NotExported pin

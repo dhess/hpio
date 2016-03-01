@@ -11,6 +11,7 @@ Useful low-level Linux @sysfs@ functions.
 
 -}
 
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE Safe #-}
 
 module System.GPIO.Linux.Sysfs.Util
@@ -23,10 +24,13 @@ module System.GPIO.Linux.Sysfs.Util
        , pinEdgeFileName
        , pinValueFileName
        , intToByteString
+       , byteStringToInt
        ) where
 
 import Data.ByteString (ByteString)
+import qualified Data.ByteString as BS (empty)
 import Data.ByteString.Builder (toLazyByteString, intDec)
+import qualified Data.ByteString.Char8 as C8 (readInt)
 import qualified Data.ByteString.Lazy as LBS (toStrict)
 import System.FilePath ((</>))
 import System.GPIO.Types (Pin(..))
@@ -81,3 +85,18 @@ pinValueFileName p = pinDirName p </> "value"
 -- 'ByteString'.
 intToByteString :: Int -> ByteString
 intToByteString = LBS.toStrict . toLazyByteString . intDec
+
+-- | Convert a strict decimal ASCII 'ByteString' encoding of an
+-- integer to an 'Int' (maybe). If there are any extraneous trailing
+-- characters after the decimal ASCII encoding, other than a single
+-- newline character, this is treated as a failure (unlike
+-- 'C8.readInt', which returns the remaining string).
+byteStringToInt :: ByteString -> Maybe Int
+byteStringToInt = go . C8.readInt
+  where
+    go :: Maybe (Int, ByteString) -> Maybe Int
+    go (Just (n, bs))
+      | bs == BS.empty = Just n
+      | bs == "\n" = Just n
+      | otherwise = Nothing
+    go _ = Nothing
