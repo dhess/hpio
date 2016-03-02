@@ -72,7 +72,7 @@ pinIsExported = doesDirectoryExist . pinDirName
 -- Note that it's an error to call this function to export a pin
 -- that's already been exported.
 exportPin :: (MonadSysfs m) => Pin -> m ()
-exportPin (Pin n) = unlockedWriteFile exportFileName (intToByteString n)
+exportPin (Pin n) = unlockedWriteFile exportFileName (intToBS n)
 
 -- | Export the given pin, but, unlike 'exportPin', if the pin is
 -- already exported, this is not an error; in this situation, the pin
@@ -88,7 +88,7 @@ exportPin' p =
 -- It is an error to call this function if the pin is not currently
 -- exported.
 unexportPin :: (MonadSysfs m) => Pin -> m ()
-unexportPin (Pin n) = unlockedWriteFile unexportFileName (intToByteString n)
+unexportPin (Pin n) = unlockedWriteFile unexportFileName (intToBS n)
 
 -- | Test whether the given pin's direction can be set via the
 -- @sysfs@ GPIO filesystem. (Some pins have a hard-wired direction,
@@ -114,7 +114,7 @@ readPinDirection p =
 -- It is an error to call this function if the pin has no @direction@
 -- attribute.
 writePinDirection :: (MonadSysfs m) => Pin -> PinDirection -> m ()
-writePinDirection p d = writeFile (pinDirectionFileName p) (toSysfsPinDirection d)
+writePinDirection p d = writeFile (pinDirectionFileName p) (pinDirectionToBS d)
 
 -- | Pins whose direction can be set may be configured for output by
 -- writing a 'PinValue' to their @direction@ attribute. This enables
@@ -178,7 +178,7 @@ threadWaitReadPinValue' p timeout =
 -- It is an error to call this function if the pin is configured as
 -- an input pin.
 writePinValue :: (MonadSysfs m) => Pin -> PinValue -> m ()
-writePinValue p v = writeFile (pinValueFileName p) (toSysfsPinValue v)
+writePinValue p v = writeFile (pinValueFileName p) (pinValueToBS v)
 
 -- | Test whether the pin has an @edge@ attribute, i.e., whether it
 -- can be configured for edge- or level-triggered interrupts.
@@ -203,7 +203,7 @@ readPinEdge p =
 -- It is an error to call this function when the pin has no @edge@
 -- attribute.
 writePinEdge :: (MonadSysfs m) => Pin -> SysfsEdge -> m ()
-writePinEdge p v = writeFile (pinEdgeFileName p) (toSysfsPinEdge v)
+writePinEdge p v = writeFile (pinEdgeFileName p) (sysfsEdgeToBS v)
 
 -- | Read the given pin's @active_low@ attribute.
 readPinActiveLow :: (MonadSysfs m, MonadThrow m) => Pin -> m Bool
@@ -215,7 +215,7 @@ readPinActiveLow p =
 
 -- | Write the given pin's @active_low@ attribute.
 writePinActiveLow :: (MonadSysfs m) => Pin -> Bool -> m ()
-writePinActiveLow p v = writeFile (pinActiveLowFileName p) (toSysfsActiveLowValue v)
+writePinActiveLow p v = writeFile (pinActiveLowFileName p) (activeLowToBS v)
 
 -- | Return a list of all pins that are exposed via the @sysfs@ GPIO
 -- filesystem. Note that the returned list may omit some pins that
@@ -232,24 +232,6 @@ availablePins =
 
 -- Helper functions that aren't exported.
 --
-
-toSysfsPinDirection :: PinDirection -> ByteString
-toSysfsPinDirection In = "in"
-toSysfsPinDirection Out = "out"
-
-toSysfsPinEdge :: SysfsEdge -> ByteString
-toSysfsPinEdge None = "none"
-toSysfsPinEdge Rising = "rising"
-toSysfsPinEdge Falling = "falling"
-toSysfsPinEdge Both = "both"
-
-toSysfsPinValue :: PinValue -> ByteString
-toSysfsPinValue Low = "0"
-toSysfsPinValue High = "1"
-
-toSysfsActiveLowValue :: Bool -> ByteString
-toSysfsActiveLowValue False = "0"
-toSysfsActiveLowValue True = "1"
 
 -- Used for writing pin direction with a value.
 valueToPinDirection :: PinValue -> ByteString

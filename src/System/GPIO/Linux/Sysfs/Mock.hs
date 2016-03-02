@@ -26,6 +26,8 @@ module System.GPIO.Linux.Sysfs.Mock
          -- * SysfsMock types
        , MockPinState(..)
        , defaultMockPinState
+       , logicalValue
+       , setLogicalValue
        , MockGpioChip(..)
        , MockPins
        , MockState(..)
@@ -56,16 +58,23 @@ import qualified Data.ByteString.Char8 as C8 (pack, unlines)
 import Data.Foldable (foldrM)
 import Data.Maybe (fromJust, isJust)
 import Data.Map.Strict (Map)
-import qualified Data.Map.Strict as Map (empty, insertLookupWithKey, lookup)
+import qualified Data.Map.Strict as Map (empty, insert, insertLookupWithKey, lookup)
 import Foreign.C.Types (CInt(..))
 import System.FilePath ((</>), splitFileName)
-import System.GPIO.Linux.Sysfs.Mock.Internal (Directory, File(..), FileType(..), MockFSZipper, MockFSException(..), directory, dirName, files, subdirs, findFile')
-import qualified System.GPIO.Linux.Sysfs.Mock.Internal as Internal (cd, mkdir, mkfile, pathFromRoot, rmdir)
+import System.GPIO.Linux.Sysfs.Mock.Internal
+       (Directory, File(..), FileType(..), MockFSZipper,
+        MockFSException(..), directory, dirName, files, subdirs, findFile')
+import qualified System.GPIO.Linux.Sysfs.Mock.Internal as Internal
+       (cd, mkdir, mkfile, pathFromRoot, rmdir)
 import System.GPIO.Linux.Sysfs.Monad (MonadSysfs)
 import qualified System.GPIO.Linux.Sysfs.Monad as M (MonadSysfs(..))
 import System.GPIO.Linux.Sysfs.Types (SysfsEdge(..))
-import System.GPIO.Linux.Sysfs.Util (byteStringToInt, intToByteString, pinDirName, sysfsPath)
-import System.GPIO.Types (Pin(..), PinDirection(..), PinValue(..))
+import System.GPIO.Linux.Sysfs.Util
+       (bsToInt, intToBS, pinActiveLowFileName, pinDirectionFileName,
+        pinEdgeFileName, pinValueFileName, pinDirName, activeLowToBS,
+        bsToActiveLow, pinDirectionToBS, bsToPinDirection, sysfsEdgeToBS,
+        bsToSysfsEdge, pinValueToBS, bsToPinValue, sysfsPath)
+import System.GPIO.Types (Pin(..), PinDirection(..), PinValue(..), invertValue)
 
 -- | A mock pin.
 --
@@ -77,6 +86,24 @@ data MockPinState =
                ,_value :: !PinValue -- This is the line level
                ,_edge :: Maybe SysfsEdge}
   deriving (Show,Eq)
+
+-- | Pin values in Linux @sysfs@ GPIO can be inverted on read/write,
+-- depending on the value of their @active_low@ attribute. This
+-- function returns the 'MockPinState' value taking into consideration
+-- its "active low" value.
+logicalValue :: MockPinState -> PinValue
+logicalValue s
+  | _activeLow s = invertValue $ _value s
+  | otherwise = _value s
+
+-- | Pin values in Linux @sysfs@ GPIO can be inverted on read/write,
+-- depending on the value of their @active_low@ attribute. This
+-- function sets the 'MockPinState' value to the given /logical/
+-- value, i.e., taking into consideration its "active low" value.
+setLogicalValue :: PinValue -> MockPinState -> MockPinState
+setLogicalValue v s
+  | _activeLow s = s {_value = invertValue v}
+  | otherwise = s {_value = v}
 
 -- | Default initial state of mock pins.
 defaultMockPinState :: MockPinState
@@ -125,13 +152,21 @@ putZipper z =
 pins :: (Monad m) => SysfsMockT m MockPins
 pins = gets _pins
 
-pinState :: (Monad m) => Pin -> SysfsMockT m (Maybe MockPinState)
-pinState p = Map.lookup p <$> pins
+pinState :: (MonadThrow m) => Pin -> SysfsMockT m MockPinState
+pinState pin =
+  Map.lookup pin <$> pins >>= \case
+    Nothing -> throwM $ InvalidPin pin
+    Just s -> return s
 
 putPins :: (Monad m) => MockPins -> SysfsMockT m ()
 putPins ps =
   do s <- get
      put $ s {_pins = ps}
+
+putPinState :: (MonadThrow m) => Pin -> (MockPinState -> MockPinState) -> SysfsMockT m ()
+putPinState pin f =
+  do ps <- pinState pin
+     (Map.insert pin (f ps) <$> pins) >>= putPins
 
 -- | Run a mock @sysfs@ computation in monad 'm' with an initial
 -- filesystem ('MockFSZipper') and list of 'MockGpioChip'; and return
@@ -221,9 +256,9 @@ makeChip chip =
       Right newPinState ->
         do putPins newPinState
            mkdir chipdir
-           mkfile (chipdir </> "base") (Const [intToByteString $ _base chip]) False
-           mkfile (chipdir </> "ngpio") (Const [intToByteString $ length (_initialPinStates chip)]) False
-           mkfile (chipdir </> "label") (Const [C8.pack $ _label chip]) False
+           mkfile (chipdir </> "base") (Const [intToBS $ _base chip])
+           mkfile (chipdir </> "ngpio") (Const [intToBS $ length (_initialPinStates chip)])
+           mkfile (chipdir </> "label") (Const [C8.pack $ _label chip])
 
 addPins :: Int -> [MockPinState] -> MockPins -> Either MockFSException MockPins
 addPins base states pm = foldrM addPin pm (zip (map Pin [base..]) states)
@@ -266,12 +301,12 @@ rmdir path =
     do parent <- cd parentName
        either throwM putZipper (Internal.rmdir childName parent)
 
-mkfile :: (MonadThrow m) => FilePath -> FileType -> Bool -> SysfsMockT m ()
-mkfile path filetype clobber =
+mkfile :: (MonadThrow m) => FilePath -> FileType -> SysfsMockT m ()
+mkfile path filetype =
   let (parentName, childName) = splitFileName path
   in
     do parent <- cd parentName
-       either throwM putZipper (Internal.mkfile childName filetype clobber parent)
+       either throwM putZipper (Internal.mkfile childName filetype False parent)
 
 doesDirectoryExist :: (Monad m) => FilePath -> SysfsMockT m Bool
 doesDirectoryExist path =
@@ -298,21 +333,54 @@ readFile path =
   fileAt path >>= \case
     Nothing -> throwM $ NotAFile path
     Just (Const contents) -> return $ C8.unlines contents
+    Just (Value pin) -> pinValueToBS . logicalValue <$> pinState pin -- Use the logical "value" here!
+    Just (ActiveLow pin) -> activeLowToBS . _activeLow <$> pinState pin
+    Just (Direction pin) ->
+      _direction <$> pinState pin >>= \case
+        Nothing -> throwM $ InternalError (show pin ++ " has no direction but direction attribute is exported")
+        Just d -> return $ pinDirectionToBS d
+    Just (Edge pin) ->
+      _edge <$> pinState pin >>= \case
+        Nothing -> throwM $ InternalError (show pin ++ " has no edge but edge attribute is exported")
+        Just edge -> return $ sysfsEdgeToBS edge
     Just _ -> throwM $ ReadError path
 
 writeFile :: (MonadThrow m) => FilePath -> ByteString -> SysfsMockT m ()
 writeFile path bs =
   fileAt path >>= \case
+    Nothing -> throwM $ NotAFile path
     Just Export ->
-      case byteStringToInt bs of
+      case bsToInt bs of
         Just n -> export (Pin n)
         Nothing -> throwM $ WriteError path
     Just Unexport ->
-      case byteStringToInt bs of
+      case bsToInt bs of
         Just n -> unexport (Pin n)
         Nothing -> throwM $ WriteError path
+    Just (ActiveLow pin) ->
+      case bsToActiveLow bs of
+        Just b -> putPinState pin (\s -> s {_activeLow = b})
+        Nothing -> throwM $ WriteError path
+    Just (Value pin) ->
+      case bsToPinValue bs of
+        Just v -> putPinState pin (setLogicalValue v)
+        Nothing -> throwM $ WriteError path
+    Just (Edge pin) ->
+      _edge <$> pinState pin >>= \case
+        Nothing -> throwM $ InternalError (show pin ++ " has no edge but edge attribute is exported")
+        Just _ ->
+          case bsToSysfsEdge bs of
+            Just edge -> putPinState pin (\s -> s {_edge = Just edge})
+            Nothing -> throwM $ WriteError path
+    Just (Direction pin) ->
+      _direction <$> pinState pin >>= \case
+        Nothing -> throwM $ InternalError (show pin ++ " has no direction but direction attribute is exported")
+        Just _ ->
+          case bsToPinDirection bs of
+            Just (dir, Nothing) -> putPinState pin (\s -> s {_direction = Just dir})
+            Just (dir, Just v) -> putPinState pin $ setLogicalValue v . (\s -> s {_direction = Just dir})
+            Nothing -> throwM $ WriteError path
     Just _ -> throwM $ ReadOnlyFile path
-    Nothing -> throwM $ NotAFile path
 
 fileAt :: (MonadThrow m) => FilePath -> SysfsMockT m (Maybe FileType)
 fileAt path =
@@ -350,23 +418,24 @@ sysfsRootZipper = (sysfsRoot, [])
 
 export :: (MonadThrow m) => Pin -> SysfsMockT m ()
 export pin =
-  pinState pin >>= \case
-    Nothing -> throwM $ InvalidPin pin
-    Just _ ->
-      -- Already exported?
-      let pindir = pinDirName pin
-      in
-        doesDirectoryExist pindir >>= \case
-          True -> throwM $ AlreadyExported pin
-          False -> mkdir pindir
+  do s <- pinState pin -- Ensure it exists
+     -- Already exported?
+     let pindir = pinDirName pin
+     doesDirectoryExist pindir >>= \case
+       True -> throwM $ AlreadyExported pin
+       False ->
+         do mkdir pindir
+            mkfile (pinActiveLowFileName pin) (ActiveLow pin)
+            mkfile (pinValueFileName pin) (Value pin)
+            when (isJust $ _direction s) $
+              mkfile (pinDirectionFileName pin) (Direction pin)
+            when (isJust $ _edge s) $
+              mkfile (pinEdgeFileName pin) (Edge pin)
 
 unexport :: (MonadThrow m) => Pin -> SysfsMockT m ()
 unexport pin =
-  pinState pin >>= \case
-    Nothing -> throwM $ InvalidPin pin
-    Just _ ->
-      let pindir = pinDirName pin
-      in
-        doesDirectoryExist pindir >>= \case
-          True -> rmdir pindir
-          False -> throwM $ NotExported pin
+  do void $ pinState pin -- Ensure it exists
+     let pindir = pinDirName pin
+     doesDirectoryExist pindir >>= \case
+       True -> rmdir pindir -- recursive
+       False -> throwM $ NotExported pin

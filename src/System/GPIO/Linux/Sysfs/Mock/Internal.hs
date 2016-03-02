@@ -66,6 +66,10 @@ data FileType
   = Const [ByteString]
   | Export
   | Unexport
+  | Value Pin
+  | Direction Pin
+  | Edge Pin
+  | ActiveLow Pin
   deriving (Show,Eq)
 
 data File =
@@ -110,6 +114,7 @@ data MockFSException
   | InvalidPin Pin
   | AlreadyExported Pin
   | NotExported Pin
+  | InternalError String
   deriving (Show,Eq,Typeable)
 
 instance Exception MockFSException
