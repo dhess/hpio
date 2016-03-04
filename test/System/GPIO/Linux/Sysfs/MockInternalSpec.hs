@@ -7,7 +7,7 @@ import System.GPIO.Linux.Sysfs.Mock.Internal
 import Test.Hspec
 
 parentName :: MockFSCrumb -> Name
-parentName = _dirName . _root
+parentName = _dirName . _node
 
 spec :: Spec
 spec =

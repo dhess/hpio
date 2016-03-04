@@ -24,6 +24,7 @@ module System.GPIO.Linux.Sysfs.Mock
        , evalSysfsMock
        , execSysfsMock
          -- * SysfsMock types
+       , MockFSZipper
        , MockPinState(..)
        , defaultMockPinState
        , logicalValue

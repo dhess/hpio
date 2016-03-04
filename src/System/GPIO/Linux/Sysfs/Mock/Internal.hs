@@ -11,7 +11,7 @@ Types and functions to emulate a (pure) rudimentary Posix-style
 filesystem.
 
 This module is exported in order to test it, but you should not rely
-on its contents.
+on its contents. Documentation here is sparse, on purpose.
 
 -}
 
@@ -29,7 +29,7 @@ module System.GPIO.Linux.Sysfs.Mock.Internal
        , directory
        , dirName
        , files
-       , root
+       , dirNode
        , subdirs
        , MockFSException(..)
        , MockFSCrumb(..)
@@ -37,8 +37,7 @@ module System.GPIO.Linux.Sysfs.Mock.Internal
          -- * Mock filesystem operations
        , up
        , cd
-       , cwd
-       , top
+       , root
        , pathFromRoot
        , findFile
        , findFile'
@@ -84,19 +83,19 @@ data DirNode =
 
 type Directory = Tree DirNode
 
--- Lenses and prisms.
+-- Getters.
 
 directory :: Name -> [File] -> [Directory] -> Directory
 directory name fs subs = Node (DirNode name fs) subs
 
 dirName :: Directory -> Name
-dirName = _dirName . root
+dirName = _dirName . dirNode
 
 files :: Directory -> [File]
-files = _files . root
+files = _files . dirNode
 
-root :: Directory -> DirNode
-root = rootLabel
+dirNode :: Directory -> DirNode
+dirNode = rootLabel
 
 subdirs :: Directory -> [Directory]
 subdirs = subForest
@@ -120,7 +119,7 @@ data MockFSException
 instance Exception MockFSException
 
 data MockFSCrumb =
-  MockFSCrumb {_root :: DirNode
+  MockFSCrumb {_node :: DirNode
               ,_pred :: [Directory]
               ,_succ :: [Directory]}
   deriving (Show,Eq)
@@ -132,9 +131,9 @@ up :: MockFSZipper -> MockFSZipper
 up (dir, MockFSCrumb parent ls rs:bs) = (directory (_dirName parent) (_files parent) (ls ++ [dir] ++ rs), bs)
 up (dir, []) = (dir, []) -- cd /.. == /
 
-top :: MockFSZipper -> MockFSZipper
-top (t, []) = (t, [])
-top z = top $ up z
+root :: MockFSZipper -> MockFSZipper
+root (t, []) = (t, [])
+root z = root $ up z
 
 pathFromRoot :: MockFSZipper -> FilePath
 pathFromRoot zipper =
@@ -143,9 +142,6 @@ pathFromRoot zipper =
     walkUp :: MockFSZipper -> Maybe (Name, MockFSZipper)
     walkUp z@(dir, _:_) = Just (dirName dir, up z)
     walkUp (_, []) = Nothing
-
-cwd :: MockFSZipper -> Directory
-cwd (dir, _) = dir
 
 findFile :: Name -> Directory -> ([File], [File])
 findFile name dir = break (\file -> _fileName file == name) (files dir)
@@ -166,7 +162,7 @@ cd :: FilePath -> MockFSZipper -> Either MockFSException MockFSZipper
 cd p z =
   let (path, fs) =
         if isAbsolute p
-           then (drop 1 p, top z)
+           then (drop 1 p, root z)
            else (p, z)
   in foldlM cd' fs (splitDirectories path)
   where
@@ -177,7 +173,7 @@ cd p z =
       case findDir name dir of
         (ls,subdir:rs) ->
           Right (subdir
-                ,MockFSCrumb (root dir) ls rs:bs)
+                ,MockFSCrumb (dirNode dir) ls rs:bs)
         (_,[]) ->
           maybe (Left $ NoSuchFileOrDirectory p)
                 (const $ Left $ NotADirectory p)

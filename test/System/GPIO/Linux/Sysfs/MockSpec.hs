@@ -6,10 +6,12 @@ import Prelude hiding (readFile, writeFile)
 import Data.List (sort)
 import qualified Data.Map.Strict as Map (empty)
 import System.GPIO.Linux.Sysfs.Mock
-import System.GPIO.Linux.Sysfs.Mock.Internal (cd, cwd, dirName)
+import System.GPIO.Linux.Sysfs.Mock.Internal (Directory, cd, dirName)
 import System.GPIO.Types (Pin(..))
 import Test.Hspec
 
+cwd :: MockFSZipper -> Directory
+cwd (dir, _) = dir
 
 spec :: Spec
 spec =
