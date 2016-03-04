@@ -42,14 +42,9 @@ module System.GPIO.Linux.Sysfs.Mock.Internal
        , MockFSCrumb(..)
        , MockFSZipper(..)
          -- * Mock filesystem operations
-       , up
        , cd
-       , root
        , pathFromRoot
        , findFile
-       , findFile'
-       , findDir
-       , findDir'
        , mkdir
        , mkfile
        , rmdir
@@ -169,17 +164,17 @@ pathFromRoot zipper =
     up' z@(MockFSZipper dir (_:_)) = Just (dirName dir, up z)
     up' (MockFSZipper _ []) = Nothing
 
-findFile :: Name -> Directory -> ([File], [File])
-findFile name dir = break (\file -> _fileName file == name) (files dir)
+findFile' :: Name -> Directory -> ([File], [File])
+findFile' name dir = break (\file -> _fileName file == name) (files dir)
 
-findFile' :: Name -> Directory -> Maybe FileType
-findFile' name dir = _fileType <$> find (\file -> _fileName file == name) (files dir)
+findFile :: Name -> Directory -> Maybe FileType
+findFile name dir = _fileType <$> find (\file -> _fileName file == name) (files dir)
 
-findDir :: Name -> Directory -> ([Directory], [Directory])
-findDir name dir = break (\d -> dirName d == name) (subdirs dir)
+findDir' :: Name -> Directory -> ([Directory], [Directory])
+findDir' name dir = break (\d -> dirName d == name) (subdirs dir)
 
-findDir' :: Name -> Directory -> Maybe Directory
-findDir' name dir = find (\d -> dirName d == name) (subdirs dir)
+findDir :: Name -> Directory -> Maybe Directory
+findDir name dir = find (\d -> dirName d == name) (subdirs dir)
 
 isValidName :: Name -> Bool
 isValidName name = isValid name && notElem '/' name
@@ -196,20 +191,20 @@ cd p z =
     cd' zipper "." = Right zipper
     cd' zipper ".." = return $ up zipper
     cd' (MockFSZipper dir bs) name =
-      case findDir name dir of
+      case findDir' name dir of
         (ls,subdir:rs) ->
           Right $ MockFSZipper subdir (MockFSCrumb (dirNode dir) ls rs:bs)
         (_,[]) ->
           maybe (Left $ NoSuchFileOrDirectory p)
                 (const $ Left $ NotADirectory p)
-                (findFile' name dir)
+                (findFile name dir)
 
 mkdir :: Name -> MockFSZipper -> Either MockFSException MockFSZipper
 mkdir name (MockFSZipper parent bs) =
-  if isJust $ findFile' name parent
+  if isJust $ findFile name parent
     then Left $ FileExists name
     else
-      case findDir name parent of
+      case findDir' name parent of
         (_, []) ->
           if isValidName name
             then
@@ -222,7 +217,7 @@ mkdir name (MockFSZipper parent bs) =
 
 mkfile :: Name -> FileType -> Bool -> MockFSZipper -> Either MockFSException MockFSZipper
 mkfile name filetype clobber (MockFSZipper parent bs) =
-  case findFile name parent of
+  case findFile' name parent of
     (ls, _:rs) ->
       if clobber
          then mkfile' $ ls ++ rs
@@ -230,7 +225,7 @@ mkfile name filetype clobber (MockFSZipper parent bs) =
     _ ->
       maybe (mkfile' $ files parent)
             (const $ Left (FileExists name))
-            (findDir' name parent)
+            (findDir name parent)
   where
     mkfile' :: [File] -> Either MockFSException MockFSZipper
     mkfile' fs =
@@ -244,10 +239,10 @@ mkfile name filetype clobber (MockFSZipper parent bs) =
 
 rmfile :: Name -> MockFSZipper -> Either MockFSException MockFSZipper
 rmfile name (MockFSZipper parent bs) =
-  if isJust $ findDir' name parent
+  if isJust $ findDir name parent
      then Left $ NotAFile name
      else
-       case findFile name parent of
+       case findFile' name parent of
          (ls, _:rs) -> Right $ MockFSZipper (directory (dirName parent) (ls ++ rs) (subdirs parent))
                                             bs
          _ -> Left $ NoSuchFileOrDirectory name
@@ -255,10 +250,10 @@ rmfile name (MockFSZipper parent bs) =
 -- Note: recursive!
 rmdir :: Name -> MockFSZipper -> Either MockFSException MockFSZipper
 rmdir name (MockFSZipper parent bs) =
-  if isJust $ findFile' name parent
+  if isJust $ findFile name parent
      then Left $ NotADirectory name
      else
-       case findDir name parent of
+       case findDir' name parent of
          (ls, _:rs) -> Right $ MockFSZipper (directory (dirName parent) (files parent) (ls ++ rs))
                                             bs
          _ -> Left $ NoSuchFileOrDirectory name

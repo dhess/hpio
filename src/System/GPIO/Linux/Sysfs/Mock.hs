@@ -64,7 +64,7 @@ import Foreign.C.Types (CInt(..))
 import System.FilePath ((</>), splitFileName)
 import System.GPIO.Linux.Sysfs.Mock.Internal
        (Directory, File(..), FileType(..), MockFSZipper(..),
-        MockFSException(..), directory, dirName, files, subdirs, findFile')
+        MockFSException(..), directory, dirName, files, subdirs, findFile)
 import qualified System.GPIO.Linux.Sysfs.Mock.Internal as Internal
        (cd, mkdir, mkfile, pathFromRoot, rmdir)
 import System.GPIO.Linux.Sysfs.Monad (MonadSysfs)
@@ -322,7 +322,7 @@ doesFileExist path =
        case Internal.cd dirPath cwz of
          Left _ -> return False
          Right z ->
-           return $ isJust (findFile' fileName (_cwd z))
+           return $ isJust (findFile fileName (_cwd z))
 
 getDirectoryContents :: (MonadThrow m) => FilePath -> SysfsMockT m [FilePath]
 getDirectoryContents path =
@@ -388,7 +388,7 @@ fileAt path =
   let (dirPath, fileName) = splitFileName path
   in
     do parent <- _cwd <$> cd dirPath
-       return $ findFile' fileName parent
+       return $ findFile fileName parent
 
 unlockedWriteFile :: (MonadThrow m) => FilePath -> ByteString -> SysfsMockT m ()
 unlockedWriteFile = writeFile
