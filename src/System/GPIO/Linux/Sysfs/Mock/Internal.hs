@@ -10,8 +10,15 @@ Portability : non-portable
 Types and functions to emulate a (pure) rudimentary Posix-style
 filesystem.
 
-This module is exported in order to test it, but you should not rely
-on its contents. Documentation here is sparse, on purpose.
+This module was written for internal use only. Its interface may
+change at any time. Documentation in this module is sparse, by design.
+
+N.B.: This mock filesystem implementation was written with the
+intention of doing only just enough to emulate the operations needed
+by the 'System.GPIO.Linux.Sysfs.Monad.MonadSysfs' type class. Though
+it may be possible to use this implementation for other purposes, it
+has neither been designed nor tested for that. Use at your own risk
+and please do not submit requests for addtional functionality.
 
 -}
 
@@ -100,20 +107,29 @@ dirNode = rootLabel
 subdirs :: Directory -> [Directory]
 subdirs = subForest
 
+-- | Exceptions that can be thrown by mock @sysfs@ filesystem
+-- operations.
+--
+-- Generally speaking these exceptions do not map directly to their
+-- 'IO' equivalents, since those are usually a bit too low-level to be
+-- useful at a macro level (e.g., "why did I get an invalid operation
+-- exception when trying to write that GPIO pin?"); rather, these
+-- exceptions attempt to be descriptive in the context of the
+-- higher-level operation you were trying to perform.
 data MockFSException
-  = ReadError FilePath
-  | ReadOnlyFile FilePath
-  | WriteError FilePath
-  | NotADirectory FilePath
-  | NotAFile FilePath
-  | NoSuchFileOrDirectory FilePath
-  | FileExists Name
-  | InvalidName Name
-  | PinAlreadyExists Pin
-  | InvalidPin Pin
-  | AlreadyExported Pin
-  | NotExported Pin
-  | InternalError String
+  = ReadOnlyFile FilePath          -- ^ Attempt to write a read-only file
+  | WriteOnlyFile FilePath         -- ^ Attempt to read a write-only file
+  | WriteError FilePath            -- ^ Data written is not formatted properly
+  | NotADirectory FilePath         -- ^ Path specifies a file, not a directory
+  | NotAFile FilePath              -- ^ Path specifies a directory, not a file
+  | NoSuchFileOrDirectory FilePath -- ^ File/directory does not exist
+  | FileExists Name                -- ^ Attempt to create a file which already exists
+  | InvalidName Name               -- ^ Invalid file/path name
+  | PinAlreadyExists Pin           -- ^ Mock state is invalid because the same pin occurs more than once
+  | InvalidPin Pin                 -- ^ Attempt to perform an operation on a pin which doesn't exist
+  | AlreadyExported Pin            -- ^ Attempt to export a pin that's already been exported
+  | NotExported Pin                -- ^ Attempt to unexport a pin that isn't exported
+  | InternalError String           -- ^ A condition has occurred in the implementation which should never occur
   deriving (Show,Eq,Typeable)
 
 instance Exception MockFSException
@@ -124,6 +140,11 @@ data MockFSCrumb =
               ,_succ :: [Directory]}
   deriving (Show,Eq)
 
+-- | An opaque type representing the current state of the mock @sysfs@
+-- filesystem. Because the constructor is not exported via the public
+-- interface, you cannot create these directly, but you can manipulate
+-- them using the exposed mock @sysfs@ operations and then pass those
+-- 'MockFSZipper's around.
 data MockFSZipper =
   MockFSZipper {_cwd :: Directory
                ,_crumbs :: [MockFSCrumb]}

@@ -344,7 +344,7 @@ readFile path =
       _edge <$> pinState pin >>= \case
         Nothing -> throwM $ InternalError (show pin ++ " has no edge but edge attribute is exported")
         Just edge -> return $ sysfsEdgeToBS edge
-    Just _ -> throwM $ ReadError path
+    Just _ -> throwM $ WriteOnlyFile path
 
 writeFile :: (MonadThrow m) => FilePath -> ByteString -> SysfsMockT m ()
 writeFile path bs =

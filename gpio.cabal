@@ -46,11 +46,11 @@ Library
                       , System.GPIO.Linux.Sysfs.IO
                       , System.GPIO.Linux.Sysfs.Monad
                       , System.GPIO.Linux.Sysfs.Mock
-                      , System.GPIO.Linux.Sysfs.Mock.Internal
                       , System.GPIO.Linux.Sysfs.Native
                       , System.GPIO.Linux.Sysfs.Types
                       , System.GPIO.Linux.Sysfs.Util
                       , System.GPIO.Types
+  Other-Modules:        System.GPIO.Linux.Sysfs.Mock.Internal
   Other-Extensions:     CPP
                       , DeriveDataTypeable
                       , DeriveGeneric

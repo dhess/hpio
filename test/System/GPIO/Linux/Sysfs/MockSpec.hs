@@ -79,9 +79,9 @@ spec =
 
       context "readFile" $ do
         it "fails on /sys/class/gpio/export" $
-          evalSysfsMock (readFile "/sys/class/gpio/export") sysfsRootZipper [] `shouldBe` Left (ReadError "/sys/class/gpio/export")
+          evalSysfsMock (readFile "/sys/class/gpio/export") sysfsRootZipper [] `shouldBe` Left (WriteOnlyFile "/sys/class/gpio/export")
         it "fails on /sys/class/gpio/unexport" $
-          evalSysfsMock (readFile "/sys/class/gpio/unexport") sysfsRootZipper [] `shouldBe` Left (ReadError "/sys/class/gpio/unexport")
+          evalSysfsMock (readFile "/sys/class/gpio/unexport") sysfsRootZipper [] `shouldBe` Left (WriteOnlyFile "/sys/class/gpio/unexport")
         it "fails on non-existent file" $
           evalSysfsMock (readFile "/sys/class/gpio/foo") sysfsRootZipper [] `shouldBe` Left (NotAFile "/sys/class/gpio/foo")
         it "fails on a directory" $
