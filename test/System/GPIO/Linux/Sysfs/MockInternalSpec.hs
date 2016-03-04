@@ -11,25 +11,25 @@ parentName = _dirName . _node
 
 spec :: Spec
 spec =
-  let sysfsRootZ = (sysfsRoot, [])
+  let sysfsRootZ = MockFSZipper sysfsRoot []
   in
     do describe "cd" $ do
 
          context "relative paths" $ do
 
            it "can traverse downwards one directory at a time" $
-             do let Right z1@(dir1, crumb1:_) = cd "sys" sysfsRootZ
+             do let Right z1@(MockFSZipper dir1 (crumb1:_)) = cd "sys" sysfsRootZ
                 dirName dir1 `shouldBe` "sys"
                 parentName crumb1 `shouldBe` "/"
-                let Right z2@(dir2, crumb2:_) = cd "class" z1
+                let Right z2@(MockFSZipper dir2 (crumb2:_)) = cd "class" z1
                 dirName dir2 `shouldBe` "class"
                 parentName crumb2 `shouldBe` "sys"
-                let Right (dir3, crumb3:_) = cd "gpio" z2
+                let Right (MockFSZipper dir3 (crumb3:_)) = cd "gpio" z2
                 dirName dir3 `shouldBe` "gpio"
                 parentName crumb3 `shouldBe` "class"
 
            it "can traverse downwards multiple directories at a time" $
-             do let Right (dir1, crumb1:_) = cd "sys/class/gpio" sysfsRootZ
+             do let Right (MockFSZipper dir1 (crumb1:_)) = cd "sys/class/gpio" sysfsRootZ
                 dirName dir1 `shouldBe` "gpio"
                 parentName crumb1 `shouldBe` "class"
 
@@ -62,17 +62,17 @@ spec =
 
          context "absolute paths" $ do
            it "can traverse downwards one directory at a time" $
-             do let Right z1@(dir1, crumb1:_) = cd "/sys" sysfsRootZ
+             do let Right z1@(MockFSZipper dir1 (crumb1:_)) = cd "/sys" sysfsRootZ
                 dirName dir1 `shouldBe` "sys"
                 parentName crumb1 `shouldBe` "/"
-                let Right z2@(dir2, crumb2:_) = cd "class" z1
+                let Right z2@(MockFSZipper dir2 (crumb2:_)) = cd "class" z1
                 dirName dir2 `shouldBe` "class"
                 parentName crumb2 `shouldBe` "sys"
-                let Right (dir3, crumb3:_) = cd "gpio" z2
+                let Right (MockFSZipper dir3 (crumb3:_)) = cd "gpio" z2
                 dirName dir3 `shouldBe` "gpio"
                 parentName crumb3 `shouldBe` "class"
            it "can traverse downwards multiple directories at a time" $
-             do let Right (dir1, crumb1:_) = cd "/sys/class/gpio" sysfsRootZ
+             do let Right (MockFSZipper dir1 (crumb1:_)) = cd "/sys/class/gpio" sysfsRootZ
                 dirName dir1 `shouldBe` "gpio"
                 parentName crumb1 `shouldBe` "class"
            it "fails when changing to a non-existent child" $
@@ -111,29 +111,29 @@ spec =
 
        describe "mkdir" $
          do it "creates a subdirectory in the current directory" $
-              do let Right z1@(dir1, crumb1) = mkdir "xyzzy" sysfsRootZ
+              do let Right z1@(MockFSZipper dir1 crumb1) = mkdir "xyzzy" sysfsRootZ
                  dirName dir1 `shouldBe` "/"
                  crumb1 `shouldBe` []
-                 let Right (dir2, crumb2:_) = cd "xyzzy" z1
+                 let Right (MockFSZipper dir2 (crumb2:_)) = cd "xyzzy" z1
                  dirName dir2 `shouldBe` "xyzzy"
                  parentName crumb2 `shouldBe` "/"
 
             it "can create multiple subdirectories in the same directory" $
-              do let Right z1@(dir1, crumb1) = mkdir "xyzzy" sysfsRootZ
+              do let Right z1@(MockFSZipper dir1 crumb1) = mkdir "xyzzy" sysfsRootZ
                  dirName dir1 `shouldBe` "/"
                  crumb1 `shouldBe` []
-                 let Right z2@(dir2, crumb2) = mkdir "plugh" z1
+                 let Right z2@(MockFSZipper dir2 crumb2) = mkdir "plugh" z1
                  dirName dir2 `shouldBe` "/"
                  crumb2 `shouldBe` []
-                 let Right z3@(dir3, crumb3:_) = cd "xyzzy" z2
+                 let Right z3@(MockFSZipper dir3 (crumb3:_)) = cd "xyzzy" z2
                  dirName dir3 `shouldBe` "xyzzy"
                  parentName crumb3 `shouldBe` "/"
-                 let Right (dir4, crumb4:_) = cd "../plugh" z3
+                 let Right (MockFSZipper dir4 (crumb4:_)) = cd "../plugh" z3
                  dirName dir4 `shouldBe` "plugh"
                  parentName crumb4 `shouldBe` "/"
 
             it "works when nested" $
-              do let Right (dir, crumb:_) = mkdir "abc" sysfsRootZ >>= cd "/abc" >>= mkdir "def" >>= cd "/abc/def"
+              do let Right (MockFSZipper dir (crumb:_)) = mkdir "abc" sysfsRootZ >>= cd "/abc" >>= mkdir "def" >>= cd "/abc/def"
                  dirName dir `shouldBe` "def"
                  parentName crumb `shouldBe` "abc"
 
@@ -153,7 +153,7 @@ spec =
        describe "mkfile" $
          do it "creates a file in the current directory when clobber is False" $
               do let Right z1 = cd "/sys/class/gpio" sysfsRootZ
-                 let Right (dir2, crumb2:_) = mkfile "gpio1" (Const ["Hey!", "This is gpio1"]) False z1
+                 let Right (MockFSZipper dir2 (crumb2:_)) = mkfile "gpio1" (Const ["Hey!", "This is gpio1"]) False z1
                  dirName dir2 `shouldBe` "gpio"
                  parentName crumb2 `shouldBe` "class"
                  let file:rest = files dir2
@@ -163,7 +163,7 @@ spec =
 
             it "creates a file in the current directory when clobber is True" $
               do let Right z1 = cd "/sys/class/gpio" sysfsRootZ
-                 let Right (dir2, crumb2:_) = mkfile "gpio1" (Const ["Hey!", "This is gpio1"]) True z1
+                 let Right (MockFSZipper dir2 (crumb2:_)) = mkfile "gpio1" (Const ["Hey!", "This is gpio1"]) True z1
                  dirName dir2 `shouldBe` "gpio"
                  parentName crumb2 `shouldBe` "class"
                  let file:rest = files dir2
@@ -181,7 +181,7 @@ spec =
             it "overwrites an existing file's contents when a file with the same name already exists and clobber is True" $
               do let Right z1 = cd "/sys/class/gpio" sysfsRootZ
                  let Right z2 = mkfile "gpio1" (Const ["Hey!", "This is gpio1"]) False z1
-                 let Right (dir3, crumb3:_) = mkfile "gpio1" (Const ["Hey!", "Now I'm gpio1"]) True z2
+                 let Right (MockFSZipper dir3 (crumb3:_)) = mkfile "gpio1" (Const ["Hey!", "Now I'm gpio1"]) True z2
                  dirName dir3 `shouldBe` "gpio"
                  parentName crumb3 `shouldBe` "class"
                  let file:rest = files dir3
@@ -202,10 +202,10 @@ spec =
        describe "rmdir" $
          do it "removes a subdirectory of the current directory" $
               do let Right z1 = cd "/sys" sysfsRootZ >>= mkdir "xyzzy" >>= mkdir "plugh"
-                 let Right z2@(dir2, crumb2:_) = rmdir "xyzzy" z1
+                 let Right z2@(MockFSZipper dir2 (crumb2:_)) = rmdir "xyzzy" z1
                  dirName dir2 `shouldBe` "sys"
                  parentName crumb2 `shouldBe` "/"
-                 let Right (dir3, crumb3:_) = rmdir "plugh" z2
+                 let Right (MockFSZipper dir3 (crumb3:_)) = rmdir "plugh" z2
                  dirName dir3 `shouldBe` "sys"
                  parentName crumb3 `shouldBe` "/"
 
@@ -222,11 +222,11 @@ spec =
        describe "rmfile" $
          do it "removes a file in the current directory" $
               do let Right z1 = cd "/sys" sysfsRootZ >>= mkfile "abc" (Const []) False >>= mkfile "def" (Const []) False
-                 let Right z2@(dir2, crumb2:_) = rmfile "abc" z1
+                 let Right z2@(MockFSZipper dir2 (crumb2:_)) = rmfile "abc" z1
                  dirName dir2 `shouldBe` "sys"
                  parentName crumb2 `shouldBe` "/"
                  files dir2 `shouldBe` [File {_fileName = "def", _fileType = (Const [])}]
-                 let Right (dir3, crumb3:_) = rmfile "def" z2
+                 let Right (MockFSZipper dir3 (crumb3:_)) = rmfile "def" z2
                  dirName dir3 `shouldBe` "sys"
                  parentName crumb3 `shouldBe` "/"
                  files dir3 `shouldBe` []

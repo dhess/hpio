@@ -63,7 +63,7 @@ import qualified Data.Map.Strict as Map (empty, insert, insertLookupWithKey, loo
 import Foreign.C.Types (CInt(..))
 import System.FilePath ((</>), splitFileName)
 import System.GPIO.Linux.Sysfs.Mock.Internal
-       (Directory, File(..), FileType(..), MockFSZipper,
+       (Directory, File(..), FileType(..), MockFSZipper(..),
         MockFSException(..), directory, dirName, files, subdirs, findFile')
 import qualified System.GPIO.Linux.Sysfs.Mock.Internal as Internal
        (cd, mkdir, mkfile, pathFromRoot, rmdir)
@@ -311,22 +311,22 @@ mkfile path filetype =
 
 doesDirectoryExist :: (Monad m) => FilePath -> SysfsMockT m Bool
 doesDirectoryExist path =
-  do cwd <- zipper
-     return $ either (const False) (const True) (Internal.cd path cwd)
+  do cwz <- zipper
+     return $ either (const False) (const True) (Internal.cd path cwz)
 
 doesFileExist :: (Monad m) => FilePath -> SysfsMockT m Bool
 doesFileExist path =
   let (dirPath, fileName) = splitFileName path
   in
-    do cwd <- zipper
-       case Internal.cd dirPath cwd of
+    do cwz <- zipper
+       case Internal.cd dirPath cwz of
          Left _ -> return False
-         Right (parent, _) ->
-           return $ isJust (findFile' fileName parent)
+         Right z ->
+           return $ isJust (findFile' fileName (_cwd z))
 
 getDirectoryContents :: (MonadThrow m) => FilePath -> SysfsMockT m [FilePath]
 getDirectoryContents path =
-  do parent <- fst <$> cd path
+  do parent <- _cwd <$> cd path
      return $ fmap dirName (subdirs parent) ++ fmap _fileName (files parent)
 
 readFile :: (MonadThrow m) => FilePath -> SysfsMockT m ByteString
@@ -387,7 +387,7 @@ fileAt :: (MonadThrow m) => FilePath -> SysfsMockT m (Maybe FileType)
 fileAt path =
   let (dirPath, fileName) = splitFileName path
   in
-    do parent <- fst <$> cd dirPath
+    do parent <- _cwd <$> cd dirPath
        return $ findFile' fileName parent
 
 unlockedWriteFile :: (MonadThrow m) => FilePath -> ByteString -> SysfsMockT m ()
@@ -412,7 +412,7 @@ sysfsRoot =
 
 -- | The initial @sysfs@ filesystem zipper.
 sysfsRootZipper :: MockFSZipper
-sysfsRootZipper = (sysfsRoot, [])
+sysfsRootZipper = MockFSZipper sysfsRoot []
 
 -- Helper functions which aren't exported
 --

@@ -33,7 +33,7 @@ module System.GPIO.Linux.Sysfs.Mock.Internal
        , subdirs
        , MockFSException(..)
        , MockFSCrumb(..)
-       , MockFSZipper
+       , MockFSZipper(..)
          -- * Mock filesystem operations
        , up
        , cd
@@ -124,24 +124,29 @@ data MockFSCrumb =
               ,_succ :: [Directory]}
   deriving (Show,Eq)
 
-type MockFSZipper = (Directory, [MockFSCrumb])
+data MockFSZipper =
+  MockFSZipper {_cwd :: Directory
+               ,_crumbs :: [MockFSCrumb]}
+  deriving (Show,Eq)
 
 -- Logically equivalent to "cd .."
 up :: MockFSZipper -> MockFSZipper
-up (dir, MockFSCrumb parent ls rs:bs) = (directory (_dirName parent) (_files parent) (ls ++ [dir] ++ rs), bs)
-up (dir, []) = (dir, []) -- cd /.. == /
+up (MockFSZipper dir (MockFSCrumb parent ls rs:bs)) =
+  MockFSZipper (directory (_dirName parent) (_files parent) (ls ++ [dir] ++ rs))
+               bs
+up (MockFSZipper dir []) = MockFSZipper dir [] -- cd /.. == /
 
 root :: MockFSZipper -> MockFSZipper
-root (t, []) = (t, [])
+root (MockFSZipper t []) = MockFSZipper t []
 root z = root $ up z
 
 pathFromRoot :: MockFSZipper -> FilePath
 pathFromRoot zipper =
-  joinPath $ "/" : reverse (unfoldr walkUp zipper)
+  joinPath $ "/" : reverse (unfoldr up' zipper)
   where
-    walkUp :: MockFSZipper -> Maybe (Name, MockFSZipper)
-    walkUp z@(dir, _:_) = Just (dirName dir, up z)
-    walkUp (_, []) = Nothing
+    up' :: MockFSZipper -> Maybe (Name, MockFSZipper)
+    up' z@(MockFSZipper dir (_:_)) = Just (dirName dir, up z)
+    up' (MockFSZipper _ []) = Nothing
 
 findFile :: Name -> Directory -> ([File], [File])
 findFile name dir = break (\file -> _fileName file == name) (files dir)
@@ -169,18 +174,17 @@ cd p z =
     cd' :: MockFSZipper -> Name -> Either MockFSException MockFSZipper
     cd' zipper "." = Right zipper
     cd' zipper ".." = return $ up zipper
-    cd' (dir,bs) name =
+    cd' (MockFSZipper dir bs) name =
       case findDir name dir of
         (ls,subdir:rs) ->
-          Right (subdir
-                ,MockFSCrumb (dirNode dir) ls rs:bs)
+          Right $ MockFSZipper subdir (MockFSCrumb (dirNode dir) ls rs:bs)
         (_,[]) ->
           maybe (Left $ NoSuchFileOrDirectory p)
                 (const $ Left $ NotADirectory p)
                 (findFile' name dir)
 
 mkdir :: Name -> MockFSZipper -> Either MockFSException MockFSZipper
-mkdir name (parent, bs) =
+mkdir name (MockFSZipper parent bs) =
   if isJust $ findFile' name parent
     then Left $ FileExists name
     else
@@ -190,12 +194,13 @@ mkdir name (parent, bs) =
             then
               let child = directory name [] []
               in
-                Right (directory (dirName parent) (files parent) (child:subdirs parent), bs)
+                Right $ MockFSZipper (directory (dirName parent) (files parent) (child:subdirs parent))
+                                     bs
             else Left $ InvalidName name
         _ -> Left $ FileExists name
 
 mkfile :: Name -> FileType -> Bool -> MockFSZipper -> Either MockFSException MockFSZipper
-mkfile name filetype clobber (parent, bs) =
+mkfile name filetype clobber (MockFSZipper parent bs) =
   case findFile name parent of
     (ls, _:rs) ->
       if clobber
@@ -212,24 +217,27 @@ mkfile name filetype clobber (parent, bs) =
         then
           let file = File name filetype
           in
-            Right (directory (dirName parent) (file:fs) (subdirs parent), bs)
+            Right $ MockFSZipper (directory (dirName parent) (file:fs) (subdirs parent))
+                                 bs
         else Left $ InvalidName name
 
 rmfile :: Name -> MockFSZipper -> Either MockFSException MockFSZipper
-rmfile name (parent, bs) =
+rmfile name (MockFSZipper parent bs) =
   if isJust $ findDir' name parent
      then Left $ NotAFile name
      else
        case findFile name parent of
-         (ls, _:rs) -> Right (directory (dirName parent) (ls ++ rs) (subdirs parent), bs)
+         (ls, _:rs) -> Right $ MockFSZipper (directory (dirName parent) (ls ++ rs) (subdirs parent))
+                                            bs
          _ -> Left $ NoSuchFileOrDirectory name
 
 -- Note: recursive!
 rmdir :: Name -> MockFSZipper -> Either MockFSException MockFSZipper
-rmdir name (parent, bs) =
+rmdir name (MockFSZipper parent bs) =
   if isJust $ findFile' name parent
      then Left $ NotADirectory name
      else
        case findDir name parent of
-         (ls, _:rs) -> Right (directory (dirName parent) (files parent) (ls ++ rs), bs)
+         (ls, _:rs) -> Right $ MockFSZipper (directory (dirName parent) (files parent) (ls ++ rs))
+                                            bs
          _ -> Left $ NoSuchFileOrDirectory name

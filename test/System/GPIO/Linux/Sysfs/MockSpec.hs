@@ -6,12 +6,9 @@ import Prelude hiding (readFile, writeFile)
 import Data.List (sort)
 import qualified Data.Map.Strict as Map (empty)
 import System.GPIO.Linux.Sysfs.Mock
-import System.GPIO.Linux.Sysfs.Mock.Internal (Directory, cd, dirName)
+import System.GPIO.Linux.Sysfs.Mock.Internal (MockFSZipper(..), cd, dirName)
 import System.GPIO.Types (Pin(..))
 import Test.Hspec
-
-cwd :: MockFSZipper -> Directory
-cwd (dir, _) = dir
 
 spec :: Spec
 spec =
@@ -108,7 +105,7 @@ spec =
           evalSysfsMock (readFile "/sys/class/gpio/gpiochip64/label") sysfsRootZipper [chip0, chip16, chip64] `shouldBe` Right "abc\n"
           fmap sort (evalSysfsMock (getDirectoryContents "/sys/class/gpio") sysz [chip0, chip16, chip64]) `shouldBe` Right ["export", "gpiochip0", "gpiochip16", "gpiochip64", "unexport"]
         it "doesn't change the current working directory after creating gpiochip dirs" $ do
-          fmap (dirName . cwd . _zipper) (execSysfsMock (getDirectoryContents "/") sysfsRootZipper [chip0]) `shouldBe` Right "/"
-          fmap (dirName . cwd . _zipper) (execSysfsMock (getDirectoryContents "/") sysz [chip0]) `shouldBe` Right "sys"
+          fmap (dirName . _cwd . _zipper) (execSysfsMock (getDirectoryContents "/") sysfsRootZipper [chip0]) `shouldBe` Right "/"
+          fmap (dirName . _cwd . _zipper) (execSysfsMock (getDirectoryContents "/") sysz [chip0]) `shouldBe` Right "sys"
         it "fails when MockGpioChips overlap" $ do
           evalSysfsMock (readFile "/sys/class/gpio/gpiochip16/ngpio") sysfsRootZipper [chip0, chip16, invalidChip32] `shouldBe` Left (PinAlreadyExists $ Pin 47)
