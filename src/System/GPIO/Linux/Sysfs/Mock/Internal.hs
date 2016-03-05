@@ -79,7 +79,7 @@ data File =
   deriving (Show,Eq)
 
 data DirNode =
-  DirNode {_dirName :: Name
+  DirNode {_dirNodeName :: Name
           ,_files :: [File]}
   deriving (Show,Eq)
 
@@ -91,7 +91,7 @@ directory :: Name -> [File] -> [Directory] -> Directory
 directory name fs subs = Node (DirNode name fs) subs
 
 dirName :: Directory -> Name
-dirName = _dirName . dirNode
+dirName = _dirNodeName . dirNode
 
 files :: Directory -> [File]
 files = _files . dirNode
@@ -148,7 +148,7 @@ data MockFSZipper =
 -- Logically equivalent to "cd .."
 up :: MockFSZipper -> MockFSZipper
 up (MockFSZipper dir (MockFSCrumb parent ls rs:bs)) =
-  MockFSZipper (directory (_dirName parent) (_files parent) (ls ++ [dir] ++ rs))
+  MockFSZipper (directory (_dirNodeName parent) (_files parent) (ls ++ [dir] ++ rs))
                bs
 up (MockFSZipper dir []) = MockFSZipper dir [] -- cd /.. == /
 
@@ -200,60 +200,60 @@ cd p z =
                 (findFile name dir)
 
 mkdir :: Name -> MockFSZipper -> Either MockFSException MockFSZipper
-mkdir name (MockFSZipper parent bs) =
-  if isJust $ findFile name parent
+mkdir name (MockFSZipper cwd bs) =
+  if isJust $ findFile name cwd
     then Left $ FileExists name
     else
-      case findDir' name parent of
+      case findDir' name cwd of
         (_, []) ->
           if isValidName name
             then
-              let child = directory name [] []
+              let newDir = directory name [] []
               in
-                Right $ MockFSZipper (directory (dirName parent) (files parent) (child:subdirs parent))
+                Right $ MockFSZipper (directory (dirName cwd) (files cwd) (newDir:subdirs cwd))
                                      bs
             else Left $ InvalidName name
         _ -> Left $ FileExists name
 
 mkfile :: Name -> FileType -> Bool -> MockFSZipper -> Either MockFSException MockFSZipper
-mkfile name filetype clobber (MockFSZipper parent bs) =
-  case findFile' name parent of
+mkfile name filetype clobber (MockFSZipper cwd bs) =
+  case findFile' name cwd of
     (ls, _:rs) ->
       if clobber
          then mkfile' $ ls ++ rs
          else Left $ FileExists name
     _ ->
-      maybe (mkfile' $ files parent)
+      maybe (mkfile' $ files cwd)
             (const $ Left (FileExists name))
-            (findDir name parent)
+            (findDir name cwd)
   where
     mkfile' :: [File] -> Either MockFSException MockFSZipper
     mkfile' fs =
       if isValidName name
         then
-          let file = File name filetype
+          let newFile = File name filetype
           in
-            Right $ MockFSZipper (directory (dirName parent) (file:fs) (subdirs parent))
+            Right $ MockFSZipper (directory (dirName cwd) (newFile:fs) (subdirs cwd))
                                  bs
         else Left $ InvalidName name
 
 rmfile :: Name -> MockFSZipper -> Either MockFSException MockFSZipper
-rmfile name (MockFSZipper parent bs) =
-  if isJust $ findDir name parent
+rmfile name (MockFSZipper cwd bs) =
+  if isJust $ findDir name cwd
      then Left $ NotAFile name
      else
-       case findFile' name parent of
-         (ls, _:rs) -> Right $ MockFSZipper (directory (dirName parent) (ls ++ rs) (subdirs parent))
+       case findFile' name cwd of
+         (ls, _:rs) -> Right $ MockFSZipper (directory (dirName cwd) (ls ++ rs) (subdirs cwd))
                                             bs
          _ -> Left $ NoSuchFileOrDirectory name
 
 -- Note: recursive!
 rmdir :: Name -> MockFSZipper -> Either MockFSException MockFSZipper
-rmdir name (MockFSZipper parent bs) =
-  if isJust $ findFile name parent
+rmdir name (MockFSZipper cwd bs) =
+  if isJust $ findFile name cwd
      then Left $ NotADirectory name
      else
-       case findDir' name parent of
-         (ls, _:rs) -> Right $ MockFSZipper (directory (dirName parent) (files parent) (ls ++ rs))
+       case findDir' name cwd of
+         (ls, _:rs) -> Right $ MockFSZipper (directory (dirName cwd) (files cwd) (ls ++ rs))
                                             bs
          _ -> Left $ NoSuchFileOrDirectory name
