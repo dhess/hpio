@@ -199,6 +199,24 @@ spec =
                  mkfile "sys/foobar" (Const []) False sysfsRootZ `shouldBe` (Left $ InvalidName "sys/foobar")
                  mkfile "sys/foobar" (Const []) True sysfsRootZ `shouldBe` (Left $ InvalidName "sys/foobar")
 
+       describe "findFile" $
+         do it "finds files in the current directory" $
+              do let Right z1@(MockFSZipper dir1 _) = cd "/sys/class/gpio" sysfsRootZ
+                 findFile "export" dir1 `shouldBe` (Just Export)
+                 findFile "unexport" dir1 `shouldBe` (Just Unexport)
+                 let Right (MockFSZipper dir2 _) = mkfile "gpio1" (Const ["Hey!", "This is gpio1"]) False z1
+                 findFile "gpio1" dir2 `shouldBe` (Just ((Const ["Hey!", "This is gpio1"])))
+            it "doesn't find subdirectories in the current directory" $
+              do let Right (MockFSZipper dir1 _) = cd "/sys/class" sysfsRootZ
+                 findFile "gpio" dir1 `shouldBe` Nothing
+            it "returns failure on non-existent files" $
+              do let Right (MockFSZipper dir1 _) = cd "/sys/class" sysfsRootZ
+                 findFile "foobar" dir1 `shouldBe` Nothing
+                 findFile "export" dir1 `shouldBe` Nothing
+            it "doesn't find files in subdirectories of the current directory" $
+              do let Right (MockFSZipper dir1 _) = cd "/sys/class" sysfsRootZ
+                 findFile "gpio/export" dir1 `shouldBe` Nothing
+
        describe "rmdir" $
          do it "removes a subdirectory of the current directory" $
               do let Right z1 = cd "/sys" sysfsRootZ >>= mkdir "xyzzy" >>= mkdir "plugh"
