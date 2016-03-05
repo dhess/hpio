@@ -7,7 +7,7 @@ import Data.List (sort)
 import qualified Data.Map.Strict as Map (empty)
 import System.GPIO.Linux.Sysfs.Mock
 import System.GPIO.Linux.Sysfs.Mock.Internal (MockFSZipper(..), cd, dirName)
-import System.GPIO.Types (Pin(..))
+import System.GPIO.Types (Pin(..), PinValue(..))
 import Test.Hspec
 
 spec :: Spec
@@ -16,6 +16,23 @@ spec =
       Right sysz = (cd "/sys") sysfsRootZipper
       syszMockState = MockState sysz Map.empty
   in do
+    describe "MockPinState" $ do
+      it "logicalValue returns the correct pin value" $
+        let pinState = defaultMockPinState {_value = Low, _activeLow = False}
+        in do
+          logicalValue pinState `shouldBe` Low
+          logicalValue (pinState {_value = High}) `shouldBe` High
+          logicalValue (pinState {_activeLow = True}) `shouldBe` High
+          logicalValue (pinState {_value = High, _activeLow = True}) `shouldBe` Low
+      it "setLogicalValue sets the correct pin value" $
+        let pinState = defaultMockPinState {_value = Low, _activeLow = False}
+            activeLowPinState = defaultMockPinState {_value = Low, _activeLow = True}
+        in do
+          setLogicalValue Low pinState `shouldBe` pinState
+          setLogicalValue High pinState `shouldBe` pinState {_value = High}
+          setLogicalValue Low activeLowPinState `shouldBe` activeLowPinState {_value = High}
+          setLogicalValue High activeLowPinState `shouldBe` activeLowPinState {_value = Low}
+
     describe "SysfsMockT" $ do
 
       context "doesDirectoryExist" $ do
