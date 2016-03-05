@@ -12,9 +12,9 @@ import Test.Hspec
 
 spec :: Spec
 spec =
-  let defaultMockState = MockState sysfsRootZipper Map.empty
+  let defaultMockWorld = MockWorld sysfsRootZipper Map.empty
       Right sysz = (cd "/sys") sysfsRootZipper
-      syszMockState = MockState sysz Map.empty
+      syszMockWorld = MockWorld sysz Map.empty
   in do
     describe "MockPinState" $ do
       it "logicalValue returns the correct pin value" $
@@ -44,8 +44,8 @@ spec =
           evalSysfsMock (doesDirectoryExist "/sys/class/gpio") sysfsRootZipper [] `shouldBe` Right True
           evalSysfsMock (doesDirectoryExist "/sys/class/gpio") sysz [] `shouldBe` Right True
         it "doesn't change the initial zipper's state" $ do
-          execSysfsMock (doesDirectoryExist "/sys/class/gpio") sysfsRootZipper [] `shouldBe` Right defaultMockState
-          execSysfsMock (doesDirectoryExist "/sys/class/gpio") sysz [] `shouldBe` Right syszMockState
+          execSysfsMock (doesDirectoryExist "/sys/class/gpio") sysfsRootZipper [] `shouldBe` Right defaultMockWorld
+          execSysfsMock (doesDirectoryExist "/sys/class/gpio") sysz [] `shouldBe` Right syszMockWorld
         it "returns False on files" $ do
           evalSysfsMock (doesDirectoryExist "/sys/class/gpio/export") sysfsRootZipper [] `shouldBe` Right False
           evalSysfsMock (doesDirectoryExist "class/gpio/export") sysz [] `shouldBe` Right False
@@ -62,8 +62,8 @@ spec =
           evalSysfsMock (doesFileExist "/sys/class/gpio/export") sysfsRootZipper [] `shouldBe` Right True
           evalSysfsMock (doesFileExist "/sys/class/gpio/export") sysz [] `shouldBe` Right True
         it "doesn't change the initial zipper's state" $ do
-          execSysfsMock (doesFileExist "/sys/class/gpio/export") sysfsRootZipper [] `shouldBe` Right defaultMockState
-          execSysfsMock (doesFileExist "/sys/class/gpio/export") sysz [] `shouldBe` Right syszMockState
+          execSysfsMock (doesFileExist "/sys/class/gpio/export") sysfsRootZipper [] `shouldBe` Right defaultMockWorld
+          execSysfsMock (doesFileExist "/sys/class/gpio/export") sysz [] `shouldBe` Right syszMockWorld
         it "returns False on directories" $ do
           evalSysfsMock (doesFileExist "/sys/class/gpio") sysfsRootZipper [] `shouldBe` Right False
           evalSysfsMock (doesFileExist "class/gpio") sysz [] `shouldBe` Right False
@@ -85,8 +85,8 @@ spec =
           fmap sort (evalSysfsMock (getDirectoryContents "/sys/class/gpio") sysz []) `shouldBe` (Right $ sort ["export", "unexport"])
           fmap sort (evalSysfsMock (getDirectoryContents "/class") sysz []) `shouldBe` Left (NoSuchFileOrDirectory "/class")
         it "doesn't change the initial zipper's state" $ do
-          execSysfsMock (getDirectoryContents "/sys/class/gpio") sysfsRootZipper [] `shouldBe` Right defaultMockState
-          execSysfsMock (getDirectoryContents "/sys/class/gpio") sysz [] `shouldBe` Right syszMockState
+          execSysfsMock (getDirectoryContents "/sys/class/gpio") sysfsRootZipper [] `shouldBe` Right defaultMockWorld
+          execSysfsMock (getDirectoryContents "/sys/class/gpio") sysz [] `shouldBe` Right syszMockWorld
         it "returns failure on files" $ do
           evalSysfsMock (getDirectoryContents "/sys/class/gpio/export") sysfsRootZipper [] `shouldBe` Left (NotADirectory "/sys/class/gpio/export")
           evalSysfsMock (getDirectoryContents "class/gpio/export") sysz [] `shouldBe` Left (NotADirectory "class/gpio/export")

@@ -17,21 +17,21 @@ A mock 'MonadSysfs' instance, for testing GPIO programs.
 {-# LANGUAGE Trustworthy #-}
 
 module System.GPIO.Linux.Sysfs.Mock
-       ( -- * The SysfsMock monad
-         SysfsMockT(..)
-       , runSysfsMockT
-       , runSysfsMock
-       , evalSysfsMock
-       , execSysfsMock
-         -- * SysfsMock types
-       , MockFSZipper
+       ( -- * SysfsMock types
+         MockFSZipper
        , MockPinState(..)
        , defaultMockPinState
        , logicalValue
        , setLogicalValue
        , MockGpioChip(..)
        , MockPins
-       , MockState(..)
+       , MockWorld(..)
+         -- * The SysfsMock monad
+       , SysfsMockT(..)
+       , runSysfsMockT
+       , runSysfsMock
+       , evalSysfsMock
+       , execSysfsMock
          -- * Mock @sysfs@ operations
        , doesDirectoryExist
        , doesFileExist
@@ -131,16 +131,16 @@ data MockGpioChip =
 type MockPins = Map Pin MockPinState
 
 -- | The global state of the mock @sysfs@ filesystem.
-data MockState =
-  MockState {_zipper :: MockFSZipper
+data MockWorld =
+  MockWorld {_zipper :: MockFSZipper
             ,_pins :: MockPins}
   deriving (Show,Eq)
 
 -- | A monad transformer which adds mock @sysfs@ computations to an
 -- inner monad 'm'.
 newtype SysfsMockT m a =
-  SysfsMockT {unSysfsMockT :: StateT MockState m a}
-  deriving (Alternative,Applicative,Functor,Monad,MonadFix,MonadIO,MonadThrow,MonadCatch,MonadMask,MonadState MockState,MonadReader r,MonadWriter w)
+  SysfsMockT {unSysfsMockT :: StateT MockWorld m a}
+  deriving (Alternative,Applicative,Functor,Monad,MonadFix,MonadIO,MonadThrow,MonadCatch,MonadMask,MonadState MockWorld,MonadReader r,MonadWriter w)
 
 zipper :: (Monad m) => SysfsMockT m MockFSZipper
 zipper = gets _zipper
@@ -172,7 +172,7 @@ putPinState pin f =
 -- | Run a mock @sysfs@ computation in monad 'm' with an initial
 -- filesystem ('MockFSZipper') and list of 'MockGpioChip'; and return
 -- a tuple containing the computation's value and the final
--- 'MockState'. If an exception occurs in the mock computation, a
+-- 'MockWorld'. If an exception occurs in the mock computation, a
 -- 'MockFSException' is thrown.
 --
 -- Before running the computation, the mock filesystem is populated
@@ -180,9 +180,9 @@ putPinState pin f =
 -- any of the chips in the list are already present in the filesystem,
 -- or if any of the chips' pin ranges overlap, a 'MockFSException' is
 -- thrown.
-runSysfsMockT :: (MonadThrow m) => SysfsMockT m a -> MockFSZipper -> [MockGpioChip] -> m (a, MockState)
+runSysfsMockT :: (MonadThrow m) => SysfsMockT m a -> MockFSZipper -> [MockGpioChip] -> m (a, MockWorld)
 runSysfsMockT action startfs chips =
-  do startState <- execStateT (unSysfsMockT $ pushd "/" (makeFileSystem chips)) (MockState startfs Map.empty)
+  do startState <- execStateT (unSysfsMockT $ pushd "/" (makeFileSystem chips)) (MockWorld startfs Map.empty)
      runStateT (unSysfsMockT action) startState
 
 -- | The simplest possible (pure) mock @sysfs@ monad.
@@ -190,14 +190,14 @@ type SysfsMock a = SysfsMockT Catch a
 
 -- | Run a 'SysfsMock' computation with an initial filesystem and list
 -- of 'MockGpioChip's, and return a tuple containing the computation's
--- value and the final 'MockState'. Any exceptions that occur in the
+-- value and the final 'MockWorld'. Any exceptions that occur in the
 -- mock computation are returned as a 'Left' value.
 --
 -- Before running the computation, the mock filesystem is populated
 -- with the GPIO pins as specified by the list of 'MockGpioChip's. If
 -- any of the chips in the list are already present in the filesystem,
 -- or if any of the chips' pin ranges overlap, an error is returned.
-runSysfsMock :: SysfsMock a -> MockFSZipper -> [MockGpioChip] -> Either MockFSException (a, MockState)
+runSysfsMock :: SysfsMock a -> MockFSZipper -> [MockGpioChip] -> Either MockFSException (a, MockWorld)
 runSysfsMock a z chips =
   -- The 'MonadThrow' instance for 'Either' 'e' requires that 'e' '~'
   -- 'SomeException', and 'SomeException' has no 'Eq' instance, which
@@ -223,7 +223,7 @@ evalSysfsMock :: SysfsMock a -> MockFSZipper -> [MockGpioChip] -> Either MockFSE
 evalSysfsMock a z chips = fst <$> runSysfsMock a z chips
 
 -- | Run a 'SysfsMock' computation with an initial filesystem and list
--- of 'MockGpioChip's, and return the final 'MockState', discarding
+-- of 'MockGpioChip's, and return the final 'MockWorld', discarding
 -- the computation's value. Any exceptions that occur in the mock
 -- computation are returned as a 'Left' value.
 --
@@ -231,7 +231,7 @@ evalSysfsMock a z chips = fst <$> runSysfsMock a z chips
 -- with the GPIO pins as specified by the list of 'MockGpioChip's. If
 -- any of the chips in the list are already present in the filesystem,
 -- or if any of the chips' pin ranges overlap, an error is returned.
-execSysfsMock :: SysfsMock a -> MockFSZipper -> [MockGpioChip] -> Either MockFSException MockState
+execSysfsMock :: SysfsMock a -> MockFSZipper -> [MockGpioChip] -> Either MockFSException MockWorld
 execSysfsMock a z chips = snd <$> runSysfsMock a z chips
 
 instance (MonadSysfs m, MonadThrow m) => M.MonadSysfs (SysfsMockT m) where
