@@ -18,14 +18,15 @@ A mock 'MonadSysfs' instance, for testing GPIO programs.
 
 module System.GPIO.Linux.Sysfs.Mock
        ( -- * SysfsMock types
-         MockFSZipper
-       , MockPinState(..)
+         MockPinState(..)
        , defaultMockPinState
        , logicalValue
        , setLogicalValue
        , MockGpioChip(..)
        , MockPins
-       , MockWorld(..)
+       , MockWorld
+       , pins
+       , initialMockWorld
          -- * The SysfsMock monad
        , SysfsMockT(..)
        , runSysfsMockT
@@ -40,9 +41,6 @@ module System.GPIO.Linux.Sysfs.Mock
        , writeFile
        , unlockedWriteFile
        , pollFile
-         -- * The initial @sysfs@ mock filesystem
-       , sysfsRoot
-       , sysfsRootZipper
          -- * Mock @sysfs@ exceptions
        , MockFSException(..)
        ) where
@@ -130,11 +128,42 @@ data MockGpioChip =
 -- | A type alias for a strict map of 'Pin' to its 'MockPinState'.
 type MockPins = Map Pin MockPinState
 
--- | The global state of the mock @sysfs@ filesystem.
+-- | The global state of a mock Linux GPIO subsystem with a @sysfs@
+-- interface. It consists of the mock @sysfs@ GPIO filesystem state,
+-- along with the state of every mock pin.
+--
+-- An actual Linux @sysfs@ GPIO filesystem is not like a
+-- general-purpose filesystem. The user cannot create files or
+-- directories directly; they can only be created (or modified) via
+-- prescribed operations on special conrol files, which are themselves
+-- created by the kernel.
+--
+-- Likewise, the kernel and hardware platform together determine which
+-- GPIO pins are exposed to the user via the @sysfs@ GPIO filesystem.
+--
+-- To preserve the illusion of an actual @sysfs@ GPIO filesystem,
+-- then, the 'MockWorld' type is opaque and can only be manipulated
+-- via the handful of operations that are implemented in this module,
+-- which have been designed to keep the internal state of the mock
+-- @sysfs@ GPIO filesystem consistent with the behavior that would be
+-- seen in an actual @sysfs@ GPIO filesystem.
+--
+-- The high/low value on a GPIO pin can, of course, be manipulated by
+-- the circuit to which the pin is conected. A future version of this
+-- implementation may permit the direct manipulation of mock pin
+-- values in order to simulate simple circuits, but currently the only
+-- way to manipulate pin state is via the mock @sysfs@ GPIO
+-- filesystem.
 data MockWorld =
   MockWorld {_zipper :: MockFSZipper
             ,_pins :: MockPins}
   deriving (Show,Eq)
+
+pins :: MockWorld -> MockPins
+pins = _pins
+
+initialMockWorld :: MockWorld
+initialMockWorld = MockWorld sysfsRootZipper Map.empty
 
 -- | A monad transformer which adds mock @sysfs@ computations to an
 -- inner monad 'm'.
@@ -142,20 +171,20 @@ newtype SysfsMockT m a =
   SysfsMockT {unSysfsMockT :: StateT MockWorld m a}
   deriving (Alternative,Applicative,Functor,Monad,MonadFix,MonadIO,MonadThrow,MonadCatch,MonadMask,MonadState MockWorld,MonadReader r,MonadWriter w)
 
-zipper :: (Monad m) => SysfsMockT m MockFSZipper
-zipper = gets _zipper
+getZipper :: (Monad m) => SysfsMockT m MockFSZipper
+getZipper = gets _zipper
 
 putZipper :: (Monad m) => MockFSZipper -> SysfsMockT m ()
 putZipper z =
   do s <- get
      put $ s {_zipper = z}
 
-pins :: (Monad m) => SysfsMockT m MockPins
-pins = gets _pins
+getPins :: (Monad m) => SysfsMockT m MockPins
+getPins = gets _pins
 
 pinState :: (MonadThrow m) => Pin -> SysfsMockT m MockPinState
 pinState pin =
-  Map.lookup pin <$> pins >>= \case
+  Map.lookup pin <$> getPins >>= \case
     Nothing -> throwM $ InvalidPin pin
     Just s -> return s
 
@@ -167,28 +196,27 @@ putPins ps =
 putPinState :: (MonadThrow m) => Pin -> (MockPinState -> MockPinState) -> SysfsMockT m ()
 putPinState pin f =
   do ps <- pinState pin
-     (Map.insert pin (f ps) <$> pins) >>= putPins
+     (Map.insert pin (f ps) <$> getPins) >>= putPins
 
--- | Run a mock @sysfs@ computation in monad 'm' with an initial
--- filesystem ('MockFSZipper') and list of 'MockGpioChip'; and return
--- a tuple containing the computation's value and the final
--- 'MockWorld'. If an exception occurs in the mock computation, a
--- 'MockFSException' is thrown.
+-- | Run a mock @sysfs@ computation in monad 'm' with an initial mock
+-- world and list of 'MockGpioChip'; and return a tuple containing the
+-- computation's value and the final 'MockWorld'. If an exception
+-- occurs in the mock computation, a 'MockFSException' is thrown.
 --
 -- Before running the computation, the mock filesystem is populated
 -- with the GPIO pins as specified by the list of 'MockGpioChip's. If
 -- any of the chips in the list are already present in the filesystem,
 -- or if any of the chips' pin ranges overlap, a 'MockFSException' is
 -- thrown.
-runSysfsMockT :: (MonadThrow m) => SysfsMockT m a -> MockFSZipper -> [MockGpioChip] -> m (a, MockWorld)
-runSysfsMockT action startfs chips =
-  do startState <- execStateT (unSysfsMockT $ pushd "/" (makeFileSystem chips)) (MockWorld startfs Map.empty)
+runSysfsMockT :: (MonadThrow m) => SysfsMockT m a -> MockWorld -> [MockGpioChip] -> m (a, MockWorld)
+runSysfsMockT action world chips =
+  do startState <- execStateT (unSysfsMockT $ pushd "/" (makeFileSystem chips)) world
      runStateT (unSysfsMockT action) startState
 
 -- | The simplest possible (pure) mock @sysfs@ monad.
 type SysfsMock a = SysfsMockT Catch a
 
--- | Run a 'SysfsMock' computation with an initial filesystem and list
+-- | Run a 'SysfsMock' computation with an initial mock world and list
 -- of 'MockGpioChip's, and return a tuple containing the computation's
 -- value and the final 'MockWorld'. Any exceptions that occur in the
 -- mock computation are returned as a 'Left' value.
@@ -197,20 +225,20 @@ type SysfsMock a = SysfsMockT Catch a
 -- with the GPIO pins as specified by the list of 'MockGpioChip's. If
 -- any of the chips in the list are already present in the filesystem,
 -- or if any of the chips' pin ranges overlap, an error is returned.
-runSysfsMock :: SysfsMock a -> MockFSZipper -> [MockGpioChip] -> Either MockFSException (a, MockWorld)
-runSysfsMock a z chips =
+runSysfsMock :: SysfsMock a -> MockWorld -> [MockGpioChip] -> Either MockFSException (a, MockWorld)
+runSysfsMock a w chips =
   -- The 'MonadThrow' instance for 'Either' 'e' requires that 'e' '~'
   -- 'SomeException', and 'SomeException' has no 'Eq' instance, which
   -- makes this monad not very useful for testing. Therefore, we convert the
   -- exception type back to 'MockFSException'.
-  case runCatch $ runSysfsMockT a z chips of
+  case runCatch $ runSysfsMockT a w chips of
     Right result -> return result
     Left e ->
       -- Should be safe as there's no other exception type in this
       -- stack.
       Left $ fromJust $ fromException e
 
--- | Run a 'SysfsMock' computation with an initial filesystem and list
+-- | Run a 'SysfsMock' computation with an initial mock world and list
 -- of 'MockGpioChip's, and return the computation's value, discarding
 -- the final state. Any exceptions that occur in the mock computation
 -- are returned as a 'Left' value.
@@ -219,10 +247,10 @@ runSysfsMock a z chips =
 -- with the GPIO pins as specified by the list of 'MockGpioChip's. If
 -- any of the chips in the list are already present in the filesystem,
 -- or if any of the chips' pin ranges overlap, an error is returned.
-evalSysfsMock :: SysfsMock a -> MockFSZipper -> [MockGpioChip] -> Either MockFSException a
-evalSysfsMock a z chips = fst <$> runSysfsMock a z chips
+evalSysfsMock :: SysfsMock a -> MockWorld -> [MockGpioChip] -> Either MockFSException a
+evalSysfsMock a w chips = fst <$> runSysfsMock a w chips
 
--- | Run a 'SysfsMock' computation with an initial filesystem and list
+-- | Run a 'SysfsMock' computation with an initial mock world and list
 -- of 'MockGpioChip's, and return the final 'MockWorld', discarding
 -- the computation's value. Any exceptions that occur in the mock
 -- computation are returned as a 'Left' value.
@@ -231,8 +259,8 @@ evalSysfsMock a z chips = fst <$> runSysfsMock a z chips
 -- with the GPIO pins as specified by the list of 'MockGpioChip's. If
 -- any of the chips in the list are already present in the filesystem,
 -- or if any of the chips' pin ranges overlap, an error is returned.
-execSysfsMock :: SysfsMock a -> MockFSZipper -> [MockGpioChip] -> Either MockFSException MockWorld
-execSysfsMock a z chips = snd <$> runSysfsMock a z chips
+execSysfsMock :: SysfsMock a -> MockWorld -> [MockGpioChip] -> Either MockFSException MockWorld
+execSysfsMock a w chips = snd <$> runSysfsMock a w chips
 
 instance (MonadSysfs m, MonadThrow m) => M.MonadSysfs (SysfsMockT m) where
   doesDirectoryExist = doesDirectoryExist
@@ -246,13 +274,13 @@ instance (MonadSysfs m, MonadThrow m) => M.MonadSysfs (SysfsMockT m) where
 makeFileSystem :: (MonadThrow m) => [MockGpioChip] -> SysfsMockT m MockFSZipper
 makeFileSystem chips =
   do mapM_ makeChip chips
-     zipper
+     getZipper
 
 makeChip :: (MonadThrow m) => MockGpioChip -> SysfsMockT m ()
 makeChip chip =
   let chipdir = sysfsPath </> ("gpiochip" ++ show (_base chip))
   in
-    addPins (_base chip) (_initialPinStates chip) <$> pins >>= \case
+    addPins (_base chip) (_initialPinStates chip) <$> getPins >>= \case
       Left e -> throwM e
       Right newPinState ->
         do putPins newPinState
@@ -274,7 +302,7 @@ addPin (pin, st) pm =
 
 pushd :: (MonadThrow m) => FilePath -> SysfsMockT m a -> SysfsMockT m a
 pushd path action =
-  do z <- zipper
+  do z <- getZipper
      let restorePath = Internal.pathFromRoot z
      cd path >>= putZipper
      result <- action
@@ -283,7 +311,7 @@ pushd path action =
 
 cd :: (MonadThrow m) => FilePath -> SysfsMockT m MockFSZipper
 cd name =
-  do fsz <- zipper
+  do fsz <- getZipper
      case Internal.cd name fsz of
        Left e -> throwM e
        Right newz -> return newz
@@ -311,14 +339,14 @@ mkfile path filetype =
 
 doesDirectoryExist :: (Monad m) => FilePath -> SysfsMockT m Bool
 doesDirectoryExist path =
-  do cwz <- zipper
+  do cwz <- getZipper
      return $ either (const False) (const True) (Internal.cd path cwz)
 
 doesFileExist :: (Monad m) => FilePath -> SysfsMockT m Bool
 doesFileExist path =
   let (dirPath, fileName) = splitFileName path
   in
-    do cwz <- zipper
+    do cwz <- getZipper
        case Internal.cd dirPath cwz of
          Left _ -> return False
          Right z ->

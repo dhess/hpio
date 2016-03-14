@@ -2,9 +2,21 @@
 
 module System.GPIO.Linux.Sysfs.MockInternalSpec (spec) where
 
-import System.GPIO.Linux.Sysfs.Mock (sysfsRoot)
 import System.GPIO.Linux.Sysfs.Mock.Internal
 import Test.Hspec
+
+sysfsRoot :: Directory
+sysfsRoot =
+  directory "/"
+            []
+            [directory "sys"
+                       []
+                       [directory "class"
+                                  []
+                                  [directory "gpio"
+                                             [File "export" Export
+                                             ,File "unexport" Unexport]
+                                             []]]]
 
 parentName :: MockFSCrumb -> Name
 parentName = _dirNodeName . _node
