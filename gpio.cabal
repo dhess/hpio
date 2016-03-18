@@ -100,6 +100,7 @@ Executable gpio-example
   HS-Source-Dirs:       examples
   Build-Depends:        base ==4.*
                       , async
+                      , exceptions
                       , gpio
                       , mtl
                       , optparse-applicative

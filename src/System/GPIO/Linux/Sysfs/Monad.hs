@@ -55,9 +55,9 @@ module System.GPIO.Linux.Sysfs.Monad
 
 import Prelude hiding (readFile, writeFile)
 import Control.Monad (filterM, void)
-import Control.Monad.Catch (MonadCatch(..), MonadMask(..), MonadThrow(..), bracket, throwM)
+import Control.Monad.Catch (MonadCatch, MonadMask, MonadThrow, throwM)
 import Control.Monad.IO.Class (MonadIO)
-import Control.Monad.Trans.Class
+import Control.Monad.Trans.Class (MonadTrans, lift)
 import Control.Monad.Trans.Cont (ContT)
 import Control.Monad.Trans.Except (ExceptT)
 import Control.Monad.Trans.Identity (IdentityT)
@@ -220,7 +220,7 @@ instance (MonadSysfs m, Monoid w) => MonadSysfs (StrictWriter.WriterT w m) where
 -- monad to operations on Linux's native @sysfs@ GPIO interface.
 newtype SysfsGpioT m a =
   SysfsGpioT {runSysfsGpioT :: m a}
-  deriving (Monad,Functor,Applicative,MonadThrow,MonadMask,MonadCatch,MonadIO)
+  deriving (Monad,Functor,Applicative,MonadThrow,MonadCatch,MonadMask,MonadIO)
 
 instance MonadTrans SysfsGpioT where
   lift = SysfsGpioT
@@ -231,7 +231,7 @@ instance MonadTrans SysfsGpioT where
 -- versions of the package.
 newtype PinDescriptor = PinDescriptor { _pin :: Pin } deriving (Show, Eq, Ord)
 
-instance (MonadMask m, MonadThrow m, MonadSysfs m) => MonadGpio PinDescriptor (SysfsGpioT m) where
+instance (MonadThrow m, MonadSysfs m) => MonadGpio PinDescriptor (SysfsGpioT m) where
   pins =
     lift sysfsIsPresent >>= \case
       False -> return []
@@ -302,8 +302,6 @@ instance (MonadMask m, MonadThrow m, MonadSysfs m) => MonadGpio PinDescriptor (S
   -- N.B.: see 'getPinActiveLevel'.
   setPinActiveLevel (PinDescriptor p) v =
     lift $ writePinActiveLow p $ valueToBool (invertValue v)
-
-  withPin p = bracket (openPin p) closePin
 
 -- | Test whether the @sysfs@ GPIO filesystem is available.
 sysfsIsPresent :: (MonadSysfs m) => m Bool

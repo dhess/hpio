@@ -18,7 +18,10 @@ A monadic context for GPIO computations.
 module System.GPIO.Monad
        ( -- * MonadGpio class
          MonadGpio(..)
+       , withPin
        ) where
+
+import Control.Monad.Catch (MonadMask, bracket)
 
 import System.GPIO.Types (Pin, PinDirection, PinReadTrigger, PinValue)
 
@@ -147,13 +150,14 @@ class Monad m => MonadGpio h m | m -> h where
   -- | Set the pin's "active" level, 'Low' or 'High'.
   setPinActiveLevel :: h -> PinValue -> m ()
 
-  -- | Exception-safe pin management.
-  --
-  -- 'withPin' opens a pin using 'openPin' and passes the handle to
-  -- the given GPIO computation. Upon completion of the computation or
-  -- an exception occuring within the computation, 'withPin' closes
-  -- the handle using 'closePin' and then propagates the result,
-  -- either by returning the value of the computation or by re-raising
-  -- the exception. If closing the handle raises an exception, this
-  -- exception will be raised by 'withPin'.
-  withPin :: MonadGpio h m => Pin -> (h -> m a) -> m a
+-- | Exception-safe pin management.
+--
+-- 'withPin' opens a pin using 'openPin' and passes the handle to
+-- the given GPIO computation. Upon completion of the computation or
+-- an exception occuring within the computation, 'withPin' closes
+-- the handle using 'closePin' and then propagates the result,
+-- either by returning the value of the computation or by re-raising
+-- the exception. If closing the handle raises an exception, this
+-- exception will be raised by 'withPin'.
+withPin :: (MonadMask m, MonadGpio h m) => Pin -> (h -> m a) -> m a
+withPin p = bracket (openPin p) closePin

@@ -6,6 +6,7 @@ module Main where
 import Control.Concurrent (threadDelay)
 import Control.Concurrent.Async (concurrently)
 import Control.Monad (forever, void)
+import Control.Monad.Catch (MonadMask)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.Foldable (for_)
 import Options.Applicative
@@ -95,7 +96,7 @@ listPins =
     [] -> output "No GPIO pins found on this system"
     ps -> for_ ps $ liftIO . print
 
-edgeRead :: (MonadIO m, MonadGpio h m) => Pin -> PinReadTrigger -> Int -> m ()
+edgeRead :: (MonadMask m, MonadIO m, MonadGpio h m) => Pin -> PinReadTrigger -> Int -> m ()
 edgeRead p trigger to =
   withPin p $ \h ->
     do setPinDirection h In
@@ -106,7 +107,7 @@ edgeRead p trigger to =
               Nothing -> output ("readPin timed out after " ++ show to ++ " microseconds")
               Just v -> output ("Input: " ++ show v)
 
-driveOutput :: (MonadIO m, MonadGpio h m) => Pin -> Int -> m ()
+driveOutput :: (MonadMask m, MonadIO m, MonadGpio h m) => Pin -> Int -> m ()
 driveOutput p delay =
   withPin p $ \h ->
     do setPinDirection h Out

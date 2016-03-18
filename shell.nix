@@ -21,7 +21,7 @@ let
           unix-bytestring
         ];
         executableHaskellDepends = [
-          async base mtl optparse-applicative transformers
+          async base exceptions mtl optparse-applicative transformers
           transformers-compat
         ];
         testHaskellDepends = [
