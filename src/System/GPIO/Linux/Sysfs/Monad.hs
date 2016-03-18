@@ -54,22 +54,27 @@ module System.GPIO.Linux.Sysfs.Monad
        ) where
 
 import Prelude hiding (readFile, writeFile)
-import Control.Monad (filterM, void)
+import Control.Applicative (Alternative)
+import Control.Monad (MonadPlus, filterM, void)
 import Control.Monad.Catch (MonadCatch, MonadMask, MonadThrow, throwM)
+import Control.Monad.Cont (MonadCont, ContT)
+import Control.Monad.Except (MonadError, ExceptT)
+import Control.Monad.Fix (MonadFix)
 import Control.Monad.IO.Class (MonadIO)
+import Control.Monad.Reader (MonadReader, ReaderT)
+import Control.Monad.RWS (MonadRWS)
+import Control.Monad.State (MonadState)
 import Control.Monad.Trans.Class (MonadTrans, lift)
-import Control.Monad.Trans.Cont (ContT)
-import Control.Monad.Trans.Except (ExceptT)
 import Control.Monad.Trans.Identity (IdentityT)
 import Control.Monad.Trans.List (ListT)
 import Control.Monad.Trans.Maybe (MaybeT)
-import Control.Monad.Trans.Reader (ReaderT)
 import qualified Control.Monad.Trans.RWS.Lazy as LazyRWS (RWST)
 import qualified Control.Monad.Trans.RWS.Strict as StrictRWS (RWST)
 import qualified Control.Monad.Trans.State.Lazy as LazyState (StateT)
 import qualified Control.Monad.Trans.State.Strict as StrictState (StateT)
 import qualified Control.Monad.Trans.Writer.Lazy as LazyWriter (WriterT)
 import qualified Control.Monad.Trans.Writer.Strict as StrictWriter (WriterT)
+import Control.Monad.Writer (MonadWriter)
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Char8 as C8 (readInt, unpack)
 import Data.List (isPrefixOf, sort)
@@ -220,7 +225,7 @@ instance (MonadSysfs m, Monoid w) => MonadSysfs (StrictWriter.WriterT w m) where
 -- monad to operations on Linux's native @sysfs@ GPIO interface.
 newtype SysfsGpioT m a =
   SysfsGpioT {runSysfsGpioT :: m a}
-  deriving (Monad,Functor,Applicative,MonadThrow,MonadCatch,MonadMask,MonadIO)
+  deriving (Functor,Alternative,Applicative,Monad,MonadFix,MonadPlus,MonadThrow,MonadCatch,MonadMask,MonadCont,MonadIO,MonadReader r,MonadError e,MonadWriter w,MonadState s,MonadRWS r w s)
 
 instance MonadTrans SysfsGpioT where
   lift = SysfsGpioT
