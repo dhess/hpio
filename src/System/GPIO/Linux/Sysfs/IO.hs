@@ -1,6 +1,6 @@
 {-|
 Module      : System.GPIO.Linux.Sysfs.IO
-Description : The actual Linux @sysfs@ GPIO implementation
+Description : Linux @sysfs@ GPIO operations in IO
 Copyright   : (c) 2016, Drew Hess
 License     : BSD3
 Maintainer  : Drew Hess <src@drewhess.com>
@@ -40,11 +40,11 @@ import Foreign.C.Types (CInt(..))
 import qualified Language.C.Inline as C (include)
 import qualified Language.C.Inline.Interruptible as CI
 import qualified System.Directory as D (doesDirectoryExist, doesFileExist, getDirectoryContents)
-import System.GPIO.Linux.Sysfs.Monad
-import System.GPIO.Linux.Sysfs.Free
 import "unix" System.Posix.IO (OpenMode(ReadOnly, WriteOnly), closeFd, defaultFileFlags, openFd)
 import "unix-bytestring" System.Posix.IO.ByteString (fdWrite)
 import System.Posix.Types (Fd)
+
+import System.GPIO.Linux.Sysfs.Monad (MonadSysfs(..), SysfsGpioT(..))
 
 -- Our poll(2) wrapper.
 --
@@ -120,13 +120,13 @@ pollSysfs fd timeout =
          return poll_result;
      } |]
 
--- | A monad transformer which adds Linux @sysfs@ GPIO computations to
--- an inner monad 'm'.
+-- | An instance of 'MonadSysfs' which runs 'MonadSysfs' operations in
+-- IO.
 --
 -- == Interactions with threads
 -- Some parts of this GPIO implementation use the Haskell C FFI, and
 -- may block on C I/O operations. (Specifically,
--- 'System.GPIO.Free.readPin' will block in the C FFI until its event
+-- 'System.GPIO.Monad.readPin' will block in the C FFI until its event
 -- is triggered.) When using this implementation with GHC, you should
 -- compile your program with the @-threaded@ option, so that threads
 -- performing these blocking operations do not block other Haskell
@@ -144,14 +144,14 @@ newtype SysfsIOT m a =
   SysfsIOT { runSysfsIOT :: m a }
   deriving (Applicative,Functor,Monad,MonadFix,MonadIO,MonadThrow,MonadCatch,MonadMask)
 
--- | A convenient specialization of 'SysfsT' which runs GPIO eDSL
--- computations in 'IO'.
-type SysfsIO a = SysfsT (SysfsIOT IO) (SysfsIOT IO) a
+-- | A convenient specialization of 'SysfsGpioT' which runs GPIO
+-- computations in 'IO' via @sysfs@.
+type SysfsIO a = SysfsGpioT (SysfsIOT IO) a
 
 -- | Run a 'SysfsIO' computation in the 'IO' monad and return the
 -- result.
 runSysfsIO :: SysfsIO a -> IO a
-runSysfsIO action = runSysfsIOT $ runSysfsT action
+runSysfsIO action = runSysfsIOT $ runSysfsGpioT action
 
 instance MonadTrans SysfsIOT where
   lift = SysfsIOT

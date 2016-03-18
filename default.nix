@@ -1,7 +1,7 @@
 { mkDerivation, async, base, bytestring, containers, directory
-, exceptions, filepath, free, hspec, inline-c, mtl
-, optparse-applicative, QuickCheck, stdenv, text, transformers
-, transformers-compat, unix, unix-bytestring
+, exceptions, filepath, hspec, inline-c, mtl, optparse-applicative
+, QuickCheck, stdenv, text, transformers, transformers-compat, unix
+, unix-bytestring
 }:
 mkDerivation {
   pname = "gpio";
@@ -10,8 +10,8 @@ mkDerivation {
   isLibrary = true;
   isExecutable = true;
   libraryHaskellDepends = [
-    base bytestring containers directory exceptions filepath free
-    inline-c mtl QuickCheck text transformers transformers-compat unix
+    base bytestring containers directory exceptions filepath inline-c
+    mtl QuickCheck text transformers transformers-compat unix
     unix-bytestring
   ];
   executableHaskellDepends = [
@@ -19,7 +19,7 @@ mkDerivation {
     transformers-compat
   ];
   testHaskellDepends = [
-    base bytestring containers directory exceptions filepath free hspec
+    base bytestring containers directory exceptions filepath hspec
     inline-c mtl QuickCheck text transformers transformers-compat unix
     unix-bytestring
   ];

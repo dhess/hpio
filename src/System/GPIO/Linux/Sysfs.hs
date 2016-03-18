@@ -30,29 +30,25 @@ two namespaces.
 module System.GPIO.Linux.Sysfs
        ( -- * The Linux @sysfs@ GPIO interpreter
          --
-         -- | These types and functions provide the interpreter for
-         -- running 'System.GPIO.Free.GpioF' eDSL programs on a Linux
-         -- host with the @sysfs@ GPIO filesystem.
+         -- | These types and functions provide an instance of the
+         -- 'System.GPIO.Monad.MonadGpio' monad type class for running
+         -- GPIO computations on a Linux host via the @sysfs@ GPIO
+         -- filesystem.
          --
-         -- This interpreter has a pluggable @sysfs@ GPIO back-end,
-         -- implemented as the @mtl@-style
-         -- 'System.GPIO.Linux.Sysfs.Monad.MonadSysfs' type class.
-         -- Therefore, you must combine this interpreter with a
-         -- 'System.GPIO.Linux.Sysfs.Monad.MonadSysfs' instance in
-         -- order to run it.
+         -- The implementation abstracts back-end @sysfs@ filesystem
+         -- operations via the
+         -- 'System.GPIO.Linux.Sysfs.Monad.MonadSysfs' monad type
+         -- class. Primarily, this abstraction exists in order to more
+         -- easily test @sysfs@ GPIO programs on non-Linux systems, or
+         -- on Linux systems which lack actual GPIO functionality.
          --
-         -- Typically, you'll want to use the 'SysfsIO' monad (or its
-         -- corresponding 'SysfsIOT' monad transformer) as the @sysfs@
-         -- GPIO back-end, which is designed to run on an actual Linux
-         -- host and perform real GPIO operations.
-         --
-          -- (Currently, 'SysfsIO' is the only available
-          -- 'System.GPIO.Linux.Sysfs.Monad.MonadSysfs' instance, but
-          -- a "mock" instance for testing will be made available in
-          -- the future.)
-         SysfsF
-       , SysfsT
-       , runSysfsT
+         -- For real GPIO programs on real GPIO systems, you'll want
+         -- to use the 'SysfsIO' monad (or its corresponding
+         -- 'SysfsIOT' monad transformer) as the @sysfs@ GPIO
+         -- back-end, which is designed to run on an actual Linux host
+         -- and perform real GPIO operations.
+         SysfsGpioT
+       , runSysfsGpioT
        , PinDescriptor(..)
          -- * The Linux @sysfs@ GPIO monad
          --
@@ -61,13 +57,11 @@ module System.GPIO.Linux.Sysfs
        , runSysfsIO
          -- * Low-level @sysfs@ GPIO functions
          --
-         -- | If you don't want the overhead of the
-         -- 'System.GPIO.Free.GpioF' eDSL interpreter, and are willing
-         -- to give up portability, you can use these functions to
-         -- write directly to the Linux @sysfs@ GPIO filesystem. You
-         -- will still need to "run" them with a
-         -- 'System.GPIO.Linux.Sysfs.Monad.MonadSysfs' instance,
-         -- however.
+         -- | A slightly more low-level API is also available if you
+         -- want to write directly to the Linux @sysfs@ GPIO
+         -- filesystem, or do something that the
+         -- 'System.GPIO.Monad.MonadGpio' portable GPIO interface
+         -- doesn't allow you to express.
        , sysfsIsPresent
        , availablePins
        , pinIsExported
@@ -95,7 +89,6 @@ module System.GPIO.Linux.Sysfs
        , SysfsException(..)
        ) where
 
-import System.GPIO.Linux.Sysfs.Free
+import System.GPIO.Linux.Sysfs.Monad
 import System.GPIO.Linux.Sysfs.IO
 import System.GPIO.Linux.Sysfs.Types
-import System.GPIO.Linux.Sysfs.Native

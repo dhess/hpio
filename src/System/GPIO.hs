@@ -16,12 +16,12 @@ Top-level re-exports for writing GPIO programs.
 module System.GPIO
        ( -- * GPIO types
          module System.GPIO.Types
-         -- * The GPIO eDSL
-       , module System.GPIO.Free
+         -- * The MonadGpio class
+       , module System.GPIO.Monad
           -- * GPIO in Linux
        , module System.GPIO.Linux
        ) where
 
-import System.GPIO.Free
+import System.GPIO.Monad
 import System.GPIO.Linux
 import System.GPIO.Types

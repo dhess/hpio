@@ -39,16 +39,14 @@ Library
   HS-Source-Dirs:       src
   GHC-Options:          -Wall
   Exposed-Modules:      System.GPIO
-                      , System.GPIO.Free
                       , System.GPIO.Linux
                       , System.GPIO.Linux.Sysfs
-                      , System.GPIO.Linux.Sysfs.Free
                       , System.GPIO.Linux.Sysfs.IO
                       , System.GPIO.Linux.Sysfs.Monad
                       , System.GPIO.Linux.Sysfs.Mock
-                      , System.GPIO.Linux.Sysfs.Native
                       , System.GPIO.Linux.Sysfs.Types
                       , System.GPIO.Linux.Sysfs.Util
+                      , System.GPIO.Monad
                       , System.GPIO.Types
   Other-Modules:        System.GPIO.Linux.Sysfs.Mock.Internal
   Other-Extensions:     CPP
@@ -74,7 +72,6 @@ Library
                       , directory
                       , exceptions
                       , filepath
-                      , free
                       , inline-c
                       , mtl
                       , text
@@ -126,7 +123,6 @@ Test-Suite spec
                       , directory
                       , exceptions
                       , filepath
-                      , free
                       , hspec
                       , inline-c
                       , mtl
@@ -136,17 +132,15 @@ Test-Suite spec
                       , unix
                       , unix-bytestring
   Other-modules:        System.GPIO
-                      , System.GPIO.Free
                       , System.GPIO.Linux
                       , System.GPIO.Linux.Sysfs
-                      , System.GPIO.Linux.Sysfs.Free
                       , System.GPIO.Linux.Sysfs.IO
                       , System.GPIO.Linux.Sysfs.Monad
                       , System.GPIO.Linux.Sysfs.Mock
                       , System.GPIO.Linux.Sysfs.Mock.Internal
-                      , System.GPIO.Linux.Sysfs.Native
                       , System.GPIO.Linux.Sysfs.Types
                       , System.GPIO.Linux.Sysfs.Util
+                      , System.GPIO.Monad
                       , System.GPIO.Types
 
 Source-Repository head

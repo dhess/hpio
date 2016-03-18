@@ -12,7 +12,7 @@ import Control.Monad.IO.Class (liftIO)
 import Data.Foldable (for_)
 import Options.Applicative
 import System.GPIO.Linux.Sysfs.IO (SysfsIOT(..))
-import System.GPIO.Linux.Sysfs.Native
+import System.GPIO.Linux.Sysfs.Monad
 import System.GPIO.Linux.Sysfs.Types
 import System.GPIO.Types
 

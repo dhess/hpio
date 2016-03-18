@@ -34,8 +34,8 @@ import Test.QuickCheck (Arbitrary(..), arbitraryBoundedEnum, genericShrink)
 -- @edge@ attribute in the @sysfs@ GPIO filesystem. This type
 -- represents the values that the @edge@ attribute can take.
 --
--- This type is isomorphic to the 'PinReadTrigger' type in the
--- 'System.GPIO.Free.GpioF' eDSL.
+-- This type is isomorphic to the 'PinReadTrigger' type. See
+-- 'toPinReadTrigger' and 'toSysfsEdge'.
 data SysfsEdge
   = None
   | Rising

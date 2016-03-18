@@ -1,4 +1,3 @@
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -10,8 +9,8 @@ import Control.Monad (forever, void)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.Foldable (for_)
 import Options.Applicative
-import System.GPIO.Free
 import System.GPIO.Linux.Sysfs.IO (runSysfsIO)
+import System.GPIO.Monad
 import System.GPIO.Types
 
 -- Only one for now.
@@ -90,13 +89,13 @@ run (GlobalOptions SysfsIO ListPins) = runSysfsIO listPins
 output :: (MonadIO m) => String -> m ()
 output = liftIO . putStrLn
 
-listPins :: (MonadIO m) => GpioT h m m ()
+listPins :: (MonadIO m, MonadGpio h m) => m ()
 listPins =
   pins >>= \case
     [] -> output "No GPIO pins found on this system"
     ps -> for_ ps $ liftIO . print
 
-edgeRead :: (MonadIO m) => Pin -> PinReadTrigger -> Int -> GpioT h m m ()
+edgeRead :: (MonadIO m, MonadGpio h m) => Pin -> PinReadTrigger -> Int -> m ()
 edgeRead p trigger to =
   withPin p $ \h ->
     do setPinDirection h In
@@ -107,7 +106,7 @@ edgeRead p trigger to =
               Nothing -> output ("readPin timed out after " ++ show to ++ " microseconds")
               Just v -> output ("Input: " ++ show v)
 
-driveOutput :: (MonadIO m) => Pin -> Int -> GpioT h m m ()
+driveOutput :: (MonadIO m, MonadGpio h m) => Pin -> Int -> m ()
 driveOutput p delay =
   withPin p $ \h ->
     do setPinDirection h Out
