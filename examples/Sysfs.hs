@@ -1,3 +1,11 @@
+{-|
+
+This program demonstrates how to use the native Linux @sysfs@ GPIO
+implementation directly, without using the
+'System.GPIO.Monad.MonadGpio' monad class.
+
+-}
+
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -6,7 +14,7 @@ module Main where
 
 import Control.Concurrent (threadDelay)
 import Control.Concurrent.Async (concurrently)
-import Control.Exception (bracket)
+import Control.Exception (bracket_)
 import Control.Monad (forever, void)
 import Control.Monad.IO.Class (liftIO)
 import Data.Foldable (for_)
@@ -72,7 +80,7 @@ cmds =
 type NativeSysfs a = SysfsIOT IO a
 
 runNativeSysfs :: NativeSysfs a -> IO a
-runNativeSysfs act = runSysfsIOT act
+runNativeSysfs = runSysfsIOT
 
 run :: GlobalOptions -> IO ()
 run (GlobalOptions (ReadEdge (ReadEdgeOptions period edge to inputPin outputPin))) =
@@ -83,7 +91,7 @@ run (GlobalOptions (ReadEdge (ReadEdgeOptions period edge to inputPin outputPin)
 run (GlobalOptions ListPins) = runNativeSysfs listPins
 
 withPin :: Pin -> NativeSysfs a -> NativeSysfs a
-withPin p block = liftIO $ bracket (runNativeSysfs $ exportPin p) (const $ runNativeSysfs $ unexportPin p) (const $ runNativeSysfs block)
+withPin p block = liftIO $ bracket_ (runNativeSysfs $ exportPin p) (runNativeSysfs $ unexportPin p) (runNativeSysfs block)
 
 listPins :: NativeSysfs ()
 listPins =
