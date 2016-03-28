@@ -51,10 +51,15 @@ module System.GPIO.Linux.Sysfs.Mock
 
 import Prelude hiding (readFile, writeFile)
 import Control.Applicative (Alternative)
-import Control.Monad.Catch
+import Control.Monad (MonadPlus, when, void)
+import Control.Monad.Catch (MonadCatch, MonadMask, MonadThrow, fromException, throwM)
 import Control.Monad.Catch.Pure (Catch, runCatch)
+import Control.Monad.Cont (MonadCont)
+import Control.Monad.Except (MonadError)
+import Control.Monad.Fix (MonadFix)
+import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Reader (MonadReader(..))
-import Control.Monad.State.Strict
+import Control.Monad.State.Strict (MonadState(..), StateT(..), gets, execStateT)
 import Control.Monad.Writer (MonadWriter(..))
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Char8 as C8 (pack, unlines)
@@ -173,7 +178,7 @@ initialMockWorld = MockWorld sysfsRootZipper Map.empty
 -- inner monad 'm'.
 newtype SysfsMockT m a =
   SysfsMockT {unSysfsMockT :: StateT MockWorld m a}
-  deriving (Alternative,Applicative,Functor,Monad,MonadFix,MonadIO,MonadThrow,MonadCatch,MonadMask,MonadState MockWorld,MonadReader r,MonadWriter w)
+  deriving (Functor,Alternative,Applicative,Monad,MonadFix,MonadPlus,MonadThrow,MonadCatch,MonadMask,MonadCont,MonadIO,MonadReader r,MonadError e,MonadWriter w,MonadState MockWorld)
 
 getZipper :: (Monad m) => SysfsMockT m MockFSZipper
 getZipper = gets _zipper

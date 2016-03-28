@@ -26,11 +26,18 @@ module System.GPIO.Linux.Sysfs.IO
            SysfsIOT(..)
          ) where
 
-import Control.Monad (void)
-import Control.Monad.Catch
-import Control.Monad.Fix (MonadFix)
+import Control.Applicative (Alternative)
+import Control.Monad (MonadPlus, void)
+import Control.Monad.Catch (MonadCatch, MonadMask, MonadThrow, bracket)
+import Control.Monad.Cont (MonadCont)
 import Control.Monad.IO.Class (MonadIO, liftIO)
-import Control.Monad.Trans.Class (MonadTrans(..))
+import Control.Monad.Except (MonadError)
+import Control.Monad.Fix (MonadFix)
+import Control.Monad.Reader (MonadReader)
+import Control.Monad.RWS (MonadRWS)
+import Control.Monad.State (MonadState)
+import Control.Monad.Trans.Class (MonadTrans, lift)
+import Control.Monad.Writer (MonadWriter)
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as BS (readFile, writeFile)
 import Foreign.C.Error (throwErrnoIfMinus1Retry)
@@ -139,7 +146,7 @@ pollSysfs fd timeout =
 -- threading system interacts with the C FFI.)
 newtype SysfsIOT m a =
   SysfsIOT { runSysfsIOT :: m a }
-  deriving (Applicative,Functor,Monad,MonadFix,MonadIO,MonadThrow,MonadCatch,MonadMask)
+  deriving (Functor,Alternative,Applicative,Monad,MonadFix,MonadPlus,MonadThrow,MonadCatch,MonadMask,MonadCont,MonadIO,MonadReader r,MonadError e,MonadWriter w,MonadState s,MonadRWS r w s)
 
 instance MonadTrans SysfsIOT where
   lift = SysfsIOT
