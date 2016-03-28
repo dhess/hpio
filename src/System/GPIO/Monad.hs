@@ -11,8 +11,10 @@ A monadic context for GPIO computations.
 
 -}
 
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE Safe #-}
 
 module System.GPIO.Monad
@@ -22,6 +24,19 @@ module System.GPIO.Monad
        ) where
 
 import Control.Monad.Catch (MonadMask, bracket)
+import Control.Monad.Trans.Cont (ContT)
+import Control.Monad.Trans.Except (ExceptT)
+import Control.Monad.Trans.Reader (ReaderT)
+import Control.Monad.Trans.Class (lift)
+import Control.Monad.Trans.Identity (IdentityT)
+import Control.Monad.Trans.List (ListT)
+import Control.Monad.Trans.Maybe (MaybeT)
+import qualified Control.Monad.Trans.RWS.Lazy as LazyRWS (RWST)
+import qualified Control.Monad.Trans.RWS.Strict as StrictRWS (RWST)
+import qualified Control.Monad.Trans.State.Lazy as LazyState (StateT)
+import qualified Control.Monad.Trans.State.Strict as StrictState (StateT)
+import qualified Control.Monad.Trans.Writer.Lazy as LazyWriter (WriterT)
+import qualified Control.Monad.Trans.Writer.Strict as StrictWriter (WriterT)
 
 import System.GPIO.Types (Pin, PinDirection, PinReadTrigger, PinValue)
 
@@ -149,6 +164,222 @@ class Monad m => MonadGpio h m | m -> h where
 
   -- | Set the pin's "active" level, 'Low' or 'High'.
   setPinActiveLevel :: h -> PinValue -> m ()
+
+instance (MonadGpio h m) => MonadGpio h (IdentityT m) where
+  pins = lift pins
+  openPin = lift . openPin
+  closePin = lift . closePin
+  getPinDirection = lift . getPinDirection
+  setPinDirection h dir = lift $ setPinDirection h dir
+  togglePinDirection = lift . togglePinDirection
+  samplePin = lift . samplePin
+  readPin = lift . samplePin
+  readPinTimeout h to = lift $ readPinTimeout h to
+  writePin h v = lift $ writePin h v
+  writePin' h v = lift $ writePin' h v
+  togglePinValue = lift . togglePinValue
+  getPinReadTrigger = lift . getPinReadTrigger
+  setPinReadTrigger h trigger = lift $ setPinReadTrigger h trigger
+  getPinActiveLevel = lift . getPinActiveLevel
+  setPinActiveLevel h v = lift $ setPinActiveLevel h v
+
+instance (MonadGpio h m) => MonadGpio h (ContT r m) where
+  pins = lift pins
+  openPin = lift . openPin
+  closePin = lift . closePin
+  getPinDirection = lift . getPinDirection
+  setPinDirection h dir = lift $ setPinDirection h dir
+  togglePinDirection = lift . togglePinDirection
+  samplePin = lift . samplePin
+  readPin = lift . samplePin
+  readPinTimeout h to = lift $ readPinTimeout h to
+  writePin h v = lift $ writePin h v
+  writePin' h v = lift $ writePin' h v
+  togglePinValue = lift . togglePinValue
+  getPinReadTrigger = lift . getPinReadTrigger
+  setPinReadTrigger h trigger = lift $ setPinReadTrigger h trigger
+  getPinActiveLevel = lift . getPinActiveLevel
+  setPinActiveLevel h v = lift $ setPinActiveLevel h v
+
+instance (MonadGpio h m) => MonadGpio h (ExceptT e m) where
+  pins = lift pins
+  openPin = lift . openPin
+  closePin = lift . closePin
+  getPinDirection = lift . getPinDirection
+  setPinDirection h dir = lift $ setPinDirection h dir
+  togglePinDirection = lift . togglePinDirection
+  samplePin = lift . samplePin
+  readPin = lift . samplePin
+  readPinTimeout h to = lift $ readPinTimeout h to
+  writePin h v = lift $ writePin h v
+  writePin' h v = lift $ writePin' h v
+  togglePinValue = lift . togglePinValue
+  getPinReadTrigger = lift . getPinReadTrigger
+  setPinReadTrigger h trigger = lift $ setPinReadTrigger h trigger
+  getPinActiveLevel = lift . getPinActiveLevel
+  setPinActiveLevel h v = lift $ setPinActiveLevel h v
+
+instance (MonadGpio h m) => MonadGpio h (ListT m) where
+  pins = lift pins
+  openPin = lift . openPin
+  closePin = lift . closePin
+  getPinDirection = lift . getPinDirection
+  setPinDirection h dir = lift $ setPinDirection h dir
+  togglePinDirection = lift . togglePinDirection
+  samplePin = lift . samplePin
+  readPin = lift . samplePin
+  readPinTimeout h to = lift $ readPinTimeout h to
+  writePin h v = lift $ writePin h v
+  writePin' h v = lift $ writePin' h v
+  togglePinValue = lift . togglePinValue
+  getPinReadTrigger = lift . getPinReadTrigger
+  setPinReadTrigger h trigger = lift $ setPinReadTrigger h trigger
+  getPinActiveLevel = lift . getPinActiveLevel
+  setPinActiveLevel h v = lift $ setPinActiveLevel h v
+
+instance (MonadGpio h m) => MonadGpio h (MaybeT m) where
+  pins = lift pins
+  openPin = lift . openPin
+  closePin = lift . closePin
+  getPinDirection = lift . getPinDirection
+  setPinDirection h dir = lift $ setPinDirection h dir
+  togglePinDirection = lift . togglePinDirection
+  samplePin = lift . samplePin
+  readPin = lift . samplePin
+  readPinTimeout h to = lift $ readPinTimeout h to
+  writePin h v = lift $ writePin h v
+  writePin' h v = lift $ writePin' h v
+  togglePinValue = lift . togglePinValue
+  getPinReadTrigger = lift . getPinReadTrigger
+  setPinReadTrigger h trigger = lift $ setPinReadTrigger h trigger
+  getPinActiveLevel = lift . getPinActiveLevel
+  setPinActiveLevel h v = lift $ setPinActiveLevel h v
+
+instance (MonadGpio h m) => MonadGpio h (ReaderT r m) where
+  pins = lift pins
+  openPin = lift . openPin
+  closePin = lift . closePin
+  getPinDirection = lift . getPinDirection
+  setPinDirection h dir = lift $ setPinDirection h dir
+  togglePinDirection = lift . togglePinDirection
+  samplePin = lift . samplePin
+  readPin = lift . samplePin
+  readPinTimeout h to = lift $ readPinTimeout h to
+  writePin h v = lift $ writePin h v
+  writePin' h v = lift $ writePin' h v
+  togglePinValue = lift . togglePinValue
+  getPinReadTrigger = lift . getPinReadTrigger
+  setPinReadTrigger h trigger = lift $ setPinReadTrigger h trigger
+  getPinActiveLevel = lift . getPinActiveLevel
+  setPinActiveLevel h v = lift $ setPinActiveLevel h v
+
+instance (MonadGpio h m, Monoid w) => MonadGpio h (LazyRWS.RWST r w s m) where
+  pins = lift pins
+  openPin = lift . openPin
+  closePin = lift . closePin
+  getPinDirection = lift . getPinDirection
+  setPinDirection h dir = lift $ setPinDirection h dir
+  togglePinDirection = lift . togglePinDirection
+  samplePin = lift . samplePin
+  readPin = lift . samplePin
+  readPinTimeout h to = lift $ readPinTimeout h to
+  writePin h v = lift $ writePin h v
+  writePin' h v = lift $ writePin' h v
+  togglePinValue = lift . togglePinValue
+  getPinReadTrigger = lift . getPinReadTrigger
+  setPinReadTrigger h trigger = lift $ setPinReadTrigger h trigger
+  getPinActiveLevel = lift . getPinActiveLevel
+  setPinActiveLevel h v = lift $ setPinActiveLevel h v
+
+instance (MonadGpio h m, Monoid w) => MonadGpio h (StrictRWS.RWST r w s m) where
+  pins = lift pins
+  openPin = lift . openPin
+  closePin = lift . closePin
+  getPinDirection = lift . getPinDirection
+  setPinDirection h dir = lift $ setPinDirection h dir
+  togglePinDirection = lift . togglePinDirection
+  samplePin = lift . samplePin
+  readPin = lift . samplePin
+  readPinTimeout h to = lift $ readPinTimeout h to
+  writePin h v = lift $ writePin h v
+  writePin' h v = lift $ writePin' h v
+  togglePinValue = lift . togglePinValue
+  getPinReadTrigger = lift . getPinReadTrigger
+  setPinReadTrigger h trigger = lift $ setPinReadTrigger h trigger
+  getPinActiveLevel = lift . getPinActiveLevel
+  setPinActiveLevel h v = lift $ setPinActiveLevel h v
+
+instance (MonadGpio h m) => MonadGpio h (LazyState.StateT s m) where
+  pins = lift pins
+  openPin = lift . openPin
+  closePin = lift . closePin
+  getPinDirection = lift . getPinDirection
+  setPinDirection h dir = lift $ setPinDirection h dir
+  togglePinDirection = lift . togglePinDirection
+  samplePin = lift . samplePin
+  readPin = lift . samplePin
+  readPinTimeout h to = lift $ readPinTimeout h to
+  writePin h v = lift $ writePin h v
+  writePin' h v = lift $ writePin' h v
+  togglePinValue = lift . togglePinValue
+  getPinReadTrigger = lift . getPinReadTrigger
+  setPinReadTrigger h trigger = lift $ setPinReadTrigger h trigger
+  getPinActiveLevel = lift . getPinActiveLevel
+  setPinActiveLevel h v = lift $ setPinActiveLevel h v
+
+instance (MonadGpio h m) => MonadGpio h (StrictState.StateT s m) where
+  pins = lift pins
+  openPin = lift . openPin
+  closePin = lift . closePin
+  getPinDirection = lift . getPinDirection
+  setPinDirection h dir = lift $ setPinDirection h dir
+  togglePinDirection = lift . togglePinDirection
+  samplePin = lift . samplePin
+  readPin = lift . samplePin
+  readPinTimeout h to = lift $ readPinTimeout h to
+  writePin h v = lift $ writePin h v
+  writePin' h v = lift $ writePin' h v
+  togglePinValue = lift . togglePinValue
+  getPinReadTrigger = lift . getPinReadTrigger
+  setPinReadTrigger h trigger = lift $ setPinReadTrigger h trigger
+  getPinActiveLevel = lift . getPinActiveLevel
+  setPinActiveLevel h v = lift $ setPinActiveLevel h v
+
+instance (MonadGpio h m, Monoid w) => MonadGpio h (LazyWriter.WriterT w m) where
+  pins = lift pins
+  openPin = lift . openPin
+  closePin = lift . closePin
+  getPinDirection = lift . getPinDirection
+  setPinDirection h dir = lift $ setPinDirection h dir
+  togglePinDirection = lift . togglePinDirection
+  samplePin = lift . samplePin
+  readPin = lift . samplePin
+  readPinTimeout h to = lift $ readPinTimeout h to
+  writePin h v = lift $ writePin h v
+  writePin' h v = lift $ writePin' h v
+  togglePinValue = lift . togglePinValue
+  getPinReadTrigger = lift . getPinReadTrigger
+  setPinReadTrigger h trigger = lift $ setPinReadTrigger h trigger
+  getPinActiveLevel = lift . getPinActiveLevel
+  setPinActiveLevel h v = lift $ setPinActiveLevel h v
+
+instance (MonadGpio h m, Monoid w) => MonadGpio h (StrictWriter.WriterT w m) where
+  pins = lift pins
+  openPin = lift . openPin
+  closePin = lift . closePin
+  getPinDirection = lift . getPinDirection
+  setPinDirection h dir = lift $ setPinDirection h dir
+  togglePinDirection = lift . togglePinDirection
+  samplePin = lift . samplePin
+  readPin = lift . samplePin
+  readPinTimeout h to = lift $ readPinTimeout h to
+  writePin h v = lift $ writePin h v
+  writePin' h v = lift $ writePin' h v
+  togglePinValue = lift . togglePinValue
+  getPinReadTrigger = lift . getPinReadTrigger
+  setPinReadTrigger h trigger = lift $ setPinReadTrigger h trigger
+  getPinActiveLevel = lift . getPinActiveLevel
+  setPinActiveLevel h v = lift $ setPinActiveLevel h v
 
 -- | Exception-safe pin management.
 --

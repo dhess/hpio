@@ -110,6 +110,22 @@ Executable gpio-example
   Default-Language:     Haskell2010
   Ghc-Options:          -Wall -threaded
 
+Executable gpio-reader-example
+  Main-Is:              GpioReader.hs
+  HS-Source-Dirs:       examples
+  Build-Depends:        base ==4.*
+                      , async
+                      , exceptions
+                      , gpio
+                      , mtl
+                      , optparse-applicative
+                      , transformers
+                      , transformers-compat
+
+  Default-Language:     Haskell2010
+  Ghc-Options:          -Wall -threaded
+
+
 Test-Suite spec
   Type:                 exitcode-stdio-1.0
   Default-Language:     Haskell2010
