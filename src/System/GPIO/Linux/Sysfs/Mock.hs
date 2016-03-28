@@ -9,6 +9,10 @@ Portability : non-portable
 
 A mock 'MonadSysfs' instance, for testing GPIO programs.
 
+Note that this monad only mocks the subset of @sysfs@ functionality
+required for GPIO programs. It does not mock the entire @sysfs@
+filesystem.
+
 -}
 
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}

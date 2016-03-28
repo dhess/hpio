@@ -7,8 +7,8 @@ Maintainer  : Drew Hess <src@drewhess.com>
 Stability   : experimental
 Portability : non-portable
 
-The actual Linux @sysfs@ GPIO implementation. This implementation will
-only function properly on Linux systems with a @sysfs@ GPIO subsystem,
+The actual Linux @sysfs@ implementation. This implementation will only
+function properly on Linux systems with a @sysfs@ subsystem,
 obviously.
 
 -}
@@ -24,8 +24,6 @@ obviously.
 module System.GPIO.Linux.Sysfs.IO
          ( -- * SysfsIOT transformer
            SysfsIOT(..)
-         , SysfsIO
-         , runSysfsIO
          ) where
 
 import Control.Monad (void)
@@ -44,7 +42,7 @@ import "unix" System.Posix.IO (OpenMode(ReadOnly, WriteOnly), closeFd, defaultFi
 import "unix-bytestring" System.Posix.IO.ByteString (fdWrite)
 import System.Posix.Types (Fd)
 
-import System.GPIO.Linux.Sysfs.Monad (MonadSysfs(..), SysfsGpioT(..))
+import System.GPIO.Linux.Sysfs.Monad (MonadSysfs(..))
 
 -- Our poll(2) wrapper.
 --
@@ -123,10 +121,9 @@ pollSysfs fd timeout =
 -- | An instance of 'MonadSysfs' which runs 'MonadSysfs' operations in
 -- IO.
 --
--- == Interactions with threads
--- Some parts of this GPIO implementation use the Haskell C FFI, and
--- may block on C I/O operations. (Specifically,
--- 'System.GPIO.Monad.readPin' will block in the C FFI until its event
+-- == Interactions with threads Some parts of this implementation use
+-- the Haskell C FFI, and may block on C I/O operations.
+-- (Specifically, 'pollFile' will block in the C FFI until its event
 -- is triggered.) When using this implementation with GHC, you should
 -- compile your program with the @-threaded@ option, so that threads
 -- performing these blocking operations do not block other Haskell
@@ -143,15 +140,6 @@ pollSysfs fd timeout =
 newtype SysfsIOT m a =
   SysfsIOT { runSysfsIOT :: m a }
   deriving (Applicative,Functor,Monad,MonadFix,MonadIO,MonadThrow,MonadCatch,MonadMask)
-
--- | A convenient specialization of 'SysfsGpioT' which runs GPIO
--- computations in 'IO' via @sysfs@.
-type SysfsIO a = SysfsGpioT (SysfsIOT IO) a
-
--- | Run a 'SysfsIO' computation in the 'IO' monad and return the
--- result.
-runSysfsIO :: SysfsIO a -> IO a
-runSysfsIO action = runSysfsIOT $ runSysfsGpioT action
 
 instance MonadTrans SysfsIOT where
   lift = SysfsIOT

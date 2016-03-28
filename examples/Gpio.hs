@@ -10,7 +10,7 @@ import Control.Monad.Catch (MonadMask)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.Foldable (for_)
 import Options.Applicative
-import System.GPIO.Linux.Sysfs.IO (runSysfsIO)
+import System.GPIO.Linux.Sysfs (runSysfsGpioIO)
 import System.GPIO.Monad
 import System.GPIO.Types
 
@@ -83,9 +83,9 @@ run :: GlobalOptions -> IO ()
 run (GlobalOptions SysfsIO (ReadTrigger (ReadTriggerOptions period trigger to inputPin outputPin))) =
   void $
     concurrently
-      (void $ runSysfsIO $ edgeRead inputPin trigger to)
-      (runSysfsIO $ driveOutput outputPin period)
-run (GlobalOptions SysfsIO ListPins) = runSysfsIO listPins
+      (void $ runSysfsGpioIO $ edgeRead inputPin trigger to)
+      (runSysfsGpioIO $ driveOutput outputPin period)
+run (GlobalOptions SysfsIO ListPins) = runSysfsGpioIO listPins
 
 output :: (MonadIO m) => String -> m ()
 output = liftIO . putStrLn
