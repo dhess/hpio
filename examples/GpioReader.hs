@@ -95,9 +95,9 @@ data Config =
   deriving ((Show))
 
 -- | Our 'IO' transformer stack:
+-- * A reader monad.
 -- * The Linux @sysfs@ GPIO interpreter
 -- * The (real) Linux @sysfs@ back-end.
--- * A reader monad.
 -- * 'IO'
 type SysfsGpioReaderIO a = ReaderT Config (SysfsGpioT (SysfsIOT IO)) a
 
@@ -150,7 +150,7 @@ driveOutput =
                output ("Output: " ++ show v)
 
 main :: IO ()
-main =execParser opts >>= run
+main = execParser opts >>= run
   where
     opts =
       info (helper <*> cmds)
