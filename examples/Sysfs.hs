@@ -17,7 +17,7 @@ import System.GPIO.Linux.Sysfs.Types
 import System.GPIO.Types
 
 data GlobalOptions =
-  GlobalOptions {_cmd :: Command}
+  GlobalOptions {_cmd :: !Command}
 
 data Command
   = ListPins
@@ -27,11 +27,11 @@ listPinsCmd :: Parser Command
 listPinsCmd = pure ListPins
 
 data ReadEdgeOptions =
-  ReadEdgeOptions {_period :: Int
-                  ,_edge :: SysfsEdge
-                  ,_timeout :: Int
-                  ,_outputPin :: Pin
-                  ,_inputPin :: Pin}
+  ReadEdgeOptions {_period :: !Int
+                  ,_edge :: !SysfsEdge
+                  ,_timeout :: !Int
+                  ,_outputPin :: !Pin
+                  ,_inputPin :: !Pin}
 
 readEdgeCmd :: Parser Command
 readEdgeCmd = ReadEdge <$> readEdgeOptions

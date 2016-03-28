@@ -120,8 +120,8 @@ defaultMockPinState =
 -- @/sys/class/gpio/gpioN@, where @N@ is @_base@ + the pin's index in
 -- the '_initialPinStates' list.
 data MockGpioChip =
-  MockGpioChip {_label :: String
-               ,_base :: Int
+  MockGpioChip {_label :: !String
+               ,_base :: !Int
                ,_initialPinStates :: [MockPinState]}
   deriving (Show,Eq)
 

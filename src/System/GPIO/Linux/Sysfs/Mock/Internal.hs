@@ -74,12 +74,12 @@ data FileType
   deriving (Show,Eq)
 
 data File =
-  File {_fileName :: Name
-       ,_fileType :: FileType}
+  File {_fileName :: !Name
+       ,_fileType :: !FileType}
   deriving (Show,Eq)
 
 data DirNode =
-  DirNode {_dirNodeName :: Name
+  DirNode {_dirNodeName :: !Name
           ,_files :: [File]}
   deriving (Show,Eq)
 

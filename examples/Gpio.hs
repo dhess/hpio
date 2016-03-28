@@ -20,8 +20,8 @@ data Interpreter =
   deriving (Eq,Show,Read)
 
 data GlobalOptions =
-  GlobalOptions {_interpreter :: Interpreter
-                ,_cmd :: Command}
+  GlobalOptions {_interpreter :: !Interpreter
+                ,_cmd :: !Command}
 
 data Command
   = ListPins
@@ -31,11 +31,11 @@ listPinsCmd :: Parser Command
 listPinsCmd = pure ListPins
 
 data ReadTriggerOptions =
-  ReadTriggerOptions {_period :: Int
-                     ,_trigger :: PinReadTrigger
-                     ,_timeout :: Int
-                     ,_outputPin :: Pin
-                     ,_inputPin :: Pin}
+  ReadTriggerOptions {_period :: !Int
+                     ,_trigger :: !PinReadTrigger
+                     ,_timeout :: !Int
+                     ,_outputPin :: !Pin
+                     ,_inputPin :: !Pin}
 
 readTriggerCmd :: Parser Command
 readTriggerCmd = ReadTrigger <$> readTriggerOptions
