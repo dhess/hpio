@@ -93,7 +93,7 @@ import System.GPIO.Linux.Sysfs.Mock.Internal
         MockFSException(..), directory, dirName, files, subdirs, findFile)
 import qualified System.GPIO.Linux.Sysfs.Mock.Internal as Internal
        (cd, mkdir, mkfile, pathFromRoot, rmdir)
-import System.GPIO.Linux.Sysfs.Monad (MonadSysfs, SysfsGpioT(..))
+import System.GPIO.Linux.Sysfs.Monad (SysfsGpioT(..))
 import qualified System.GPIO.Linux.Sysfs.Monad as M (MonadSysfs(..))
 import System.GPIO.Linux.Sysfs.Types (SysfsEdge(..))
 import System.GPIO.Linux.Sysfs.Util
@@ -245,7 +245,7 @@ runSysfsMockT action world chips =
   do startState <- execStateT (unSysfsMockT $ pushd "/" (makeFileSystem chips)) world
      runStateT (unSysfsMockT action) startState
 
-instance (MonadSysfs m, MonadThrow m) => M.MonadSysfs (SysfsMockT m) where
+instance (MonadThrow m) => M.MonadSysfs (SysfsMockT m) where
   doesDirectoryExist = doesDirectoryExist
   doesFileExist = doesFileExist
   getDirectoryContents = getDirectoryContents
