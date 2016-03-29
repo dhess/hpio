@@ -29,7 +29,7 @@ module System.GPIO.Linux.Sysfs.Mock
        , MockGpioChip(..)
        , MockPins
        , MockWorld
-       , pins
+       , mockWorldPins
        , initialMockWorld
          -- * The SysfsMock monad
        , SysfsMockT(..)
@@ -187,8 +187,8 @@ data MockWorld =
             ,_pins :: MockPins}
   deriving (Show,Eq)
 
-pins :: MockWorld -> MockPins
-pins = _pins
+mockWorldPins :: MockWorld -> MockPins
+mockWorldPins = _pins
 
 initialMockWorld :: MockWorld
 initialMockWorld = MockWorld sysfsRootZipper Map.empty
