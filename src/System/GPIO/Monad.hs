@@ -24,6 +24,7 @@ module System.GPIO.Monad
        ) where
 
 import Control.Monad.Catch (MonadMask, bracket)
+import Control.Monad.Catch.Pure (CatchT)
 import Control.Monad.Trans.Cont (ContT)
 import Control.Monad.Trans.Except (ExceptT)
 import Control.Monad.Trans.Reader (ReaderT)
@@ -184,6 +185,24 @@ instance (MonadGpio h m) => MonadGpio h (IdentityT m) where
   setPinActiveLevel h v = lift $ setPinActiveLevel h v
 
 instance (MonadGpio h m) => MonadGpio h (ContT r m) where
+  pins = lift pins
+  openPin = lift . openPin
+  closePin = lift . closePin
+  getPinDirection = lift . getPinDirection
+  setPinDirection h dir = lift $ setPinDirection h dir
+  togglePinDirection = lift . togglePinDirection
+  samplePin = lift . samplePin
+  readPin = lift . samplePin
+  readPinTimeout h to = lift $ readPinTimeout h to
+  writePin h v = lift $ writePin h v
+  writePin' h v = lift $ writePin' h v
+  togglePinValue = lift . togglePinValue
+  getPinReadTrigger = lift . getPinReadTrigger
+  setPinReadTrigger h trigger = lift $ setPinReadTrigger h trigger
+  getPinActiveLevel = lift . getPinActiveLevel
+  setPinActiveLevel h v = lift $ setPinActiveLevel h v
+
+instance (MonadGpio h m) => MonadGpio h (CatchT m) where
   pins = lift pins
   openPin = lift . openPin
   closePin = lift . closePin

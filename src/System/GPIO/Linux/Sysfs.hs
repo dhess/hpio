@@ -48,10 +48,12 @@ module System.GPIO.Linux.Sysfs
          -- which is designed to run on an actual Linux host and
          -- perform real GPIO operations.
          --
-         -- For testing purposes, you can use the 'SysfsMock' monad
-         -- (or its corresponding 'SysfsMockT' monad transformer) as
-         -- the @sysfs@ back-end, which allows you to run (mock) GPIO
-         -- programs on any system.
+         -- For testing purposes, you can use the
+         -- 'System.GPIO.Linux.Sysfs.Mock.SysfsMock' monad (or its
+         -- corresponding 'System.GPIO.Linux.Sysfs.Mock.SysfsMockT'
+         -- monad transformer) as the @sysfs@ back-end, which allows
+         -- you to run (mock) GPIO programs on any system. (Note that
+         -- these monads are not exported from here.)
          SysfsGpioT
        , runSysfsGpioT
        , PinDescriptor(..)
@@ -59,6 +61,7 @@ module System.GPIO.Linux.Sysfs
        , runSysfsGpioIO
          -- * The Linux @sysfs@ monad
          --
+       , MonadSysfs(..)
        , SysfsIOT(..)
          -- * Low-level @sysfs@ GPIO functions
          --

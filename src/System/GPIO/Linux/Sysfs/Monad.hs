@@ -57,6 +57,7 @@ import Prelude hiding (readFile, writeFile)
 import Control.Applicative (Alternative)
 import Control.Monad (MonadPlus, filterM, void)
 import Control.Monad.Catch (MonadCatch, MonadMask, MonadThrow, throwM)
+import Control.Monad.Catch.Pure (CatchT)
 import Control.Monad.Cont (MonadCont, ContT)
 import Control.Monad.Except (MonadError, ExceptT)
 import Control.Monad.Fix (MonadFix)
@@ -123,6 +124,15 @@ instance (MonadSysfs m) => MonadSysfs (IdentityT m) where
   pollFile fn timeout = lift $ pollFile fn timeout
 
 instance (MonadSysfs m) => MonadSysfs (ContT r m) where
+  doesDirectoryExist = lift . doesDirectoryExist
+  doesFileExist = lift . doesFileExist
+  getDirectoryContents = lift . getDirectoryContents
+  readFile = lift . readFile
+  writeFile fn bs = lift $ writeFile fn bs
+  unlockedWriteFile fn bs = lift $ unlockedWriteFile fn bs
+  pollFile fn timeout = lift $ pollFile fn timeout
+
+instance (MonadSysfs m) => MonadSysfs (CatchT m) where
   doesDirectoryExist = lift . doesDirectoryExist
   doesFileExist = lift . doesFileExist
   getDirectoryContents = lift . getDirectoryContents
