@@ -78,6 +78,7 @@ import Control.Monad.Fix (MonadFix)
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Reader (MonadReader(..))
 import Control.Monad.State.Strict (MonadState(..), StateT(..), gets, execStateT)
+import Control.Monad.Trans.Class (MonadTrans)
 import Control.Monad.Writer (MonadWriter(..))
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Char8 as C8 (pack, unlines)
@@ -196,7 +197,7 @@ initialMockWorld = MockWorld sysfsRootZipper Map.empty
 -- inner monad 'm'.
 newtype SysfsMockT m a =
   SysfsMockT {unSysfsMockT :: StateT MockWorld m a}
-  deriving (Functor,Alternative,Applicative,Monad,MonadFix,MonadPlus,MonadThrow,MonadCatch,MonadMask,MonadCont,MonadIO,MonadReader r,MonadError e,MonadWriter w,MonadState MockWorld)
+  deriving (Functor,Alternative,Applicative,Monad,MonadFix,MonadPlus,MonadThrow,MonadCatch,MonadMask,MonadCont,MonadIO,MonadReader r,MonadError e,MonadWriter w,MonadState MockWorld,MonadTrans)
 
 getZipper :: (Monad m) => SysfsMockT m MockFSZipper
 getZipper = gets _zipper
