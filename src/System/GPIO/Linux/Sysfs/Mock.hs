@@ -245,6 +245,15 @@ runSysfsMockT action world chips =
   do startState <- execStateT (unSysfsMockT $ pushd "/" (makeFileSystem chips)) world
      runStateT (unSysfsMockT action) startState
 
+instance (MonadSysfs m, MonadThrow m) => M.MonadSysfs (SysfsMockT m) where
+  doesDirectoryExist = doesDirectoryExist
+  doesFileExist = doesFileExist
+  getDirectoryContents = getDirectoryContents
+  readFile = readFile
+  writeFile = writeFile
+  unlockedWriteFile = unlockedWriteFile
+  pollFile = pollFile
+
 -- | The simplest possible (pure) mock @sysfs@ monad.
 --
 -- N.B.: this monad /cannot/ run GPIO computations; its only use is to
@@ -253,7 +262,7 @@ runSysfsMockT action world chips =
 --
 -- You probably do not want to use this monad; see 'SysfsGpioMock',
 -- which adds mock GPIO computations to this mock @sysfs@ environment.
-type SysfsMock a = SysfsMockT Catch a
+type SysfsMock = SysfsMockT Catch
 
 runSysfsMock :: SysfsMock a -> MockWorld -> [MockGpioChip] -> Either MockFSException (a, MockWorld)
 runSysfsMock a w chips =
@@ -274,18 +283,9 @@ evalSysfsMock a w chips = fst <$> runSysfsMock a w chips
 execSysfsMock :: SysfsMock a -> MockWorld -> [MockGpioChip] -> Either MockFSException MockWorld
 execSysfsMock a w chips = snd <$> runSysfsMock a w chips
 
-instance (MonadSysfs m, MonadThrow m) => M.MonadSysfs (SysfsMockT m) where
-  doesDirectoryExist = doesDirectoryExist
-  doesFileExist = doesFileExist
-  getDirectoryContents = getDirectoryContents
-  readFile = readFile
-  writeFile = writeFile
-  unlockedWriteFile = unlockedWriteFile
-  pollFile = pollFile
-
 -- | A specialization of 'SysfsGpioT' which runs (fake) GPIO
 -- computations via a mock @sysfs@.
-type SysfsGpioMock a = SysfsGpioT (SysfsMockT IO) a
+type SysfsGpioMock = SysfsGpioT (SysfsMockT IO)
 
 -- | Run a 'SysfsGpioMock' computation with an initial mock world and
 -- list of 'MockGpioChip's, and return a tuple containing the

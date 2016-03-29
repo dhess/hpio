@@ -103,7 +103,7 @@ import System.GPIO.Linux.Sysfs.Types
 
 -- | A specialization of 'SysfsGpioT' which runs (real) GPIO
 -- computations in 'IO' via @sysfs@.
-type SysfsGpioIO a = SysfsGpioT (SysfsIOT IO) a
+type SysfsGpioIO = SysfsGpioT (SysfsIOT IO)
 
 -- | Run (real) GPIO computations in 'IO' via @sysfs@.
 runSysfsGpioIO :: SysfsGpioIO a -> IO a
