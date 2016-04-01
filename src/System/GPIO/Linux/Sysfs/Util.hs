@@ -25,7 +25,20 @@ module System.GPIO.Linux.Sysfs.Util
        , pinEdgeFileName
        , pinValueFileName
          -- * Convert Haskell types to/from their @sysfs@ representation
+         --
+         -- | A note on newlines: a Linux GPIO pin's "attributes"
+         -- (i.e., the @sysfs@ files representing a pin's state) are
+         -- read and written as 'ByteString's. When reading their
+         -- contents, the attribute files always return their
+         -- (ASCII-encoded) value followed by a newline character
+         -- ('\n'). When writing their contents, the attribute files
+         -- will accept their (ASCII-encoded) new value either with or
+         -- without a trailing newline character. For consistency (and
+         -- for the sake of isomorphic conversions back-and-forth), we
+         -- always use a trailing newline when encoding the ASCII
+         -- value from the Haskell value.
        , pinDirectionToBS
+       , pinDirectionValueToBS
        , bsToPinDirection
        , sysfsEdgeToBS
        , bsToSysfsEdge
@@ -93,20 +106,30 @@ pinValueFileName :: Pin -> FilePath
 pinValueFileName p = pinDirName p </> "value"
 
 -- | Convert a 'PinDirection' value to the corresponding 'ByteString'
--- value expected by a pin's @direction@ attribute in @sysfs@ GPIO
+-- value expected by a pin's @direction@ attribute in the @sysfs@ GPIO
 -- filesystem.
 pinDirectionToBS :: PinDirection -> ByteString
-pinDirectionToBS In = "in"
-pinDirectionToBS Out = "out"
+pinDirectionToBS In = "in\n"
+pinDirectionToBS Out = "out\n"
+
+-- | Convert a 'PinValue' value to the corresponding 'ByteString'
+-- value expected by a pin's @direction@ attribute in the @sysfs@
+-- GPIO, which can be used to configure the pin for output and
+-- simultaneously set the pin's (logical) value; see the
+-- <https://www.kernel.org/doc/Documentation/gpio/sysfs.txt Linux
+-- kernel documentation> for details.
+pinDirectionValueToBS :: PinValue -> ByteString
+pinDirectionValueToBS Low = "low\n"
+pinDirectionValueToBS High = "high\n"
 
 -- | When writing a pin's @direction@ attribute in the @sysfs@ GPIO
--- filesystem with a 'ByteString' value, @"in"@ configures the pin for
--- input, and @"out"@ configures the pin for output while also
+-- filesystem with a 'ByteString' value, @"in\n"@ configures the pin
+-- for input, and @"out\n"@ configures the pin for output while also
 -- initializing the pin's (logical) value as low.
 --
--- Furthermore, you may write @"low"@ or @"high"@ to the @direction@
--- attribute to configure the pin for output and simulataneously set
--- the pin's (logical) value.
+-- Furthermore, you may write @"low\n"@ or @"high\n"@ to the
+-- @direction@ attribute to configure the pin for output and
+-- simulataneously set the pin's (logical) value.
 --
 -- Therefore, writing a pin's @direction@ attribute potentially
 -- affects both its direction and its value.
@@ -118,43 +141,43 @@ pinDirectionToBS Out = "out"
 -- strict 'ByteString', to its corresponding 'PinDirection' and
 -- 'PinValue' pair, or 'Nothing' if the attribute encoding is invalid.
 bsToPinDirection :: ByteString -> Maybe (PinDirection, Maybe PinValue)
-bsToPinDirection "in" = Just (In, Nothing)
-bsToPinDirection "out" = Just (Out, Just Low)
-bsToPinDirection "low" = Just (Out, Just Low)
-bsToPinDirection "high" = Just (Out, Just High)
+bsToPinDirection "in\n" = Just (In, Nothing)
+bsToPinDirection "out\n" = Just (Out, Just Low)
+bsToPinDirection "low\n" = Just (Out, Just Low)
+bsToPinDirection "high\n" = Just (Out, Just High)
 bsToPinDirection _ = Nothing
 
 -- | Convert a 'SysfsEdge' value to the 'ByteString' value expected by
 -- a pin's @edge@ attribute in the @sysfs@ GPIO filesystem.
 sysfsEdgeToBS :: SysfsEdge -> ByteString
-sysfsEdgeToBS None = "none"
-sysfsEdgeToBS Rising = "rising"
-sysfsEdgeToBS Falling = "falling"
-sysfsEdgeToBS Both = "both"
+sysfsEdgeToBS None = "none\n"
+sysfsEdgeToBS Rising = "rising\n"
+sysfsEdgeToBS Falling = "falling\n"
+sysfsEdgeToBS Both = "both\n"
 
 -- | Inverse of 'sysfsEdgeToBS'.
 bsToSysfsEdge :: ByteString -> Maybe SysfsEdge
-bsToSysfsEdge "none" = Just None
-bsToSysfsEdge "rising" = Just Rising
-bsToSysfsEdge "falling" = Just Falling
-bsToSysfsEdge "both" = Just Both
+bsToSysfsEdge "none\n" = Just None
+bsToSysfsEdge "rising\n" = Just Rising
+bsToSysfsEdge "falling\n" = Just Falling
+bsToSysfsEdge "both\n" = Just Both
 bsToSysfsEdge _ = Nothing
 
 -- | Convert a 'PinValue' to the 'ByteString' value expected by a
 -- pin's @value@ attribute in the @sysfs@ GPIO filesystem.
 pinValueToBS :: PinValue -> ByteString
-pinValueToBS Low = "0"
-pinValueToBS High = "1"
+pinValueToBS Low = "0\n"
+pinValueToBS High = "1\n"
 
 -- | Convert a @value@ attribute value, encoded as a strict
 -- 'ByteString', to its corresponding 'PinValue'.
 --
 -- Note that the @sysfs@ @value@ attribute is quite liberal: a
--- 'ByteString' value of "0" will set the pin's (logical) value to
+-- 'ByteString' value of "0\n" will set the pin's (logical) value to
 -- low, but any other (non-empty) 'ByteString' value will set it to
 -- high.
 bsToPinValue :: ByteString -> Maybe PinValue
-bsToPinValue "0" = Just Low
+bsToPinValue "0\n" = Just Low
 bsToPinValue bs
   | bs == BS.empty = Nothing
   | otherwise = Just High
@@ -162,18 +185,18 @@ bsToPinValue bs
 -- | Convert a 'Bool' to the 'ByteString' value expected by a pin's
 -- @active_low@ attribute in the @sysfs@ GPIO filesystem.
 activeLowToBS :: Bool -> ByteString
-activeLowToBS False = "0"
-activeLowToBS True = "1"
+activeLowToBS False = "0\n"
+activeLowToBS True = "1\n"
 
 -- | Convert an @active_low@ attribute value, encoded as a strict
 -- 'ByteString', to its corresponding 'Bool' value.
 --
 -- Note that the @sysfs@ @active_low@ attribute is quite liberal: a
--- 'ByteString' value of "0" returns 'False' and any other (non-empty)
--- 'ByteString' value returns 'True'.
+-- 'ByteString' value of "0\n" returns 'False' and any other
+-- (non-empty) 'ByteString' value returns 'True'.
 bsToActiveLow :: ByteString -> Maybe Bool
-bsToActiveLow "0" = Just False
-bsToActiveLow "1" = Just True
+bsToActiveLow "0\n" = Just False
+bsToActiveLow "1\n" = Just True
 bsToActiveLow _ = Nothing
 
 -- | Convert an 'Int' to a decimal ASCII encoding in a strict
