@@ -120,6 +120,7 @@ data MockFSException
   | NoSuchFileOrDirectory FilePath -- ^ File/directory does not exist
   | FileExists Name                -- ^ Attempt to create a file which already exists
   | InvalidName Name               -- ^ Invalid file/path name
+  | IsInputPin Pin                 -- ^ Attempt to set the value of an input pin
   | PinAlreadyExists Pin           -- ^ Mock state is invalid because the same pin occurs more than once
   | InvalidPin Pin                 -- ^ Attempt to perform an operation on a pin which doesn't exist
   | AlreadyExported Pin            -- ^ Attempt to export a pin that's already been exported

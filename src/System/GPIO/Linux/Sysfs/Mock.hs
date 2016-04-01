@@ -108,7 +108,8 @@ import System.GPIO.Types (Pin(..), PinDirection(..), PinValue(..), invertValue)
 -- Note that in the real Linux @sysfs@, pins keep their state even
 -- after they're unexported.
 data MockPinState =
-  MockPinState {_direction :: Maybe PinDirection
+  MockPinState {_direction :: !PinDirection
+               ,_userVisibleDirection :: !Bool
                ,_activeLow :: !Bool
                ,_value :: !PinValue -- This is the line level
                ,_edge :: Maybe SysfsEdge}
@@ -135,7 +136,8 @@ setLogicalValue v s
 -- | Default initial state of mock pins.
 defaultMockPinState :: MockPinState
 defaultMockPinState =
-  MockPinState {_direction = Just Out
+  MockPinState {_direction = Out
+               ,_userVisibleDirection = True
                ,_activeLow = False
                ,_value = Low
                ,_edge = Just None}
@@ -417,15 +419,22 @@ readFile path =
     Just (Value pin) -> pinValueToBS . logicalValue <$> pinState pin -- Use the logical "value" here!
     Just (ActiveLow pin) -> activeLowToBS . _activeLow <$> pinState pin
     Just (Direction pin) ->
-      _direction <$> pinState pin >>= \case
-        Nothing -> throwM $ InternalError (show pin ++ " has no direction but direction attribute is exported")
-        Just d -> return $ pinDirectionToBS d
+      do visible <- _userVisibleDirection <$> pinState pin
+         if visible
+            then do direction <- _direction <$> pinState pin
+                    return $ pinDirectionToBS direction
+            else throwM $ InternalError (show pin ++ " has no direction but direction attribute is exported")
     Just (Edge pin) ->
       _edge <$> pinState pin >>= \case
         Nothing -> throwM $ InternalError (show pin ++ " has no edge but edge attribute is exported")
         Just edge -> return $ sysfsEdgeToBS edge
     Just _ -> throwM $ WriteOnlyFile path
 
+-- In some cases in 'writeFile', more than one kind of error can occur
+-- (e.g., when exporting a pin, the pin number may be invalid, or the
+-- pin may already be exported). We try to emulate what a real @sysfs@
+-- filesystem would do, so the order in which error conditions are
+-- checked matters here!
 writeFile :: (MonadThrow m) => FilePath -> ByteString -> SysfsMockT m ()
 writeFile path bs =
   fileAt path >>= \case
@@ -443,9 +452,13 @@ writeFile path bs =
         Just b -> putPinState pin (\s -> s {_activeLow = b})
         Nothing -> throwM $ WriteError path
     Just (Value pin) ->
-      case bsToPinValue bs of
-        Just v -> putPinState pin (setLogicalValue v)
-        Nothing -> throwM $ WriteError path
+      _direction <$> pinState pin >>= \case
+        Out ->
+          case bsToPinValue bs of
+            Just v -> putPinState pin (setLogicalValue v)
+            Nothing -> throwM $ WriteError path
+        _ ->
+          throwM $ IsInputPin pin
     Just (Edge pin) ->
       _edge <$> pinState pin >>= \case
         Nothing -> throwM $ InternalError (show pin ++ " has no edge but edge attribute is exported")
@@ -454,13 +467,13 @@ writeFile path bs =
             Just edge -> putPinState pin (\s -> s {_edge = Just edge})
             Nothing -> throwM $ WriteError path
     Just (Direction pin) ->
-      _direction <$> pinState pin >>= \case
-        Nothing -> throwM $ InternalError (show pin ++ " has no direction but direction attribute is exported")
-        Just _ ->
-          case bsToPinDirection bs of
-            Just (dir, Nothing) -> putPinState pin (\s -> s {_direction = Just dir})
-            Just (dir, Just v) -> putPinState pin $ setLogicalValue v . (\s -> s {_direction = Just dir})
-            Nothing -> throwM $ WriteError path
+      do visible <- _userVisibleDirection <$> pinState pin
+         if visible
+            then case bsToPinDirection bs of
+                   Just (dir, Nothing) -> putPinState pin (\s -> s {_direction = dir})
+                   Just (dir, Just v) -> putPinState pin $ setLogicalValue v . (\s -> s {_direction = dir})
+                   Nothing -> throwM $ WriteError path
+            else throwM $ InternalError (show pin ++ " has no direction but direction attribute is exported")
     Just _ -> throwM $ ReadOnlyFile path
 
 fileAt :: (MonadThrow m) => FilePath -> SysfsMockT m (Maybe FileType)
@@ -508,7 +521,7 @@ export pin =
          do mkdir pindir
             mkfile (pinActiveLowFileName pin) (ActiveLow pin)
             mkfile (pinValueFileName pin) (Value pin)
-            when (isJust $ _direction s) $
+            when (_userVisibleDirection s) $
               mkfile (pinDirectionFileName pin) (Direction pin)
             when (isJust $ _edge s) $
               mkfile (pinEdgeFileName pin) (Edge pin)
