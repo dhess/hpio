@@ -72,6 +72,7 @@ toSysfsEdge Level = Both
 -- attribute do not match any expected value for that attribute.
 data SysfsException
   = SysfsNotPresent
+  | NotExported Pin
   | UnexpectedDirection Pin String
   | UnexpectedValue Pin String
   | UnexpectedEdge Pin String

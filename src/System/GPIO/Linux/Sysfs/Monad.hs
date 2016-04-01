@@ -354,8 +354,12 @@ unexportPin (Pin n) = unlockedWriteFile unexportFileName (intToBS n)
 -- in which case their direction must be determined by some other
 -- mechanism as the @direction@ attribute does not exist for such
 -- pins.)
-pinHasDirection :: (MonadSysfs m) => Pin -> m Bool
-pinHasDirection = doesFileExist . pinDirectionFileName
+pinHasDirection :: (MonadSysfs m, MonadThrow m) => Pin -> m Bool
+pinHasDirection p =
+  do exported <- pinIsExported p
+     if exported
+        then doesFileExist (pinDirectionFileName p)
+        else throwM $ NotExported p
 
 -- | Read the given pin's direction.
 --
@@ -441,8 +445,12 @@ writePinValue p v = writeFile (pinValueFileName p) (pinValueToBS v)
 
 -- | Test whether the pin has an @edge@ attribute, i.e., whether it
 -- can be configured for edge- or level-triggered interrupts.
-pinHasEdge :: (MonadSysfs m) => Pin -> m Bool
-pinHasEdge p = doesFileExist (pinEdgeFileName p)
+pinHasEdge :: (MonadSysfs m, MonadThrow m) => Pin -> m Bool
+pinHasEdge p =
+  do exported <- pinIsExported p
+     if exported
+        then doesFileExist (pinEdgeFileName p)
+        else throwM $ NotExported p
 
 -- | Read the given pin's @edge@ attribute.
 --
