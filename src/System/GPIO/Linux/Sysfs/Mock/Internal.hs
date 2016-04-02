@@ -38,7 +38,6 @@ module System.GPIO.Linux.Sysfs.Mock.Internal
        , files
        , dirNode
        , subdirs
-       , MockFSException(..)
        , MockFSCrumb(..)
        , MockFSZipper(..)
          -- * Mock filesystem operations
@@ -49,9 +48,11 @@ module System.GPIO.Linux.Sysfs.Mock.Internal
        , mkfile
        , rmdir
        , rmfile
+         -- * Mock filesystem exceptions
+       , MockFSException(..)
        ) where
 
-import Control.Exception (Exception)
+import Control.Exception (Exception(..))
 import Data.ByteString (ByteString)
 import Data.Foldable (foldlM)
 import Data.List (find, unfoldr)
@@ -59,7 +60,7 @@ import Data.Maybe (isJust)
 import Data.Tree (Tree(..))
 import Data.Typeable (Typeable)
 import System.FilePath (isAbsolute, isValid, joinPath, splitDirectories)
-import System.GPIO.Types (Pin)
+import System.GPIO.Types (Pin, gpioExceptionToException, gpioExceptionFromException)
 
 type Name = String
 
@@ -128,7 +129,9 @@ data MockFSException
   | InternalError String           -- ^ A condition has occurred in the implementation which should never occur
   deriving (Show,Eq,Typeable)
 
-instance Exception MockFSException
+instance Exception MockFSException where
+  toException = gpioExceptionToException
+  fromException = gpioExceptionFromException
 
 data MockFSCrumb =
   MockFSCrumb {_node :: DirNode

@@ -93,7 +93,7 @@ module System.GPIO.Linux.Sysfs
        , SysfsEdge(..)
        , toPinReadTrigger
        , toSysfsEdge
-         -- * Exceptions
+         -- * @sysfs@-specific Exceptions
        , SysfsException(..)
        ) where
 

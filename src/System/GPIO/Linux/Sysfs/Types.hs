@@ -24,7 +24,7 @@ module System.GPIO.Linux.Sysfs.Types
        , SysfsException(..)
        ) where
 
-import Control.Monad.Catch (Exception)
+import Control.Monad.Catch (Exception(..))
 import Data.Data
 import GHC.Generics
 import System.GPIO.Types
@@ -78,6 +78,8 @@ data SysfsException
   | UnexpectedEdge Pin String
   | UnexpectedActiveLow Pin String
   | UnexpectedContents FilePath String
-  deriving (Show,Typeable)
+  deriving (Eq,Show,Typeable)
 
-instance Exception SysfsException
+instance Exception SysfsException where
+  toException = gpioExceptionToException
+  fromException = gpioExceptionFromException

@@ -69,8 +69,9 @@ module System.GPIO.Linux.Sysfs.Mock
 
 import Prelude hiding (readFile, writeFile)
 import Control.Applicative (Alternative)
+import Control.Exception (SomeException)
 import Control.Monad (MonadPlus, when, void)
-import Control.Monad.Catch (MonadCatch, MonadMask, MonadThrow, fromException, throwM)
+import Control.Monad.Catch (MonadCatch, MonadMask, MonadThrow, throwM)
 import Control.Monad.Catch.Pure (Catch, runCatch)
 import Control.Monad.Cont (MonadCont)
 import Control.Monad.Except (MonadError)
@@ -83,7 +84,7 @@ import Control.Monad.Writer (MonadWriter(..))
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Char8 as C8 (pack, unlines)
 import Data.Foldable (foldrM)
-import Data.Maybe (fromJust, isJust)
+import Data.Maybe (isJust)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map (empty, insert, insertLookupWithKey, lookup)
 import Foreign.C.Types (CInt(..))
@@ -266,23 +267,13 @@ instance (MonadThrow m) => M.MonadSysfs (SysfsMockT m) where
 -- which adds mock GPIO computations to this mock @sysfs@ environment.
 type SysfsMock = SysfsMockT Catch
 
-runSysfsMock :: SysfsMock a -> MockWorld -> [MockGpioChip] -> Either MockFSException (a, MockWorld)
-runSysfsMock a w chips =
-  -- The 'MonadThrow' instance for 'Either' 'e' requires that 'e' '~'
-  -- 'SomeException', and 'SomeException' has no 'Eq' instance, which
-  -- makes this monad not very useful for testing. Therefore, we convert the
-  -- exception type back to 'MockFSException'.
-  case runCatch $ runSysfsMockT a w chips of
-    Right result -> return result
-    Left e ->
-      -- Should be safe as there's no other exception type in this
-      -- stack.
-      Left $ fromJust $ fromException e
+runSysfsMock :: SysfsMock a -> MockWorld -> [MockGpioChip] -> Either SomeException (a, MockWorld)
+runSysfsMock a w chips = runCatch $ runSysfsMockT a w chips
 
-evalSysfsMock :: SysfsMock a -> MockWorld -> [MockGpioChip] -> Either MockFSException a
+evalSysfsMock :: SysfsMock a -> MockWorld -> [MockGpioChip] -> Either SomeException a
 evalSysfsMock a w chips = fst <$> runSysfsMock a w chips
 
-execSysfsMock :: SysfsMock a -> MockWorld -> [MockGpioChip] -> Either MockFSException MockWorld
+execSysfsMock :: SysfsMock a -> MockWorld -> [MockGpioChip] -> Either SomeException MockWorld
 execSysfsMock a w chips = snd <$> runSysfsMock a w chips
 
 -- | A specialization of 'SysfsGpioT' which runs (pure, fake) GPIO
@@ -298,7 +289,7 @@ type SysfsGpioMock = SysfsGpioT SysfsMock
 -- with the GPIO pins as specified by the list of 'MockGpioChip's. If
 -- any of the chips in the list are already present in the filesystem,
 -- or if any of the chips' pin ranges overlap, an error is returned.
-runSysfsGpioMock :: SysfsGpioMock a -> MockWorld -> [MockGpioChip] -> Either MockFSException (a, MockWorld)
+runSysfsGpioMock :: SysfsGpioMock a -> MockWorld -> [MockGpioChip] -> Either SomeException (a, MockWorld)
 runSysfsGpioMock a = runSysfsMock (runSysfsGpioT a)
 
 -- | Run a 'SysfsGpioMock' computation with an initial mock world and
@@ -310,7 +301,7 @@ runSysfsGpioMock a = runSysfsMock (runSysfsGpioT a)
 -- with the GPIO pins as specified by the list of 'MockGpioChip's. If
 -- any of the chips in the list are already present in the filesystem,
 -- or if any of the chips' pin ranges overlap, an error is returned.
-evalSysfsGpioMock :: SysfsGpioMock a -> MockWorld -> [MockGpioChip] -> Either MockFSException a
+evalSysfsGpioMock :: SysfsGpioMock a -> MockWorld -> [MockGpioChip] -> Either SomeException a
 evalSysfsGpioMock a = evalSysfsMock (runSysfsGpioT a)
 
 -- | Run a 'SysfsGpioMock' computation with an initial mock world and
@@ -322,7 +313,7 @@ evalSysfsGpioMock a = evalSysfsMock (runSysfsGpioT a)
 -- with the GPIO pins as specified by the list of 'MockGpioChip's. If
 -- any of the chips in the list are already present in the filesystem,
 -- or if any of the chips' pin ranges overlap, an error is returned.
-execSysfsGpioMock :: SysfsGpioMock a -> MockWorld -> [MockGpioChip] -> Either MockFSException MockWorld
+execSysfsGpioMock :: SysfsGpioMock a -> MockWorld -> [MockGpioChip] -> Either SomeException MockWorld
 execSysfsGpioMock a = execSysfsMock (runSysfsGpioT a)
 
 makeFileSystem :: (MonadThrow m) => [MockGpioChip] -> SysfsMockT m MockFSZipper

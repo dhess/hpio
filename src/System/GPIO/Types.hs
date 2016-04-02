@@ -14,6 +14,7 @@ Basic GPIO types.
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE Trustworthy #-}
 
@@ -34,8 +35,13 @@ module System.GPIO.Types
          -- * PinValue conversion to/from Bool
        , valueToBool
        , boolToValue
+         -- * GPIO exceptions
+       , SomeGpioException(..)
+       , gpioExceptionToException
+       , gpioExceptionFromException
        ) where
 
+import Control.Exception (Exception(..), SomeException)
 import Data.Bits
 import Data.Data
 import Data.Ix
@@ -161,3 +167,19 @@ boolToValue :: Bool -> PinValue
 boolToValue False = Low
 boolToValue True  = High
 
+-- | The top level of the GPIO exception hierarchy.
+data SomeGpioException = forall e . Exception e => SomeGpioException e
+    deriving Typeable
+
+instance Show SomeGpioException where
+    show (SomeGpioException e) = show e
+
+instance Exception SomeGpioException
+
+gpioExceptionToException :: Exception e => e -> SomeException
+gpioExceptionToException = toException . SomeGpioException
+
+gpioExceptionFromException :: Exception e => SomeException -> Maybe e
+gpioExceptionFromException x = do
+    SomeGpioException a <- fromException x
+    cast a
