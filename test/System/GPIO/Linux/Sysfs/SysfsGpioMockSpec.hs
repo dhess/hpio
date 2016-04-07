@@ -4,13 +4,14 @@ module System.GPIO.Linux.Sysfs.SysfsGpioMockSpec (spec) where
 
 import Control.Exception (fromException)
 import Control.Monad.Catch (MonadMask)
+import qualified Data.Map.Strict as Map (lookup)
 
 import System.GPIO.Linux.Sysfs.Types (SysfsEdge(..))
 import qualified System.GPIO.Linux.Sysfs.Types as Sysfs (SysfsException(..))
 import System.GPIO.Linux.Sysfs.Mock
-       (MockGpioChip(..), MockFSException(..), MockPinState(..),
+       (MockGpioChip(..), MockFSException(..), MockPinState(..), MockPins,
         MockWorld, SysfsGpioMock, defaultMockPinState, evalSysfsGpioMock,
-        initialMockWorld)
+        execSysfsGpioMock, initialMockWorld, mockWorldPins)
 import System.GPIO.Monad (MonadGpio(..), withPin)
 import System.GPIO.Types (Pin (..), PinDirection(..), PinReadTrigger(..), PinValue (..))
 
@@ -239,6 +240,12 @@ evalSysfsGpioMockS a w c =
     Right x -> return x
     Left e -> Left $ fromException e
 
+execSysfsGpioMock' :: SysfsGpioMock a -> MockWorld -> [MockGpioChip] -> Either (Maybe MockFSException) MockPins
+execSysfsGpioMock' a w c =
+  case execSysfsGpioMock a w c of
+    Right w' -> return $ mockWorldPins w'
+    Left e -> Left $ fromException e
+
 spec :: Spec
 spec =
   do describe "pins" $
@@ -301,11 +308,44 @@ spec =
             let testChip = MockGpioChip "testChip" 1 [defaultMockPinState {_edge = Nothing}, defaultMockPinState]
             in evalSysfsGpioMock' testSetReadTrigger initialMockWorld [testChip] `shouldBe` Left (Just $ NotAFile "/sys/class/gpio/gpio1/edge")
 
+     describe "getPinActiveLevel" $
+       do context "when active level is high" $
+            do it "returns the pin's active level" $
+                   evalSysfsGpioMock' (withPin (Pin 1) getPinActiveLevel) initialMockWorld [chip0] `shouldBe` Right High
+          context "when active level is low" $
+            do it "returns the pin's active level" $
+                 let testChip = MockGpioChip "testChip" 1 [defaultMockPinState {_activeLow = True}]
+                 in evalSysfsGpioMock' (withPin (Pin 1) getPinActiveLevel) initialMockWorld [testChip] `shouldBe` Right Low
+
+     describe "setPinActiveLevel" $
+       do context "when active level is high" $
+            do it "sets the pin's active level to low" $
+                 let (Right pins) = execSysfsGpioMock' (withPin (Pin 1) (\h -> setPinActiveLevel h Low)) initialMockWorld [chip0]
+                 in Map.lookup (Pin 1) pins `shouldBe` Just (defaultMockPinState {_activeLow = True})
+               it "sets the pin's active level to high" $
+                 let (Right pins) = execSysfsGpioMock' (withPin (Pin 1) (\h -> setPinActiveLevel h High)) initialMockWorld [chip0]
+                 in Map.lookup (Pin 1) pins `shouldBe` Just (defaultMockPinState {_activeLow = False})
+          context "when active level is low" $
+            let testChip = MockGpioChip "testChip" 1 [defaultMockPinState {_activeLow = True}]
+            in do it "sets the pin's active level to low" $
+                    let (Right pins) = execSysfsGpioMock' (withPin (Pin 1) (\h -> setPinActiveLevel h Low)) initialMockWorld [testChip]
+                    in Map.lookup (Pin 1) pins `shouldBe` Just (defaultMockPinState {_activeLow = True})
+                  it "sets the pin's active level to high" $
+                    let (Right pins) = execSysfsGpioMock' (withPin (Pin 1) (\h -> setPinActiveLevel h High)) initialMockWorld [chip0]
+                    in Map.lookup (Pin 1) pins `shouldBe` Just (defaultMockPinState {_activeLow = False})
      describe "readPin" $
        do it "waits for the specified trigger and returns the pin's value" $
             pendingWith "need to implement this"
 
           it "blocks when the read trigger is Disabled, until it is changed" $
+            pendingWith "need to implement this"
+
+     describe "readPinTimeout" $
+       do it "waits for the specified trigger and returns the pin's value" $
+            pendingWith "need to implement this"
+          it "blocks when the read trigger is Disabled, until it is changed" $
+            pendingWith "need to implement this"
+          it "times out" $
             pendingWith "need to implement this"
 
      describe "writePin" $
