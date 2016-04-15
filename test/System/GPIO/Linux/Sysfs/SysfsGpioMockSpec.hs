@@ -9,9 +9,6 @@ import qualified Data.Map.Strict as Map (lookup)
 import System.GPIO.Linux.Sysfs.Types (SysfsEdge(..))
 import qualified System.GPIO.Linux.Sysfs.Types as Sysfs (SysfsException(..))
 import System.GPIO.Linux.Sysfs.Mock
-       (MockGpioChip(..), MockFSException(..), MockPinState(..), MockPins,
-        MockWorld, SysfsGpioMock, defaultMockPinState, evalSysfsGpioMock,
-        execSysfsGpioMock, initialMockWorld, mockWorldPins)
 import System.GPIO.Monad (MonadGpio(..), withPin)
 import System.GPIO.Types (Pin (..), PinDirection(..), PinReadTrigger(..), PinValue (..))
 
@@ -229,22 +226,13 @@ chip1 :: MockGpioChip
 chip1 = MockGpioChip "chip1" 32 (replicate 32 defaultMockPinState)
 
 evalSysfsGpioMock' :: SysfsGpioMock a -> MockWorld -> [MockGpioChip] -> Either (Maybe MockFSException) a
-evalSysfsGpioMock' a w c =
-  case evalSysfsGpioMock a w c of
-    Right x -> return x
-    Left e -> Left $ fromException e
+evalSysfsGpioMock' a w c = either (Left . fromException) return $ evalSysfsGpioMock a w c
 
 evalSysfsGpioMockS :: SysfsGpioMock a -> MockWorld -> [MockGpioChip] -> Either (Maybe Sysfs.SysfsException) a
-evalSysfsGpioMockS a w c =
-  case evalSysfsGpioMock a w c of
-    Right x -> return x
-    Left e -> Left $ fromException e
+evalSysfsGpioMockS a w c = either (Left . fromException) return $ evalSysfsGpioMock a w c
 
-execSysfsGpioMock' :: SysfsGpioMock a -> MockWorld -> [MockGpioChip] -> Either (Maybe MockFSException) MockPins
-execSysfsGpioMock' a w c =
-  case execSysfsGpioMock a w c of
-    Right w' -> return $ mockWorldPins w'
-    Left e -> Left $ fromException e
+execSysfsGpioMock' :: SysfsGpioMock a -> MockWorld -> [MockGpioChip] -> Either (Maybe MockFSException) MockWorld
+execSysfsGpioMock' a w c = either (Left . fromException) return $ execSysfsGpioMock a w c
 
 spec :: Spec
 spec =
@@ -320,19 +308,19 @@ spec =
      describe "setPinActiveLevel" $
        do context "when active level is high" $
             do it "sets the pin's active level to low" $
-                 let (Right pins) = execSysfsGpioMock' (withPin (Pin 1) (\h -> setPinActiveLevel h Low)) initialMockWorld [chip0]
-                 in Map.lookup (Pin 1) pins `shouldBe` Just (defaultMockPinState {_activeLow = True})
+                 let (Right world) = execSysfsGpioMock' (withPin (Pin 1) (\h -> setPinActiveLevel h Low)) initialMockWorld [chip0]
+                 in Map.lookup (Pin 1) (mockWorldPins world) `shouldBe` Just (defaultMockPinState {_activeLow = True})
                it "sets the pin's active level to high" $
-                 let (Right pins) = execSysfsGpioMock' (withPin (Pin 1) (\h -> setPinActiveLevel h High)) initialMockWorld [chip0]
-                 in Map.lookup (Pin 1) pins `shouldBe` Just (defaultMockPinState {_activeLow = False})
+                 let (Right world) = execSysfsGpioMock' (withPin (Pin 1) (\h -> setPinActiveLevel h High)) initialMockWorld [chip0]
+                 in Map.lookup (Pin 1) (mockWorldPins world) `shouldBe` Just (defaultMockPinState {_activeLow = False})
           context "when active level is low" $
             let testChip = MockGpioChip "testChip" 1 [defaultMockPinState {_activeLow = True}]
             in do it "sets the pin's active level to low" $
-                    let (Right pins) = execSysfsGpioMock' (withPin (Pin 1) (\h -> setPinActiveLevel h Low)) initialMockWorld [testChip]
-                    in Map.lookup (Pin 1) pins `shouldBe` Just (defaultMockPinState {_activeLow = True})
+                    let (Right world) = execSysfsGpioMock' (withPin (Pin 1) (\h -> setPinActiveLevel h Low)) initialMockWorld [testChip]
+                    in Map.lookup (Pin 1) (mockWorldPins world) `shouldBe` Just (defaultMockPinState {_activeLow = True})
                   it "sets the pin's active level to high" $
-                    let (Right pins) = execSysfsGpioMock' (withPin (Pin 1) (\h -> setPinActiveLevel h High)) initialMockWorld [chip0]
-                    in Map.lookup (Pin 1) pins `shouldBe` Just (defaultMockPinState {_activeLow = False})
+                    let (Right world) = execSysfsGpioMock' (withPin (Pin 1) (\h -> setPinActiveLevel h High)) initialMockWorld [chip0]
+                    in Map.lookup (Pin 1) (mockWorldPins world) `shouldBe` Just (defaultMockPinState {_activeLow = False})
      describe "readPin" $
        do it "waits for the specified trigger and returns the pin's value" $
             pendingWith "need to implement this"
