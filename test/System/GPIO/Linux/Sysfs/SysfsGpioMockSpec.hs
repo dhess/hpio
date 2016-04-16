@@ -3,14 +3,14 @@
 module System.GPIO.Linux.Sysfs.SysfsGpioMockSpec (spec) where
 
 import Control.Exception (fromException)
-import Control.Monad.Catch (MonadMask)
+import Control.Monad.Catch (MonadCatch, MonadMask, handle)
 import qualified Data.Map.Strict as Map (lookup)
 
 import System.GPIO.Linux.Sysfs.Types (SysfsEdge(..))
 import qualified System.GPIO.Linux.Sysfs.Types as Sysfs (SysfsException(..))
 import System.GPIO.Linux.Sysfs.Mock
 import System.GPIO.Monad (MonadGpio(..), withPin)
-import System.GPIO.Types (Pin (..), PinDirection(..), PinReadTrigger(..), PinValue (..))
+import System.GPIO.Types (Pin (..), PinDirection(..), PinReadTrigger(..), PinValue (..), SomeGpioException)
 
 import Test.Hspec
 
@@ -23,8 +23,8 @@ import Test.Hspec
 
 testOpenClose :: (MonadGpio h m) => m ()
 testOpenClose =
-  do handle <- openPin (Pin 1)
-     closePin handle
+  do h <- openPin (Pin 1)
+     closePin h
 
 testSetDirection :: (MonadGpio h m) => m (PinDirection, PinDirection, PinDirection)
 testSetDirection =
@@ -207,8 +207,11 @@ testNestedWithPin =
          val2 <- samplePin h2
          return (val1, val2)
 
-testNestedWithPinError :: (MonadGpio h m, MonadMask m) => m (PinValue, PinValue)
-testNestedWithPinError =
+handleGpioException :: MonadCatch m => (SomeGpioException -> m a) -> m a -> m a
+handleGpioException = handle
+
+testWithPinError :: (MonadGpio h m, MonadMask m, MonadCatch m) => m (Maybe PinValue)
+testWithPinError = handleGpioException (const $ return Nothing) $
   withPin (Pin 1) $ \h1 ->
     withPin (Pin 2) $ \h2 ->
       do setPinDirection h1 Out
@@ -216,8 +219,7 @@ testNestedWithPinError =
          writePin h1 High
          writePin h2 Low -- should fail
          val1 <- samplePin h1
-         val2 <- samplePin h2
-         return (val1, val2)
+         return $ Just val1
 
 chip0 :: MockGpioChip
 chip0 = MockGpioChip "chip0" 0 (replicate 16 defaultMockPinState)
@@ -234,6 +236,12 @@ evalSysfsGpioMockS a w c = either (Left . fromException) return $ evalSysfsGpioM
 execSysfsGpioMock' :: SysfsGpioMock a -> MockWorld -> [MockGpioChip] -> Either (Maybe MockFSException) MockWorld
 execSysfsGpioMock' a w c = either (Left . fromException) return $ execSysfsGpioMock a w c
 
+runSysfsGpioMock' :: SysfsGpioMock a -> MockWorld -> [MockGpioChip] -> Either (Maybe MockFSException) (a, MockWorld)
+runSysfsGpioMock' a w c = either (Left . fromException) return $ runSysfsGpioMock a w c
+
+evalSysfsMock' :: SysfsMock a -> MockWorld -> [MockGpioChip] -> Either (Maybe MockFSException) a
+evalSysfsMock' a w c = either (Left . fromException) Right $ evalSysfsMock a w c
+
 spec :: Spec
 spec =
   do describe "pins" $
@@ -243,9 +251,10 @@ spec =
          it "returns the list of available pins" $
              evalSysfsGpioMock' pins initialMockWorld [chip0] `shouldBe` expectedResult
 
-     describe "openPin and closePin" $
-       do it "succeeds when the pin is available" $
-            evalSysfsGpioMock' testOpenClose initialMockWorld [chip0] `shouldBe` Right ()
+     describe "closePin" $
+       do it "cleans up properly" $
+            let (Right world) = execSysfsGpioMock' testOpenClose initialMockWorld [chip0]
+            in evalSysfsMock' (doesDirectoryExist "/sys/class/gpio/gpio1") world [] `shouldBe` Right False
           it "fails when the pin is unavailable" $
             evalSysfsGpioMock' testOpenClose initialMockWorld [chip1] `shouldBe` Left (Just $ InvalidPin (Pin 1))
 
@@ -321,6 +330,7 @@ spec =
                   it "sets the pin's active level to high" $
                     let (Right world) = execSysfsGpioMock' (withPin (Pin 1) (\h -> setPinActiveLevel h High)) initialMockWorld [chip0]
                     in Map.lookup (Pin 1) (mockWorldPins world) `shouldBe` Just (defaultMockPinState {_activeLow = False})
+
      describe "readPin" $
        do it "waits for the specified trigger and returns the pin's value" $
             pendingWith "need to implement this"
@@ -378,19 +388,21 @@ spec =
      describe "withPin" $
        do it "opens and closes the pin as expected" $
             let testChip = MockGpioChip "testChip" 1 [defaultMockPinState {_value = High}]
-            in do evalSysfsGpioMock' testWithPin initialMockWorld [testChip] `shouldBe` Right High
-                  -- XXX make sure the pin directory /sys/class/gpio/gpio1 does not exist
+                (Right world) = execSysfsGpioMock' testWithPin initialMockWorld [testChip]
+            in evalSysfsMock' (doesDirectoryExist "/sys/class/gpio/gpio1") world [] `shouldBe` Right False
 
           it "throws an exception when the pin doesn't exist" $
             evalSysfsGpioMock' testWithPin initialMockWorld [chip1] `shouldBe` Left (Just $ InvalidPin (Pin 1))
 
           it "can nest" $
             let testChip = MockGpioChip "testChip" 1 [defaultMockPinState {_value = High}, defaultMockPinState]
-            in evalSysfsGpioMock' testNestedWithPin initialMockWorld [testChip] `shouldBe` Right (High, Low)
+                (Right (result, world)) = runSysfsGpioMock' testNestedWithPin initialMockWorld [testChip]
+            in do result `shouldBe` (High, Low)
+                  evalSysfsMock' (doesDirectoryExist "/sys/class/gpio/gpio1") world [] `shouldBe` Right False
+                  evalSysfsMock' (doesDirectoryExist "/sys/class/gpio/gpio2") world [] `shouldBe` Right False
 
-          it "fails properly when nested" $
-            let testChip = MockGpioChip "testChip" 1 [defaultMockPinState]
-            in do evalSysfsGpioMock' testNestedWithPin initialMockWorld [testChip] `shouldBe` Left (Just $ InvalidPin (Pin 2))
-                  -- XXX make sure both pins have been unexported
-                  evalSysfsGpioMock' testNestedWithPinError initialMockWorld [chip0] `shouldBe` Left (Just $ IsInputPin (Pin 2))
-                  -- XXX make sure both pins have been unexported
+          it "cleans up when an exception occurs in the computation" $
+            let (Right (result, world)) = runSysfsGpioMock' testWithPinError initialMockWorld [chip0]
+            in do result `shouldBe` Nothing
+                  evalSysfsMock' (doesDirectoryExist "/sys/class/gpio/gpio1") world [] `shouldBe` Right False
+                  evalSysfsMock' (doesDirectoryExist "/sys/class/gpio/gpio2") world [] `shouldBe` Right False

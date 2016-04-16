@@ -10,16 +10,10 @@ import System.GPIO.Types (Pin(..), PinValue(..))
 import Test.Hspec
 
 evalSysfsMock' :: SysfsMock a -> MockWorld -> [MockGpioChip] -> Either (Maybe MockFSException) a
-evalSysfsMock' a w c =
-  case evalSysfsMock a w c of
-    Right x -> return x
-    Left e -> Left $ fromException e
+evalSysfsMock' a w c = either (Left . fromException) Right $ evalSysfsMock a w c
 
 execSysfsMock' :: SysfsMock a -> MockWorld -> [MockGpioChip] -> Either (Maybe MockFSException) MockWorld
-execSysfsMock' a w c =
-  case execSysfsMock a w c of
-    Right x -> return x
-    Left e -> Left $ fromException e
+execSysfsMock' a w c = either (Left . fromException) Right $ execSysfsMock a w c
 
 spec :: Spec
 spec =
