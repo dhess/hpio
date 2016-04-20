@@ -251,7 +251,7 @@ spec =
          it "returns the list of available pins" $
              evalSysfsGpioMock' pins initialMockWorld [chip0] `shouldBe` expectedResult
 
-     describe "closePin" $
+     describe "openPin/closePin" $
        do it "cleans up properly" $
             let (Right world) = execSysfsGpioMock' testOpenClose initialMockWorld [chip0]
             in evalSysfsMock' (doesDirectoryExist "/sys/class/gpio/gpio1") world [] `shouldBe` Right False
@@ -284,6 +284,9 @@ spec =
      describe "togglePinDirection" $
        do it "toggles pin direction" $
             evalSysfsGpioMock' testTogglePinDirection initialMockWorld [chip0] `shouldBe` Right (Out, In, In, Out, Out)
+          it "returns Nothing when the pin direction is not settable" $
+            let testChip = MockGpioChip "testChip" 1 [defaultMockPinState {_userVisibleDirection = False}]
+            in evalSysfsGpioMock' (withPin (Pin 1) togglePinDirection) initialMockWorld [testChip] `shouldBe` Right Nothing
 
      describe "getPinReadTrigger" $
        do it "gets the pin's read trigger" $
@@ -371,6 +374,8 @@ spec =
      describe "togglePinValue" $
        do it "toggles the pin's value" $
             evalSysfsGpioMock' testTogglePinValue initialMockWorld [chip0] `shouldBe` Right (Low, High, High, Low, Low)
+          it "fails when the pin is not configured for output" $
+            evalSysfsGpioMock' (withPin (Pin 1) (\h -> setPinDirection h In >> togglePinValue h)) initialMockWorld [chip0] `shouldBe` Left (Just $ IsInputPin (Pin 1))
 
      describe "operations on an invalid handle fail" $
        -- Note: When used on an invalid handle, GPIO commands which

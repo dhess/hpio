@@ -76,6 +76,15 @@ spec =
           evalSysfsMock' (getDirectoryContents "/sys/class/foobar") initialMockWorld [] `shouldBe` Left (Just $ NoSuchFileOrDirectory "/sys/class/foobar")
 
       context "readFile" $ do
+        -- Note: most interesting cases are already checked by the
+        -- tests in 'SysfsGpioMockSpec.hs' and it would be a bit silly
+        -- to try to test them here due to the amount of setup
+        -- required to get the filesystem into the necessary state.
+        -- (We would basically end up rewriting large chunks of the
+        -- mock GPIO code.)
+        it "works with 'constant' files" $
+          let chip0 = MockGpioChip "chip0" 0 (replicate 16 defaultMockPinState)
+          in evalSysfsMock' (readFile "/sys/class/gpio/gpiochip0/base") initialMockWorld [chip0] `shouldBe` Right "0\n"
         it "fails on /sys/class/gpio/export" $
           evalSysfsMock' (readFile "/sys/class/gpio/export") initialMockWorld [] `shouldBe` Left (Just $ WriteOnlyFile "/sys/class/gpio/export")
         it "fails on /sys/class/gpio/unexport" $
@@ -84,6 +93,11 @@ spec =
           evalSysfsMock' (readFile "/sys/class/gpio/foo") initialMockWorld [] `shouldBe` Left (Just $ NotAFile "/sys/class/gpio/foo")
         it "fails on a directory" $
           evalSysfsMock' (readFile "/sys/class/gpio") initialMockWorld [] `shouldBe` Left (Just $ NotAFile "/sys/class/gpio")
+
+      context "writeFile" $
+        it "does the right thing" $
+          pendingWith "Not implemented" -- See notes for 'readFile'
+                                        -- above.
 
       context "runSysfsMockT" $ do
         let chip0 = MockGpioChip "chip0" 0 (replicate 16 defaultMockPinState)
