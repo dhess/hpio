@@ -69,15 +69,47 @@ toSysfsEdge Level = Both
 --
 -- The @UnexpectedX@ values are truly exceptional and mean that, while
 -- the @sysfs@ attribute for the given pin exists, the contents of the
--- attribute do not match any expected value for that attribute.
+-- attribute do not match any expected value for that attribute, which
+-- probably means that the package is incompatible with the @sysfs@
+-- filesystem due to a kernel-level change.
 data SysfsException
   = SysfsNotPresent
+    -- ^ The @sysfs@ filesystem does not exist
+  | SysfsError
+    -- ^ Something in the @sysfs@ filesystem does not behave as
+    -- expected (could indicate a change in @sysfs@ behavior that the
+    -- package does not expect)
+  | PermissionDenied
+    -- ^ Insufficient system privileges to perform the action
+  | AlreadyExported Pin
+    -- ^ The pin has already been exported
+  | InvalidPin Pin
+    -- ^ The specified pin does not exist
   | NotExported Pin
+    -- ^ The pin has been un-exported or does not exist
+  | NoDirectionAttribute Pin
+    -- ^ The pin does not have a @direction@ attribute
+  | NoEdgeAttribute Pin
+    -- ^ The pin does not have an @edge@ attribute
   | UnexpectedDirection Pin String
+    -- ^ An unexpected value was read from the pin's @direction@
+    -- attribute
   | UnexpectedValue Pin String
+    -- ^ An unexpected value was read from the pin's @value@
+    -- attribute
   | UnexpectedEdge Pin String
+    -- ^ An unexpected value was read from the pin's @edge@
+    -- attribute
   | UnexpectedActiveLow Pin String
+    -- ^ An unexpected value was read from the pin's @active_low@
+    -- attribute
   | UnexpectedContents FilePath String
+    -- ^ An unexpected value was read from the pin's @active_low@
+    -- attribute
+  | InternalError String
+    -- ^ An internal error has occurred in the interpreter, something
+    -- which should "never happen" and should be reported to the
+    -- package maintainer.
   deriving (Eq,Show,Typeable)
 
 instance Exception SysfsException where

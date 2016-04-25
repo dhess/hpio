@@ -56,7 +56,7 @@ module System.GPIO.Linux.Sysfs.Monad
 import Prelude hiding (readFile, writeFile)
 import Control.Applicative (Alternative)
 import Control.Monad (MonadPlus, filterM, void)
-import Control.Monad.Catch (MonadCatch, MonadMask, MonadThrow, throwM)
+import Control.Monad.Catch (MonadCatch, MonadMask, MonadThrow, catchIOError, throwM)
 import Control.Monad.Catch.Pure (CatchT)
 import Control.Monad.Cont (MonadCont, ContT)
 import Control.Monad.Except (MonadError, ExceptT)
@@ -80,12 +80,16 @@ import Data.ByteString (ByteString)
 import qualified Data.ByteString.Char8 as C8 (readInt, unpack)
 import Data.List (isPrefixOf, sort)
 import Foreign.C.Types (CInt(..))
+import qualified GHC.IO.Exception as IO (IOErrorType(..))
 import System.FilePath ((</>), takeFileName)
 
 import System.GPIO.Linux.Sysfs.Types (SysfsEdge(..), SysfsException(..), toPinReadTrigger, toSysfsEdge)
 import System.GPIO.Linux.Sysfs.Util
 import System.GPIO.Monad (MonadGpio(..))
 import System.GPIO.Types
+import System.IO.Error
+       (ioeGetErrorType, isAlreadyInUseError, isDoesNotExistError,
+        isPermissionError)
 
 -- | A type class for monads which implement (or mock) low-level Linux
 -- @sysfs@ GPIO operations.
@@ -246,7 +250,7 @@ instance MonadTrans SysfsGpioT where
 -- versions of the package.
 newtype PinDescriptor = PinDescriptor { _pin :: Pin } deriving (Show, Eq, Ord)
 
-instance (MonadThrow m, MonadSysfs m) => MonadGpio PinDescriptor (SysfsGpioT m) where
+instance (MonadCatch m, MonadThrow m, MonadSysfs m) => MonadGpio PinDescriptor (SysfsGpioT m) where
   pins =
     lift sysfsIsPresent >>= \case
       False -> return []
@@ -330,24 +334,51 @@ pinIsExported = doesDirectoryExist . pinDirName
 --
 -- Note that it's an error to call this function to export a pin
 -- that's already been exported.
-exportPin :: (MonadSysfs m) => Pin -> m ()
-exportPin (Pin n) = unlockedWriteFile exportFileName (intToBS n)
+-- permissions: PermissionDenied
+exportPin :: (MonadCatch m, MonadSysfs m) => Pin -> m ()
+exportPin pin@(Pin n) =
+  catchIOError
+    (unlockedWriteFile exportFileName (intToBS n))
+    mapIOError
+  where
+    mapIOError :: (MonadThrow m) => IOError -> m ()
+    mapIOError e
+      | isAlreadyInUseError e = throwM $ AlreadyExported pin
+      | isInvalidArgumentError e = throwM $ InvalidPin pin
+      | isPermissionError e = throwM PermissionDenied
+      | otherwise = throwM e
 
 -- | Export the given pin, but, unlike 'exportPin', if the pin is
 -- already exported, this is not an error; in this situation, the pin
 -- remains exported and its state unchanged.
-exportPin' :: (MonadSysfs m) => Pin -> m ()
-exportPin' p =
-  pinIsExported p >>= \case
-    True -> return ()
-    False -> exportPin p
+exportPin' :: (MonadSysfs m, MonadCatch m) => Pin -> m ()
+exportPin' pin@(Pin n) =
+  catchIOError
+    (unlockedWriteFile exportFileName (intToBS n))
+    mapIOError
+  where
+    mapIOError :: (MonadThrow m) => IOError -> m ()
+    mapIOError e
+      | isAlreadyInUseError e = return ()
+      | isInvalidArgumentError e = throwM $ InvalidPin pin
+      | isPermissionError e = throwM PermissionDenied
+      | otherwise = throwM e
 
 -- | Unexport the given pin.
 --
 -- It is an error to call this function if the pin is not currently
 -- exported.
-unexportPin :: (MonadSysfs m) => Pin -> m ()
-unexportPin (Pin n) = unlockedWriteFile unexportFileName (intToBS n)
+unexportPin :: (MonadSysfs m, MonadCatch m) => Pin -> m ()
+unexportPin pin@(Pin n) =
+  catchIOError
+    (unlockedWriteFile unexportFileName (intToBS n))
+    mapIOError
+  where
+    mapIOError :: (MonadThrow m) => IOError -> m ()
+    mapIOError e
+      | isInvalidArgumentError e = throwM $ NotExported pin
+      | isPermissionError e = throwM PermissionDenied
+      | otherwise = throwM e
 
 -- | Test whether the given pin's direction can be set via the
 -- @sysfs@ GPIO filesystem. (Some pins have a hard-wired direction,
@@ -365,19 +396,44 @@ pinHasDirection p =
 --
 -- It is an error to call this function if the pin has no @direction@
 -- attribute.
-readPinDirection :: (MonadSysfs m, MonadThrow m) => Pin -> m PinDirection
+readPinDirection :: (MonadSysfs m, MonadThrow m, MonadCatch m) => Pin -> m PinDirection
 readPinDirection p =
-  readFile (pinDirectionFileName p) >>= \case
-    "in\n"  -> return In
-    "out\n" -> return Out
-    x     -> throwM $ UnexpectedDirection p (C8.unpack x)
+  catchIOError
+    (readFile (pinDirectionFileName p) >>= \case
+       "in\n"  -> return In
+       "out\n" -> return Out
+       x     -> throwM $ UnexpectedDirection p (C8.unpack x))
+    mapIOError
+  where
+    mapIOError :: (MonadSysfs m, MonadThrow m) => IOError -> m PinDirection
+    mapIOError e
+      | isDoesNotExistError e =
+          do exported <- pinIsExported p
+             if exported
+                then throwM $ NoDirectionAttribute p
+                else throwM $ NotExported p
+      | isPermissionError e = throwM PermissionDenied
+      | otherwise = throwM e
 
 -- | Set the given pin's direction.
 --
 -- It is an error to call this function if the pin has no @direction@
 -- attribute.
-writePinDirection :: (MonadSysfs m) => Pin -> PinDirection -> m ()
-writePinDirection p d = writeFile (pinDirectionFileName p) (pinDirectionToBS d)
+writePinDirection :: (MonadSysfs m, MonadCatch m) => Pin -> PinDirection -> m ()
+writePinDirection p d =
+  catchIOError
+    (writeFile (pinDirectionFileName p) (pinDirectionToBS d))
+    mapIOError
+  where
+    mapIOError :: (MonadSysfs m, MonadThrow m) => IOError -> m ()
+    mapIOError e
+      | isDoesNotExistError e =
+          do exported <- pinIsExported p
+             if exported
+                then throwM $ NoDirectionAttribute p
+                else throwM $ NotExported p
+      | isPermissionError e = throwM PermissionDenied
+      | otherwise = throwM e
 
 -- | Pins whose direction can be set may be configured for output by
 -- writing a 'PinValue' to their @direction@ attribute. This enables
@@ -387,19 +443,40 @@ writePinDirection p d = writeFile (pinDirectionFileName p) (pinDirectionToBS d)
 --
 -- It is an error to call this function if the pin has no
 -- @direction@ attribute.
-writePinDirectionWithValue :: (MonadSysfs m) => Pin -> PinValue -> m ()
-writePinDirectionWithValue p v = writeFile (pinDirectionFileName p) (pinDirectionValueToBS v)
+writePinDirectionWithValue :: (MonadSysfs m, MonadCatch m) => Pin -> PinValue -> m ()
+writePinDirectionWithValue p v =
+  catchIOError
+    (writeFile (pinDirectionFileName p) (pinDirectionValueToBS v))
+    mapIOError
+  where
+    mapIOError :: (MonadSysfs m, MonadThrow m) => IOError -> m ()
+    mapIOError e
+      | isDoesNotExistError e =
+          do exported <- pinIsExported p
+             if exported
+                then throwM $ NoDirectionAttribute p
+                else throwM $ NotExported p
+      | isPermissionError e = throwM PermissionDenied
+      | otherwise = throwM e
 
 -- | Read the given pin's value.
 --
 -- Note that this function never blocks, regardless of the pin's
 -- @edge@ attribute setting.
-readPinValue :: (MonadSysfs m, MonadThrow m) => Pin -> m PinValue
+readPinValue :: (MonadSysfs m, MonadThrow m, MonadCatch m) => Pin -> m PinValue
 readPinValue p =
-  readFile (pinValueFileName p) >>= \case
-    "0\n" -> return Low
-    "1\n" -> return High
-    x   -> throwM $ UnexpectedValue p (C8.unpack x)
+  catchIOError
+    (readFile (pinValueFileName p) >>= \case
+       "0\n" -> return Low
+       "1\n" -> return High
+       x   -> throwM $ UnexpectedValue p (C8.unpack x))
+    mapIOError
+  where
+    mapIOError :: (MonadSysfs m, MonadThrow m) => IOError -> m PinValue
+    mapIOError e
+      | isDoesNotExistError e = throwM $ NotExported p
+      | isPermissionError e = throwM PermissionDenied
+      | otherwise = throwM e
 
 -- | A blocking version of 'readPinValue'. The current thread will
 -- block until an event occurs on the pin as specified by the pin's
@@ -407,14 +484,15 @@ readPinValue p =
 --
 -- If the pin has no @edge@ attribute, then this function will not
 -- block and will act like 'readPinValue'.
-threadWaitReadPinValue :: (Functor m, MonadSysfs m, MonadThrow m) => Pin -> m PinValue
+threadWaitReadPinValue :: (Functor m, MonadSysfs m, MonadThrow m, MonadCatch m) => Pin -> m PinValue
 threadWaitReadPinValue p =
   threadWaitReadPinValue' p (-1) >>= \case
-    Just v -> return v
-    -- Yes, I really do mean "error" here. 'Nothing' can only occur
-    -- when the poll has timed out, but the (-1) timeout value above
-    -- means the poll must either wait forever or fail.
-    Nothing -> error "threadWaitReadPinValue timed out, and it should not have. Please file a bug at https://github.com/dhess/gpio"
+     Just v -> return v
+     -- 'Nothing' can only occur when the poll has timed out, but the
+     -- (-1) timeout value above means the poll must either wait
+     -- forever or fail; so this indicates a major problem.
+     Nothing -> throwM $
+       InternalError "threadWaitReadPinValue timed out, and it should not have. Please file a bug at https://github.com/dhess/gpio"
 
 -- | Same as 'threadWaitReadPinValue', except that a timeout value,
 -- specified in microseconds, is provided. If no event occurs before
@@ -429,19 +507,36 @@ threadWaitReadPinValue p =
 --
 -- If the pin has no @edge@ attribute, then this function will not
 -- block and will act like 'readPinValue'.
-threadWaitReadPinValue' :: (Functor m, MonadSysfs m, MonadThrow m) => Pin -> Int -> m (Maybe PinValue)
+threadWaitReadPinValue' :: (Functor m, MonadSysfs m, MonadThrow m, MonadCatch m) => Pin -> Int -> m (Maybe PinValue)
 threadWaitReadPinValue' p timeout =
-  do pollResult <- pollFile (pinValueFileName p) timeout
-     if pollResult > 0
-       then Just <$> readPinValue p
-       else return Nothing
+  catchIOError
+    (do pollResult <- pollFile (pinValueFileName p) timeout
+        if pollResult > 0
+          then Just <$> readPinValue p
+          else return Nothing)
+    mapIOError
+  where
+    mapIOError :: (MonadSysfs m, MonadThrow m) => IOError -> m (Maybe PinValue)
+    mapIOError e
+      | isDoesNotExistError e = throwM $ NotExported p
+      | isPermissionError e = throwM PermissionDenied
+      | otherwise = throwM e
 
 -- | Set the given pin's value.
 --
 -- It is an error to call this function if the pin is configured as
 -- an input pin.
-writePinValue :: (MonadSysfs m) => Pin -> PinValue -> m ()
-writePinValue p v = writeFile (pinValueFileName p) (pinValueToBS v)
+writePinValue :: (MonadSysfs m, MonadCatch m) => Pin -> PinValue -> m ()
+writePinValue p v =
+  catchIOError
+    (writeFile (pinValueFileName p) (pinValueToBS v))
+    mapIOError
+  where
+    mapIOError :: (MonadSysfs m, MonadThrow m) => IOError -> m ()
+    mapIOError e
+      | isDoesNotExistError e = throwM $ NotExported p
+      | isPermissionError e = throwM PermissionDenied
+      | otherwise = throwM e
 
 -- | Test whether the pin has an @edge@ attribute, i.e., whether it
 -- can be configured for edge- or level-triggered interrupts.
@@ -456,46 +551,96 @@ pinHasEdge p =
 --
 -- It is an error to call this function when the pin has no @edge@
 -- attribute.
-readPinEdge :: (MonadSysfs m, MonadThrow m) => Pin -> m SysfsEdge
+readPinEdge :: (MonadSysfs m, MonadThrow m, MonadCatch m) => Pin -> m SysfsEdge
 readPinEdge p =
-  readFile (pinEdgeFileName p) >>= \case
-    "none\n"  -> return None
-    "rising\n" -> return Rising
-    "falling\n" -> return Falling
-    "both\n" -> return Both
-    x     -> throwM $ UnexpectedEdge p (C8.unpack x)
+  catchIOError
+    (readFile (pinEdgeFileName p) >>= \case
+       "none\n"  -> return None
+       "rising\n" -> return Rising
+       "falling\n" -> return Falling
+       "both\n" -> return Both
+       x     -> throwM $ UnexpectedEdge p (C8.unpack x))
+    mapIOError
+  where
+    mapIOError :: (MonadSysfs m, MonadThrow m) => IOError -> m SysfsEdge
+    mapIOError e
+      | isDoesNotExistError e =
+          do exported <- pinIsExported p
+             if exported
+                then throwM $ NoEdgeAttribute p
+                else throwM $ NotExported p
+      | isPermissionError e = throwM PermissionDenied
+      | otherwise = throwM e
 
 -- | Write the given pin's @edge@ attribute.
 --
 -- It is an error to call this function when the pin has no @edge@
 -- attribute.
-writePinEdge :: (MonadSysfs m) => Pin -> SysfsEdge -> m ()
-writePinEdge p v = writeFile (pinEdgeFileName p) (sysfsEdgeToBS v)
+writePinEdge :: (MonadSysfs m, MonadCatch m) => Pin -> SysfsEdge -> m ()
+writePinEdge p v =
+  catchIOError
+    (writeFile (pinEdgeFileName p) (sysfsEdgeToBS v))
+    mapIOError
+  where
+    mapIOError :: (MonadSysfs m, MonadThrow m) => IOError -> m ()
+    mapIOError e
+      | isDoesNotExistError e =
+          do exported <- pinIsExported p
+             if exported
+                then throwM $ NoEdgeAttribute p
+                else throwM $ NotExported p
+      | isPermissionError e = throwM PermissionDenied
+      | otherwise = throwM e
 
 -- | Read the given pin's @active_low@ attribute.
-readPinActiveLow :: (MonadSysfs m, MonadThrow m) => Pin -> m Bool
+readPinActiveLow :: (MonadSysfs m, MonadThrow m, MonadCatch m) => Pin -> m Bool
 readPinActiveLow p =
-  readFile (pinActiveLowFileName p) >>= \case
-    "0\n" -> return False
-    "1\n" -> return True
-    x   -> throwM $ UnexpectedActiveLow p (C8.unpack x)
+  catchIOError
+    (readFile (pinActiveLowFileName p) >>= \case
+       "0\n" -> return False
+       "1\n" -> return True
+       x   -> throwM $ UnexpectedActiveLow p (C8.unpack x))
+    mapIOError
+  where
+    mapIOError :: (MonadSysfs m, MonadThrow m) => IOError -> m Bool
+    mapIOError e
+      | isDoesNotExistError e = throwM $ NotExported p
+      | isPermissionError e = throwM PermissionDenied
+      | otherwise = throwM e
 
 -- | Write the given pin's @active_low@ attribute.
-writePinActiveLow :: (MonadSysfs m) => Pin -> Bool -> m ()
-writePinActiveLow p v = writeFile (pinActiveLowFileName p) (activeLowToBS v)
+writePinActiveLow :: (MonadSysfs m, MonadCatch m) => Pin -> Bool -> m ()
+writePinActiveLow p v =
+  catchIOError
+    (writeFile (pinActiveLowFileName p) (activeLowToBS v))
+    mapIOError
+  where
+    mapIOError :: (MonadSysfs m, MonadThrow m) => IOError -> m ()
+    mapIOError e
+      | isDoesNotExistError e = throwM $ NotExported p
+      | isPermissionError e = throwM PermissionDenied
+      | otherwise = throwM e
 
 -- | Return a list of all pins that are exposed via the @sysfs@ GPIO
 -- filesystem. Note that the returned list may omit some pins that
 -- are available on the host but which, for various reasons, are not
 -- exposed via the @sysfs@ GPIO filesystem.
-availablePins :: (MonadSysfs m, MonadThrow m) => m [Pin]
+availablePins :: (MonadSysfs m, MonadThrow m, MonadCatch m) => m [Pin]
 availablePins =
-  do sysfsEntries <- getDirectoryContents sysfsPath
-     let sysfsContents = fmap (sysfsPath </>) sysfsEntries
-     sysfsDirectories <- filterM doesDirectoryExist sysfsContents
-     let chipDirs = filter (isPrefixOf "gpiochip" . takeFileName) sysfsDirectories
-     gpioPins <- mapM pinRange chipDirs
-     return $ sort $ concat gpioPins
+  catchIOError
+    (do sysfsEntries <- getDirectoryContents sysfsPath
+        let sysfsContents = fmap (sysfsPath </>) sysfsEntries
+        sysfsDirectories <- filterM doesDirectoryExist sysfsContents
+        let chipDirs = filter (isPrefixOf "gpiochip" . takeFileName) sysfsDirectories
+        gpioPins <- mapM pinRange chipDirs
+        return $ sort $ concat gpioPins)
+    mapIOError
+  where
+    mapIOError :: (MonadSysfs m, MonadThrow m) => IOError -> m [Pin]
+    mapIOError e
+      | isDoesNotExistError e = throwM SysfsError
+      | isPermissionError e = throwM PermissionDenied
+      | otherwise = throwM e
 
 -- Helper functions that aren't exported.
 --
@@ -514,3 +659,13 @@ pinRange chipDir =
      if base >= 0 && ngpio > 0
         then return $ fmap Pin [base .. (base + ngpio - 1)]
         else return []
+
+-- IOErrorType predicates for the extended GHC.IO.Exception types
+-- which we use.
+
+isInvalidArgumentErrorType :: IO.IOErrorType -> Bool
+isInvalidArgumentErrorType IO.InvalidArgument = True
+isInvalidArgumentErrorType _ = False
+
+isInvalidArgumentError :: IOError -> Bool
+isInvalidArgumentError = isInvalidArgumentErrorType . ioeGetErrorType
