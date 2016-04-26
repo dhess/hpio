@@ -39,7 +39,7 @@ module System.GPIO.Linux.Sysfs.Mock
        , runSysfsGpioMock
        , evalSysfsGpioMock
        , execSysfsGpioMock
-         -- * Mock @sysfs@ exceptions
+         -- * Mock @sysfs@ exceptions.
        , MockFSException(..)
          -- * Run mock @sysfs@ computations.
          --
@@ -69,8 +69,8 @@ module System.GPIO.Linux.Sysfs.Mock
 
 import Prelude hiding (readFile, writeFile)
 import Control.Applicative (Alternative)
-import Control.Exception (SomeException)
-import Control.Monad (MonadPlus, when, void)
+import Control.Exception (Exception(..), SomeException)
+import Control.Monad (MonadPlus, when)
 import Control.Monad.Catch (MonadCatch, MonadMask, MonadThrow, throwM)
 import Control.Monad.Catch.Pure (Catch, runCatch)
 import Control.Monad.Cont (MonadCont)
@@ -87,11 +87,13 @@ import Data.Foldable (foldrM)
 import Data.Maybe (isJust)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map (empty, insert, insertLookupWithKey, lookup)
+import Data.Typeable (Typeable)
 import Foreign.C.Types (CInt(..))
+import GHC.IO.Exception (IOErrorType(..))
 import System.FilePath ((</>), splitFileName)
 import System.GPIO.Linux.Sysfs.Mock.Internal
-       (Directory, File(..), FileType(..), MockFSZipper(..),
-        MockFSException(..), directory, dirName, files, subdirs, findFile)
+       (Directory, File(..), FileType(..), MockFSZipper(..), directory,
+        dirName, files, subdirs, findFile)
 import qualified System.GPIO.Linux.Sysfs.Mock.Internal as Internal
        (cd, mkdir, mkfile, pathFromRoot, rmdir)
 import System.GPIO.Linux.Sysfs.Monad (SysfsGpioT(..))
@@ -102,7 +104,10 @@ import System.GPIO.Linux.Sysfs.Util
         pinEdgeFileName, pinValueFileName, pinDirName, activeLowToBS,
         bsToActiveLow, pinDirectionToBS, bsToPinDirection, sysfsEdgeToBS,
         bsToSysfsEdge, pinValueToBS, bsToPinValue, sysfsPath)
-import System.GPIO.Types (Pin(..), PinDirection(..), PinValue(..), invertValue)
+import System.GPIO.Types
+       (Pin(..), PinDirection(..), PinValue(..), gpioExceptionToException,
+        gpioExceptionFromException, invertValue)
+import System.IO.Error (mkIOError)
 
 -- | A mock pin.
 --
@@ -216,7 +221,7 @@ getPins = gets _pins
 pinState :: (MonadThrow m) => Pin -> SysfsMockT m MockPinState
 pinState pin =
   Map.lookup pin <$> getPins >>= \case
-    Nothing -> throwM $ InvalidPin pin
+    Nothing -> throwM $ InternalError ("An operation attempted to get the mock pin state for non-existent pin " ++ show pin)
     Just s -> return s
 
 putPins :: (Monad m) => MockPins -> SysfsMockT m ()
@@ -316,6 +321,30 @@ evalSysfsGpioMock a = evalSysfsMock (runSysfsGpioT a)
 execSysfsGpioMock :: SysfsGpioMock a -> MockWorld -> [MockGpioChip] -> Either SomeException MockWorld
 execSysfsGpioMock a = execSysfsMock (runSysfsGpioT a)
 
+-- | Exceptions that can be thrown by mock @sysfs@ filesystem
+-- operations.
+--
+-- Note that, as much as is reasonably possible, when an error occurs,
+-- the mock filesystem implementation throws the same exception as
+-- would occur in an actual @sysfs@ filesystem, so callers should
+-- expect to encounter 'IOError's when errors occur in the mock
+-- filesystem. However, in a few cases, there are exceptions that are
+-- specific to the mock @sysfs@ implementation; in these cases, a
+-- 'MockFSException' is thrown.
+data MockFSException
+  = GpioChipOverlap Pin
+    -- ^ The user has defined defined at least two 'MockGpioChip's
+    -- with the same pin number, which is an invalid condition
+  | InternalError String
+    -- ^ An internal error has occurred in the mock @sysfs@
+    -- interpreter, something which should "never happen" and should
+    -- be reported to the package maintainer.
+  deriving (Show,Eq,Typeable)
+
+instance Exception MockFSException where
+  toException = gpioExceptionToException
+  fromException = gpioExceptionFromException
+
 makeFileSystem :: (MonadThrow m) => [MockGpioChip] -> SysfsMockT m MockFSZipper
 makeFileSystem chips =
   do mapM_ makeChip chips
@@ -343,7 +372,7 @@ addPin (pin, st) pm =
   in
     case insertLookup pin st pm of
       (Nothing, newPm) -> Right newPm
-      (Just _, _) -> Left $ PinAlreadyExists pin
+      (Just _, _) -> Left $ GpioChipOverlap pin
 
 pushd :: (MonadThrow m) => FilePath -> SysfsMockT m a -> SysfsMockT m a
 pushd path action =
@@ -405,7 +434,11 @@ getDirectoryContents path =
 readFile :: (MonadThrow m) => FilePath -> SysfsMockT m ByteString
 readFile path =
   fileAt path >>= \case
-    Nothing -> throwM $ NotAFile path
+    Nothing ->
+      do isDirectory <- doesDirectoryExist path
+         if isDirectory
+            then throwM $ mkIOError InappropriateType "Mock.readFile" Nothing (Just path)
+            else throwM $ mkIOError NoSuchThing "Mock.readFile" Nothing (Just path)
     Just (Const contents) -> return $ C8.unlines contents
     Just (Value pin) -> pinValueToBS . logicalValue <$> pinState pin -- Use the logical "value" here!
     Just (ActiveLow pin) -> activeLowToBS . _activeLow <$> pinState pin
@@ -414,12 +447,12 @@ readFile path =
          if visible
             then do direction <- _direction <$> pinState pin
                     return $ pinDirectionToBS direction
-            else throwM $ InternalError (show pin ++ " has no direction but direction attribute is exported")
+            else throwM $ InternalError ("Mock pin " ++ show pin ++ " has no direction but direction attribute is exported")
     Just (Edge pin) ->
       _edge <$> pinState pin >>= \case
-        Nothing -> throwM $ InternalError (show pin ++ " has no edge but edge attribute is exported")
+        Nothing -> throwM $ InternalError ("Mock pin " ++ show pin ++ " has no edge but edge attribute is exported")
         Just edge -> return $ sysfsEdgeToBS edge
-    Just _ -> throwM $ WriteOnlyFile path
+    Just _ -> throwM $ mkIOError PermissionDenied "Mock.readFile" Nothing (Just path)
 
 -- In some cases in 'writeFile', more than one kind of error can occur
 -- (e.g., when exporting a pin, the pin number may be invalid, or the
@@ -429,43 +462,78 @@ readFile path =
 writeFile :: (MonadThrow m) => FilePath -> ByteString -> SysfsMockT m ()
 writeFile path bs =
   fileAt path >>= \case
-    Nothing -> throwM $ NotAFile path
+    Nothing ->
+      do isDirectory <- doesDirectoryExist path
+         if isDirectory
+            then throwM $ mkIOError InappropriateType "Mock.writeFile" Nothing (Just path)
+            else throwM $ mkIOError NoSuchThing "Mock.writeFile" Nothing (Just path)
     Just Export ->
       case bsToInt bs of
         Just n -> export (Pin n)
-        Nothing -> throwM $ WriteError path
+        Nothing -> throwM writeError
     Just Unexport ->
       case bsToInt bs of
         Just n -> unexport (Pin n)
-        Nothing -> throwM $ WriteError path
+        Nothing -> throwM writeError
     Just (ActiveLow pin) ->
       case bsToActiveLow bs of
         Just b -> putPinState pin (\s -> s {_activeLow = b})
-        Nothing -> throwM $ WriteError path
+        Nothing -> throwM writeError
     Just (Value pin) ->
       _direction <$> pinState pin >>= \case
         Out ->
           case bsToPinValue bs of
             Just v -> putPinState pin (setLogicalValue v)
-            Nothing -> throwM $ WriteError path
+            Nothing -> throwM writeError
         _ ->
-          throwM $ IsInputPin pin
+          throwM permissionError
     Just (Edge pin) ->
       _edge <$> pinState pin >>= \case
-        Nothing -> throwM $ InternalError (show pin ++ " has no edge but edge attribute is exported")
+        Nothing -> throwM $ InternalError ("Mock pin " ++ show pin ++ " has no edge but edge attribute is exported")
         Just _ ->
           case bsToSysfsEdge bs of
             Just edge -> putPinState pin (\s -> s {_edge = Just edge})
-            Nothing -> throwM $ WriteError path
+            Nothing -> throwM writeError
     Just (Direction pin) ->
       do visible <- _userVisibleDirection <$> pinState pin
          if visible
             then case bsToPinDirection bs of
                    Just (dir, Nothing) -> putPinState pin (\s -> s {_direction = dir})
                    Just (dir, Just v) -> putPinState pin $ setLogicalValue v . (\s -> s {_direction = dir})
-                   Nothing -> throwM $ WriteError path
-            else throwM $ InternalError (show pin ++ " has no direction but direction attribute is exported")
-    Just _ -> throwM $ ReadOnlyFile path
+                   Nothing -> throwM writeError
+            else throwM $ InternalError ("Mock pin " ++ show pin ++ " has no direction but direction attribute is exported")
+    Just _ -> throwM permissionError
+  where
+    writeError :: IOError
+    writeError = mkIOError InvalidArgument "Mock.writeFile" Nothing (Just path)
+
+    permissionError :: IOError
+    permissionError = mkIOError PermissionDenied "Mock.writeFile" Nothing (Just path)
+
+    export :: (MonadThrow m) => Pin -> SysfsMockT m ()
+    export pin =
+      Map.lookup pin <$> getPins >>= \case
+        Nothing -> throwM $ mkIOError InvalidArgument "Mock.writeFile" Nothing (Just path)
+        Just s ->
+          do let pindir = pinDirName pin
+             -- Already exported?
+             doesDirectoryExist pindir >>= \case
+               True -> throwM $ mkIOError ResourceBusy "Mock.writeFile" Nothing (Just path)
+               False ->
+                 do mkdir pindir
+                    mkfile (pinActiveLowFileName pin) (ActiveLow pin)
+                    mkfile (pinValueFileName pin) (Value pin)
+                    when (_userVisibleDirection s) $
+                      mkfile (pinDirectionFileName pin) (Direction pin)
+                    when (isJust $ _edge s) $
+                      mkfile (pinEdgeFileName pin) (Edge pin)
+
+    unexport :: (MonadThrow m) => Pin -> SysfsMockT m ()
+    unexport pin =
+      do let pindir = pinDirName pin
+         doesDirectoryExist pindir >>= \case
+           True -> rmdir pindir -- recursive
+           False -> throwM $ mkIOError InvalidArgument "Mock.writeFile" Nothing (Just path)
 
 fileAt :: (MonadThrow m) => FilePath -> SysfsMockT m (Maybe FileType)
 fileAt path =
@@ -497,30 +565,3 @@ sysfsRoot =
 -- | The initial @sysfs@ filesystem zipper.
 sysfsRootZipper :: MockFSZipper
 sysfsRootZipper = MockFSZipper sysfsRoot []
-
--- Helper functions which aren't exported
---
-
-export :: (MonadThrow m) => Pin -> SysfsMockT m ()
-export pin =
-  do s <- pinState pin -- Ensure it exists
-     -- Already exported?
-     let pindir = pinDirName pin
-     doesDirectoryExist pindir >>= \case
-       True -> throwM $ AlreadyExported pin
-       False ->
-         do mkdir pindir
-            mkfile (pinActiveLowFileName pin) (ActiveLow pin)
-            mkfile (pinValueFileName pin) (Value pin)
-            when (_userVisibleDirection s) $
-              mkfile (pinDirectionFileName pin) (Direction pin)
-            when (isJust $ _edge s) $
-              mkfile (pinEdgeFileName pin) (Edge pin)
-
-unexport :: (MonadThrow m) => Pin -> SysfsMockT m ()
-unexport pin =
-  do void $ pinState pin -- Ensure it exists
-     let pindir = pinDirName pin
-     doesDirectoryExist pindir >>= \case
-       True -> rmdir pindir -- recursive
-       False -> throwM $ NotExported pin

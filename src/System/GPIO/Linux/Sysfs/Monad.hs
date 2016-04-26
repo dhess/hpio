@@ -334,7 +334,6 @@ pinIsExported = doesDirectoryExist . pinDirName
 --
 -- Note that it's an error to call this function to export a pin
 -- that's already been exported.
--- permissions: PermissionDenied
 exportPin :: (MonadCatch m, MonadSysfs m) => Pin -> m ()
 exportPin pin@(Pin n) =
   catchIOError
@@ -345,7 +344,7 @@ exportPin pin@(Pin n) =
     mapIOError e
       | isAlreadyInUseError e = throwM $ AlreadyExported pin
       | isInvalidArgumentError e = throwM $ InvalidPin pin
-      | isPermissionError e = throwM PermissionDenied
+      | isPermissionError e = throwM $ PermissionDenied pin
       | otherwise = throwM e
 
 -- | Export the given pin, but, unlike 'exportPin', if the pin is
@@ -361,7 +360,7 @@ exportPin' pin@(Pin n) =
     mapIOError e
       | isAlreadyInUseError e = return ()
       | isInvalidArgumentError e = throwM $ InvalidPin pin
-      | isPermissionError e = throwM PermissionDenied
+      | isPermissionError e = throwM $ PermissionDenied pin
       | otherwise = throwM e
 
 -- | Unexport the given pin.
@@ -377,7 +376,7 @@ unexportPin pin@(Pin n) =
     mapIOError :: (MonadThrow m) => IOError -> m ()
     mapIOError e
       | isInvalidArgumentError e = throwM $ NotExported pin
-      | isPermissionError e = throwM PermissionDenied
+      | isPermissionError e = throwM $ PermissionDenied pin
       | otherwise = throwM e
 
 -- | Test whether the given pin's direction can be set via the
@@ -412,7 +411,7 @@ readPinDirection p =
              if exported
                 then throwM $ NoDirectionAttribute p
                 else throwM $ NotExported p
-      | isPermissionError e = throwM PermissionDenied
+      | isPermissionError e = throwM $ PermissionDenied p
       | otherwise = throwM e
 
 -- | Set the given pin's direction.
@@ -432,7 +431,7 @@ writePinDirection p d =
              if exported
                 then throwM $ NoDirectionAttribute p
                 else throwM $ NotExported p
-      | isPermissionError e = throwM PermissionDenied
+      | isPermissionError e = throwM $ PermissionDenied p
       | otherwise = throwM e
 
 -- | Pins whose direction can be set may be configured for output by
@@ -456,7 +455,7 @@ writePinDirectionWithValue p v =
              if exported
                 then throwM $ NoDirectionAttribute p
                 else throwM $ NotExported p
-      | isPermissionError e = throwM PermissionDenied
+      | isPermissionError e = throwM $ PermissionDenied p
       | otherwise = throwM e
 
 -- | Read the given pin's value.
@@ -475,7 +474,7 @@ readPinValue p =
     mapIOError :: (MonadSysfs m, MonadThrow m) => IOError -> m PinValue
     mapIOError e
       | isDoesNotExistError e = throwM $ NotExported p
-      | isPermissionError e = throwM PermissionDenied
+      | isPermissionError e = throwM $ PermissionDenied p
       | otherwise = throwM e
 
 -- | A blocking version of 'readPinValue'. The current thread will
@@ -519,7 +518,7 @@ threadWaitReadPinValue' p timeout =
     mapIOError :: (MonadSysfs m, MonadThrow m) => IOError -> m (Maybe PinValue)
     mapIOError e
       | isDoesNotExistError e = throwM $ NotExported p
-      | isPermissionError e = throwM PermissionDenied
+      | isPermissionError e = throwM $ PermissionDenied p
       | otherwise = throwM e
 
 -- | Set the given pin's value.
@@ -535,7 +534,7 @@ writePinValue p v =
     mapIOError :: (MonadSysfs m, MonadThrow m) => IOError -> m ()
     mapIOError e
       | isDoesNotExistError e = throwM $ NotExported p
-      | isPermissionError e = throwM PermissionDenied
+      | isPermissionError e = throwM $ PermissionDenied p
       | otherwise = throwM e
 
 -- | Test whether the pin has an @edge@ attribute, i.e., whether it
@@ -569,7 +568,7 @@ readPinEdge p =
              if exported
                 then throwM $ NoEdgeAttribute p
                 else throwM $ NotExported p
-      | isPermissionError e = throwM PermissionDenied
+      | isPermissionError e = throwM $ PermissionDenied p
       | otherwise = throwM e
 
 -- | Write the given pin's @edge@ attribute.
@@ -589,7 +588,7 @@ writePinEdge p v =
              if exported
                 then throwM $ NoEdgeAttribute p
                 else throwM $ NotExported p
-      | isPermissionError e = throwM PermissionDenied
+      | isPermissionError e = throwM $ PermissionDenied p
       | otherwise = throwM e
 
 -- | Read the given pin's @active_low@ attribute.
@@ -605,7 +604,7 @@ readPinActiveLow p =
     mapIOError :: (MonadSysfs m, MonadThrow m) => IOError -> m Bool
     mapIOError e
       | isDoesNotExistError e = throwM $ NotExported p
-      | isPermissionError e = throwM PermissionDenied
+      | isPermissionError e = throwM $ PermissionDenied p
       | otherwise = throwM e
 
 -- | Write the given pin's @active_low@ attribute.
@@ -618,7 +617,7 @@ writePinActiveLow p v =
     mapIOError :: (MonadSysfs m, MonadThrow m) => IOError -> m ()
     mapIOError e
       | isDoesNotExistError e = throwM $ NotExported p
-      | isPermissionError e = throwM PermissionDenied
+      | isPermissionError e = throwM $ PermissionDenied p
       | otherwise = throwM e
 
 -- | Return a list of all pins that are exposed via the @sysfs@ GPIO
@@ -639,7 +638,7 @@ availablePins =
     mapIOError :: (MonadSysfs m, MonadThrow m) => IOError -> m [Pin]
     mapIOError e
       | isDoesNotExistError e = throwM SysfsError
-      | isPermissionError e = throwM PermissionDenied
+      | isPermissionError e = throwM SysfsPermissionDenied
       | otherwise = throwM e
 
 -- Helper functions that aren't exported.

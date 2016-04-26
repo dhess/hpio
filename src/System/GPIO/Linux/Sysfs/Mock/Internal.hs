@@ -48,19 +48,17 @@ module System.GPIO.Linux.Sysfs.Mock.Internal
        , mkfile
        , rmdir
        , rmfile
-         -- * Mock filesystem exceptions
-       , MockFSException(..)
        ) where
 
-import Control.Exception (Exception(..))
 import Data.ByteString (ByteString)
 import Data.Foldable (foldlM)
 import Data.List (find, unfoldr)
 import Data.Maybe (isJust)
 import Data.Tree (Tree(..))
-import Data.Typeable (Typeable)
+import GHC.IO.Exception (IOErrorType(..))
 import System.FilePath (isAbsolute, isValid, joinPath, splitDirectories)
-import System.GPIO.Types (Pin, gpioExceptionToException, gpioExceptionFromException)
+import System.GPIO.Types (Pin)
+import System.IO.Error (mkIOError)
 
 type Name = String
 
@@ -102,36 +100,6 @@ dirNode = rootLabel
 
 subdirs :: Directory -> [Directory]
 subdirs = subForest
-
--- | Exceptions that can be thrown by mock @sysfs@ filesystem
--- operations.
---
--- Generally speaking these exceptions do not map directly to their
--- 'IO' equivalents, since those are usually a bit too low-level to be
--- useful at a macro level (e.g., "why did I get an invalid operation
--- exception when trying to write that GPIO pin?"); rather, these
--- exceptions attempt to be descriptive in the context of the
--- higher-level operation you were trying to perform.
-data MockFSException
-  = ReadOnlyFile FilePath          -- ^ Attempt to write a read-only file
-  | WriteOnlyFile FilePath         -- ^ Attempt to read a write-only file
-  | WriteError FilePath            -- ^ Data written is not formatted properly
-  | NotADirectory FilePath         -- ^ Path specifies a file, not a directory
-  | NotAFile FilePath              -- ^ Path specifies a directory, not a file
-  | NoSuchFileOrDirectory FilePath -- ^ File/directory does not exist
-  | FileExists Name                -- ^ Attempt to create a file which already exists
-  | InvalidName Name               -- ^ Invalid file/path name
-  | IsInputPin Pin                 -- ^ Attempt to set the value of an input pin
-  | PinAlreadyExists Pin           -- ^ Mock state is invalid because the same pin occurs more than once
-  | InvalidPin Pin                 -- ^ Attempt to perform an operation on a pin which doesn't exist
-  | AlreadyExported Pin            -- ^ Attempt to export a pin that's already been exported
-  | NotExported Pin                -- ^ Attempt to unexport a pin that isn't exported
-  | InternalError String           -- ^ A condition has occurred in the implementation which should never occur
-  deriving (Show,Eq,Typeable)
-
-instance Exception MockFSException where
-  toException = gpioExceptionToException
-  fromException = gpioExceptionFromException
 
 data MockFSCrumb =
   MockFSCrumb {_node :: DirNode
@@ -183,7 +151,7 @@ findDir name dir = find (\d -> dirName d == name) (subdirs dir)
 isValidName :: Name -> Bool
 isValidName name = isValid name && notElem '/' name
 
-cd :: FilePath -> MockFSZipper -> Either MockFSException MockFSZipper
+cd :: FilePath -> MockFSZipper -> Either IOError MockFSZipper
 cd p z =
   let (path, fs) =
         if isAbsolute p
@@ -191,7 +159,7 @@ cd p z =
            else (p, z)
   in foldlM cd' fs (splitDirectories path)
   where
-    cd' :: MockFSZipper -> Name -> Either MockFSException MockFSZipper
+    cd' :: MockFSZipper -> Name -> Either IOError MockFSZipper
     cd' zipper "." = Right zipper
     cd' zipper ".." = return $ up zipper
     cd' (MockFSZipper dir bs) name =
@@ -199,14 +167,14 @@ cd p z =
         (ls,subdir:rs) ->
           Right $ MockFSZipper subdir (MockFSCrumb (dirNode dir) ls rs:bs)
         (_,[]) ->
-          maybe (Left $ NoSuchFileOrDirectory p)
-                (const $ Left $ NotADirectory p)
+          maybe (Left $ mkIOError NoSuchThing "Mock.Internal.cd" Nothing (Just p))
+                (const $ Left $ mkIOError InappropriateType "Mock.Internal.cd" Nothing (Just p))
                 (findFile name dir)
 
-mkdir :: Name -> MockFSZipper -> Either MockFSException MockFSZipper
+mkdir :: Name -> MockFSZipper -> Either IOError MockFSZipper
 mkdir name (MockFSZipper cwd bs) =
   if isJust $ findFile name cwd
-    then Left $ FileExists name
+    then Left alreadyExists
     else
       case findDir' name cwd of
         (_, []) ->
@@ -216,22 +184,25 @@ mkdir name (MockFSZipper cwd bs) =
               in
                 Right $ MockFSZipper (directory (dirName cwd) (files cwd) (newDir:subdirs cwd))
                                      bs
-            else Left $ InvalidName name
-        _ -> Left $ FileExists name
+            else Left $ mkIOError InvalidArgument "Mock.Internal.mkdir" Nothing (Just name)
+        _ -> Left alreadyExists
+  where
+    alreadyExists :: IOError
+    alreadyExists = mkIOError AlreadyExists "Mock.Internal.mkdir" Nothing (Just name)
 
-mkfile :: Name -> FileType -> Bool -> MockFSZipper -> Either MockFSException MockFSZipper
+mkfile :: Name -> FileType -> Bool -> MockFSZipper -> Either IOError MockFSZipper
 mkfile name filetype clobber (MockFSZipper cwd bs) =
   case findFile' name cwd of
     (ls, _:rs) ->
       if clobber
          then mkfile' $ ls ++ rs
-         else Left $ FileExists name
+         else Left alreadyExists
     _ ->
       maybe (mkfile' $ files cwd)
-            (const $ Left (FileExists name))
+            (const $ Left alreadyExists)
             (findDir name cwd)
   where
-    mkfile' :: [File] -> Either MockFSException MockFSZipper
+    mkfile' :: [File] -> Either IOError MockFSZipper
     mkfile' fs =
       if isValidName name
         then
@@ -239,25 +210,27 @@ mkfile name filetype clobber (MockFSZipper cwd bs) =
           in
             Right $ MockFSZipper (directory (dirName cwd) (newFile:fs) (subdirs cwd))
                                  bs
-        else Left $ InvalidName name
+        else Left $ mkIOError InvalidArgument "Mock.Internal.mkfile" Nothing (Just name)
+    alreadyExists :: IOError
+    alreadyExists = mkIOError AlreadyExists "Mock.Internal.mkfile" Nothing (Just name)
 
-rmfile :: Name -> MockFSZipper -> Either MockFSException MockFSZipper
+rmfile :: Name -> MockFSZipper -> Either IOError MockFSZipper
 rmfile name (MockFSZipper cwd bs) =
   if isJust $ findDir name cwd
-     then Left $ NotAFile name
+     then Left $ mkIOError InappropriateType "Mock.Internal.rmfile" Nothing (Just name)
      else
        case findFile' name cwd of
          (ls, _:rs) -> Right $ MockFSZipper (directory (dirName cwd) (ls ++ rs) (subdirs cwd))
                                             bs
-         _ -> Left $ NoSuchFileOrDirectory name
+         _ -> Left $ mkIOError NoSuchThing "Mock.Internal.rmdir" Nothing (Just name)
 
 -- Note: recursive!
-rmdir :: Name -> MockFSZipper -> Either MockFSException MockFSZipper
+rmdir :: Name -> MockFSZipper -> Either IOError MockFSZipper
 rmdir name (MockFSZipper cwd bs) =
   if isJust $ findFile name cwd
-     then Left $ NotADirectory name
+     then Left $ mkIOError InappropriateType "Mock.Internal.rmdir" Nothing (Just name)
      else
        case findDir' name cwd of
          (ls, _:rs) -> Right $ MockFSZipper (directory (dirName cwd) (files cwd) (ls ++ rs))
                                             bs
-         _ -> Left $ NoSuchFileOrDirectory name
+         _ -> Left $ mkIOError NoSuchThing "Mock.Internal.rmdir" Nothing (Just name)

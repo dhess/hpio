@@ -79,8 +79,13 @@ data SysfsException
     -- ^ Something in the @sysfs@ filesystem does not behave as
     -- expected (could indicate a change in @sysfs@ behavior that the
     -- package does not expect)
-  | PermissionDenied
-    -- ^ Insufficient system privileges to perform the action
+  | SysfsPermissionDenied
+    -- ^ The @sysfs@ operation is not permitted due to insufficient
+    -- permissions
+  | PermissionDenied Pin
+    -- ^ The operation on the specified pin is not permitted, either
+    -- due to insufficient permissions, or because the pin's attribute
+    -- cannot be modified
   | AlreadyExported Pin
     -- ^ The pin has already been exported
   | InvalidPin Pin

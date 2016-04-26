@@ -5,14 +5,26 @@ module System.GPIO.Linux.Sysfs.MockSpec (spec) where
 import Prelude hiding (readFile, writeFile)
 import Control.Exception (fromException)
 import Data.List (sort)
+import GHC.IO.Exception (IOErrorType(..))
 import System.GPIO.Linux.Sysfs.Mock
 import System.GPIO.Types (Pin(..), PinValue(..))
+import System.IO.Error (ioeGetErrorType, isDoesNotExistError, isPermissionError)
 import Test.Hspec
 
-evalSysfsMock' :: SysfsMock a -> MockWorld -> [MockGpioChip] -> Either (Maybe MockFSException) a
+isInappropriateTypeErrorType :: IOErrorType -> Bool
+isInappropriateTypeErrorType InappropriateType = True
+isInappropriateTypeErrorType _ = False
+
+isInappropriateTypeError :: IOError -> Bool
+isInappropriateTypeError = isInappropriateTypeErrorType . ioeGetErrorType
+
+evalSysfsMock' :: SysfsMock a -> MockWorld -> [MockGpioChip] -> Either (Maybe IOError) a
 evalSysfsMock' a w c = either (Left . fromException) Right $ evalSysfsMock a w c
 
-execSysfsMock' :: SysfsMock a -> MockWorld -> [MockGpioChip] -> Either (Maybe MockFSException) MockWorld
+evalSysfsMockME :: SysfsMock a -> MockWorld -> [MockGpioChip] -> Either (Maybe MockFSException) a
+evalSysfsMockME a w c = either (Left . fromException) Right $ evalSysfsMock a w c
+
+execSysfsMock' :: SysfsMock a -> MockWorld -> [MockGpioChip] -> Either (Maybe IOError) MockWorld
 execSysfsMock' a w c = either (Left . fromException) Right $ execSysfsMock a w c
 
 spec :: Spec
@@ -71,9 +83,11 @@ spec =
         it "doesn't change the initial zipper's state" $ do
           execSysfsMock' (getDirectoryContents "/sys/class/gpio") initialMockWorld [] `shouldBe` Right initialMockWorld
         it "returns failure on files" $ do
-          evalSysfsMock' (getDirectoryContents "/sys/class/gpio/export") initialMockWorld [] `shouldBe` Left (Just $ NotADirectory "/sys/class/gpio/export")
+          do let Left (Just result) = evalSysfsMock' (getDirectoryContents "/sys/class/gpio/export") initialMockWorld []
+             isInappropriateTypeError result `shouldBe` True
         it "returns failure on non-existent names" $ do
-          evalSysfsMock' (getDirectoryContents "/sys/class/foobar") initialMockWorld [] `shouldBe` Left (Just $ NoSuchFileOrDirectory "/sys/class/foobar")
+          do let Left (Just result) = evalSysfsMock' (getDirectoryContents "/sys/class/foobar") initialMockWorld []
+             isDoesNotExistError result `shouldBe` True
 
       context "readFile" $ do
         -- Note: most interesting cases are already checked by the
@@ -86,13 +100,17 @@ spec =
           let chip0 = MockGpioChip "chip0" 0 (replicate 16 defaultMockPinState)
           in evalSysfsMock' (readFile "/sys/class/gpio/gpiochip0/base") initialMockWorld [chip0] `shouldBe` Right "0\n"
         it "fails on /sys/class/gpio/export" $
-          evalSysfsMock' (readFile "/sys/class/gpio/export") initialMockWorld [] `shouldBe` Left (Just $ WriteOnlyFile "/sys/class/gpio/export")
+          do let Left (Just result) = evalSysfsMock' (readFile "/sys/class/gpio/export") initialMockWorld []
+             isPermissionError result `shouldBe` True
         it "fails on /sys/class/gpio/unexport" $
-          evalSysfsMock' (readFile "/sys/class/gpio/unexport") initialMockWorld [] `shouldBe` Left (Just $ WriteOnlyFile "/sys/class/gpio/unexport")
+          do let Left (Just result) = evalSysfsMock' (readFile "/sys/class/gpio/unexport") initialMockWorld []
+             isPermissionError result `shouldBe` True
         it "fails on non-existent file" $
-          evalSysfsMock' (readFile "/sys/class/gpio/foo") initialMockWorld [] `shouldBe` Left (Just $ NotAFile "/sys/class/gpio/foo")
+          do let Left (Just result) = evalSysfsMock' (readFile "/sys/class/gpio/foo") initialMockWorld []
+             isDoesNotExistError result `shouldBe` True
         it "fails on a directory" $
-          evalSysfsMock' (readFile "/sys/class/gpio") initialMockWorld [] `shouldBe` Left (Just $ NotAFile "/sys/class/gpio")
+          do let Left (Just result) = evalSysfsMock' (readFile "/sys/class/gpio") initialMockWorld []
+             isInappropriateTypeError result `shouldBe` True
 
       context "writeFile" $
         it "does the right thing" $
@@ -116,4 +134,4 @@ spec =
           evalSysfsMock' (readFile "/sys/class/gpio/gpiochip64/ngpio") initialMockWorld [chip0, chip16, chip64] `shouldBe` Right "16\n"
           evalSysfsMock' (readFile "/sys/class/gpio/gpiochip64/label") initialMockWorld [chip0, chip16, chip64] `shouldBe` Right "abc\n"
         it "fails when MockGpioChips overlap" $ do
-          evalSysfsMock' (readFile "/sys/class/gpio/gpiochip16/ngpio") initialMockWorld [chip0, chip16, invalidChip32] `shouldBe` Left (Just $ PinAlreadyExists $ Pin 47)
+          evalSysfsMockME (readFile "/sys/class/gpio/gpiochip16/ngpio") initialMockWorld [chip0, chip16, invalidChip32] `shouldBe` Left (Just $ GpioChipOverlap $ Pin 47)

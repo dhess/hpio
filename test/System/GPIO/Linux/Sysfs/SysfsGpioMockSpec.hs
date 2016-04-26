@@ -7,7 +7,7 @@ import Control.Monad.Catch (MonadCatch, MonadMask, handle)
 import qualified Data.Map.Strict as Map (lookup)
 
 import System.GPIO.Linux.Sysfs.Types (SysfsEdge(..))
-import qualified System.GPIO.Linux.Sysfs.Types as Sysfs (SysfsException(..))
+import System.GPIO.Linux.Sysfs.Types (SysfsException(..))
 import System.GPIO.Linux.Sysfs.Mock
 import System.GPIO.Monad (MonadGpio(..), withPin)
 import System.GPIO.Types (Pin (..), PinDirection(..), PinReadTrigger(..), PinValue (..), SomeGpioException)
@@ -227,19 +227,16 @@ chip0 = MockGpioChip "chip0" 0 (replicate 16 defaultMockPinState)
 chip1 :: MockGpioChip
 chip1 = MockGpioChip "chip1" 32 (replicate 32 defaultMockPinState)
 
-evalSysfsGpioMock' :: SysfsGpioMock a -> MockWorld -> [MockGpioChip] -> Either (Maybe MockFSException) a
+evalSysfsGpioMock' :: SysfsGpioMock a -> MockWorld -> [MockGpioChip] -> Either (Maybe SysfsException) a
 evalSysfsGpioMock' a w c = either (Left . fromException) return $ evalSysfsGpioMock a w c
 
-evalSysfsGpioMockS :: SysfsGpioMock a -> MockWorld -> [MockGpioChip] -> Either (Maybe Sysfs.SysfsException) a
-evalSysfsGpioMockS a w c = either (Left . fromException) return $ evalSysfsGpioMock a w c
-
-execSysfsGpioMock' :: SysfsGpioMock a -> MockWorld -> [MockGpioChip] -> Either (Maybe MockFSException) MockWorld
+execSysfsGpioMock' :: SysfsGpioMock a -> MockWorld -> [MockGpioChip] -> Either (Maybe SysfsException) MockWorld
 execSysfsGpioMock' a w c = either (Left . fromException) return $ execSysfsGpioMock a w c
 
-runSysfsGpioMock' :: SysfsGpioMock a -> MockWorld -> [MockGpioChip] -> Either (Maybe MockFSException) (a, MockWorld)
+runSysfsGpioMock' :: SysfsGpioMock a -> MockWorld -> [MockGpioChip] -> Either (Maybe SysfsException) (a, MockWorld)
 runSysfsGpioMock' a w c = either (Left . fromException) return $ runSysfsGpioMock a w c
 
-evalSysfsMock' :: SysfsMock a -> MockWorld -> [MockGpioChip] -> Either (Maybe MockFSException) a
+evalSysfsMock' :: SysfsMock a -> MockWorld -> [MockGpioChip] -> Either (Maybe SysfsException) a
 evalSysfsMock' a w c = either (Left . fromException) Right $ evalSysfsMock a w c
 
 spec :: Spec
@@ -279,7 +276,7 @@ spec =
 
           it "fails when the pin's direction is not settable" $
             let testChip = MockGpioChip "testChip" 1 [defaultMockPinState {_userVisibleDirection = False}]
-            in evalSysfsGpioMock' (withPin (Pin 1) (\h -> setPinDirection h Out)) initialMockWorld [testChip] `shouldBe` Left (Just $ NotAFile "/sys/class/gpio/gpio1/direction")
+            in evalSysfsGpioMock' (withPin (Pin 1) (\h -> setPinDirection h Out)) initialMockWorld [testChip] `shouldBe` Left (Just $ NoDirectionAttribute (Pin 1))
 
      describe "togglePinDirection" $
        do it "toggles pin direction" $
@@ -304,9 +301,9 @@ spec =
             evalSysfsGpioMock' testSetReadTrigger initialMockWorld [chip0] `shouldBe` Right (Just Disabled, Just RisingEdge, Just FallingEdge, Just Level)
           it "is idempotent" $
             evalSysfsGpioMock' testSetReadTriggerIdempotent initialMockWorld [chip0] `shouldBe` Right (Just FallingEdge, Just FallingEdge)
-          it "fails when the pin's direction is not settable" $
+          it "fails when the pin's read trigger is not settable" $
             let testChip = MockGpioChip "testChip" 1 [defaultMockPinState {_edge = Nothing}, defaultMockPinState]
-            in evalSysfsGpioMock' testSetReadTrigger initialMockWorld [testChip] `shouldBe` Left (Just $ NotAFile "/sys/class/gpio/gpio1/edge")
+            in evalSysfsGpioMock' testSetReadTrigger initialMockWorld [testChip] `shouldBe` Left (Just $ NoEdgeAttribute (Pin 1))
 
      describe "getPinActiveLevel" $
        do context "when active level is high" $
@@ -357,7 +354,7 @@ spec =
             evalSysfsGpioMock' testSampleWritePinIdempotent initialMockWorld [chip0] `shouldBe` Right (Low, Low)
 
           it "fails when the pin direction is In" $
-            evalSysfsGpioMock' testWritePinFailsOnInputPin initialMockWorld [chip0] `shouldBe` Left (Just $ IsInputPin (Pin 1))
+            evalSysfsGpioMock' testWritePinFailsOnInputPin initialMockWorld [chip0] `shouldBe` Left (Just $ PermissionDenied (Pin 1))
 
      describe "writePin'" $
        do it "sets the pin value and direction" $
@@ -369,13 +366,13 @@ spec =
 
           it "fails when the pin's direction is not settable" $
             let testChip = MockGpioChip "testChip" 1 [defaultMockPinState {_userVisibleDirection = False, _value = High}, defaultMockPinState]
-            in evalSysfsGpioMock' testWritePin' initialMockWorld [testChip] `shouldBe` Left (Just $ NotAFile "/sys/class/gpio/gpio1/direction")
+            in evalSysfsGpioMock' testWritePin' initialMockWorld [testChip] `shouldBe` Left (Just $ NoDirectionAttribute (Pin 1))
 
      describe "togglePinValue" $
        do it "toggles the pin's value" $
             evalSysfsGpioMock' testTogglePinValue initialMockWorld [chip0] `shouldBe` Right (Low, High, High, Low, Low)
           it "fails when the pin is not configured for output" $
-            evalSysfsGpioMock' (withPin (Pin 1) (\h -> setPinDirection h In >> togglePinValue h)) initialMockWorld [chip0] `shouldBe` Left (Just $ IsInputPin (Pin 1))
+            evalSysfsGpioMock' (withPin (Pin 1) (\h -> setPinDirection h In >> togglePinValue h)) initialMockWorld [chip0] `shouldBe` Left (Just $ PermissionDenied (Pin 1))
 
      describe "operations on an invalid handle fail" $
        -- Note: When used on an invalid handle, GPIO commands which
@@ -385,46 +382,46 @@ spec =
             evalSysfsGpioMock' (invalidHandle closePin) initialMockWorld [chip0] `shouldBe` Left (Just $ NotExported (Pin 1))
 
           it "in getPinDirection" $
-             evalSysfsGpioMockS (invalidHandle getPinDirection) initialMockWorld [chip0] `shouldBe` Left (Just $ Sysfs.NotExported (Pin 1))
+             evalSysfsGpioMock' (invalidHandle getPinDirection) initialMockWorld [chip0] `shouldBe` Left (Just $ NotExported (Pin 1))
 
           it "in setPinDirection" $
-             evalSysfsGpioMock' (invalidHandle (\h -> setPinDirection h Out)) initialMockWorld [chip0] `shouldBe` Left (Just $ NoSuchFileOrDirectory "/sys/class/gpio/gpio1/")
+             evalSysfsGpioMock' (invalidHandle (\h -> setPinDirection h Out)) initialMockWorld [chip0] `shouldBe` Left (Just $ NotExported (Pin 1))
 
           it "in togglePinDirection" $
-            evalSysfsGpioMockS (invalidHandle togglePinDirection) initialMockWorld [chip0] `shouldBe` Left (Just $ Sysfs.NotExported (Pin 1))
+            evalSysfsGpioMock' (invalidHandle togglePinDirection) initialMockWorld [chip0] `shouldBe` Left (Just $ NotExported (Pin 1))
 
           it "in setPinDirection" $
-            evalSysfsGpioMock' (invalidHandle (\d -> setPinDirection d Out)) initialMockWorld [chip0] `shouldBe` Left (Just $ NoSuchFileOrDirectory "/sys/class/gpio/gpio1/")
+            evalSysfsGpioMock' (invalidHandle (\d -> setPinDirection d Out)) initialMockWorld [chip0] `shouldBe` Left (Just $ NotExported (Pin 1))
 
           it "in samplePin" $
-            evalSysfsGpioMock' (invalidHandle samplePin) initialMockWorld [chip0] `shouldBe` Left (Just $ NoSuchFileOrDirectory "/sys/class/gpio/gpio1/")
+            evalSysfsGpioMock' (invalidHandle samplePin) initialMockWorld [chip0] `shouldBe` Left (Just $ NotExported (Pin 1))
 
           it "in readPin" $
-            evalSysfsGpioMock' (invalidHandle readPin) initialMockWorld [chip0] `shouldBe` Left (Just $ NoSuchFileOrDirectory "/sys/class/gpio/gpio1/")
+            evalSysfsGpioMock' (invalidHandle readPin) initialMockWorld [chip0] `shouldBe` Left (Just $ NotExported (Pin 1))
 
           it "in readPinTimeout" $
-            evalSysfsGpioMock' (invalidHandle (\h -> readPinTimeout h 10000)) initialMockWorld [chip0] `shouldBe` Left (Just $ NoSuchFileOrDirectory "/sys/class/gpio/gpio1/")
+            evalSysfsGpioMock' (invalidHandle (\h -> readPinTimeout h 10000)) initialMockWorld [chip0] `shouldBe` Left (Just $ NotExported (Pin 1))
 
           it "in writePin" $
-             evalSysfsGpioMock' (invalidHandle (\d -> writePin d High)) initialMockWorld [chip0] `shouldBe` Left (Just $ NoSuchFileOrDirectory "/sys/class/gpio/gpio1/")
+             evalSysfsGpioMock' (invalidHandle (\d -> writePin d High)) initialMockWorld [chip0] `shouldBe` Left (Just $ NotExported (Pin 1))
 
           it "in writePin'" $
-             evalSysfsGpioMock' (invalidHandle (\d -> writePin' d High)) initialMockWorld [chip0] `shouldBe` Left (Just $ NoSuchFileOrDirectory "/sys/class/gpio/gpio1/")
+             evalSysfsGpioMock' (invalidHandle (\d -> writePin' d High)) initialMockWorld [chip0] `shouldBe` Left (Just $ NotExported (Pin 1))
 
           it "in togglePinValue" $
-            evalSysfsGpioMock' (invalidHandle togglePinValue) initialMockWorld [chip0] `shouldBe` Left (Just $ NoSuchFileOrDirectory "/sys/class/gpio/gpio1/")
+            evalSysfsGpioMock' (invalidHandle togglePinValue) initialMockWorld [chip0] `shouldBe` Left (Just $ NotExported (Pin 1))
 
           it "in getPinReadTrigger" $
-            evalSysfsGpioMockS (invalidHandle getPinReadTrigger) initialMockWorld [chip0] `shouldBe` Left (Just $ Sysfs.NotExported (Pin 1))
+            evalSysfsGpioMock' (invalidHandle getPinReadTrigger) initialMockWorld [chip0] `shouldBe` Left (Just $ NotExported (Pin 1))
 
           it "in setPinReadTrigger" $
-             evalSysfsGpioMock' (invalidHandle (\d -> setPinReadTrigger d Level)) initialMockWorld [chip0] `shouldBe` Left (Just $ NoSuchFileOrDirectory "/sys/class/gpio/gpio1/")
+             evalSysfsGpioMock' (invalidHandle (\d -> setPinReadTrigger d Level)) initialMockWorld [chip0] `shouldBe` Left (Just $ NotExported (Pin 1))
 
           it "in getPinActiveLevel" $
-            evalSysfsGpioMock' (invalidHandle getPinActiveLevel) initialMockWorld [chip0] `shouldBe` Left (Just $ NoSuchFileOrDirectory "/sys/class/gpio/gpio1/")
+            evalSysfsGpioMock' (invalidHandle getPinActiveLevel) initialMockWorld [chip0] `shouldBe` Left (Just $ NotExported (Pin 1))
 
           it "in setPinActiveLevel" $
-             evalSysfsGpioMock' (invalidHandle (\d -> setPinActiveLevel d High)) initialMockWorld [chip0] `shouldBe` Left (Just $ NoSuchFileOrDirectory "/sys/class/gpio/gpio1/")
+             evalSysfsGpioMock' (invalidHandle (\d -> setPinActiveLevel d High)) initialMockWorld [chip0] `shouldBe` Left (Just $ NotExported (Pin 1))
 
      describe "withPin" $
        do it "opens and closes the pin as expected" $

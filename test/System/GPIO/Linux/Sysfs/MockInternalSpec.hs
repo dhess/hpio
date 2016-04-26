@@ -2,8 +2,24 @@
 
 module System.GPIO.Linux.Sysfs.MockInternalSpec (spec) where
 
+import GHC.IO.Exception (IOErrorType(..))
 import System.GPIO.Linux.Sysfs.Mock.Internal
+import System.IO.Error (ioeGetErrorType, isAlreadyExistsError, isDoesNotExistError)
 import Test.Hspec
+
+isInvalidArgumentErrorType :: IOErrorType -> Bool
+isInvalidArgumentErrorType InvalidArgument = True
+isInvalidArgumentErrorType _ = False
+
+isInvalidArgumentError :: IOError -> Bool
+isInvalidArgumentError = isInvalidArgumentErrorType . ioeGetErrorType
+
+isInappropriateTypeErrorType :: IOErrorType -> Bool
+isInappropriateTypeErrorType InappropriateType = True
+isInappropriateTypeErrorType _ = False
+
+isInappropriateTypeError :: IOError -> Bool
+isInappropriateTypeError = isInappropriateTypeErrorType . ioeGetErrorType
 
 sysfsRoot :: Directory
 sysfsRoot =
@@ -46,17 +62,24 @@ spec =
                 parentName crumb1 `shouldBe` "class"
 
            it "fails when changing to a non-existent child" $
-             do cd "foobar" sysfsRootZ `shouldBe` (Left $ NoSuchFileOrDirectory "foobar")
-                (cd "sys/class" sysfsRootZ >>= cd "baz" ) `shouldBe` (Left $ NoSuchFileOrDirectory "baz")
+             do let Left result1 = cd "foobar" sysfsRootZ
+                isDoesNotExistError result1 `shouldBe` True
+                let Left result2 = (cd "sys/class" sysfsRootZ >>= cd "baz" )
+                isDoesNotExistError result2 `shouldBe` True
 
            it "fails when changing to a non-existent grandchild" $
-             cd "sys/class/foobar" sysfsRootZ `shouldBe` (Left $ NoSuchFileOrDirectory "sys/class/foobar")
+             do let Left result = cd "sys/class/foobar" sysfsRootZ
+                isDoesNotExistError result `shouldBe` True
 
            it "fails when changing to a file name rather than a directory name" $
-             do (cd "sys/class/gpio" sysfsRootZ >>= cd "export") `shouldBe` (Left $ NotADirectory "export")
-                (cd "sys/class/gpio" sysfsRootZ >>= cd "export/foobar") `shouldBe` (Left $ NotADirectory "export/foobar")
-                cd "sys/class/gpio/unexport" sysfsRootZ `shouldBe` (Left $ NotADirectory "sys/class/gpio/unexport")
-                cd "sys/class/gpio/unexport/baz" sysfsRootZ `shouldBe` (Left $ NotADirectory "sys/class/gpio/unexport/baz")
+             do let Left result1 = (cd "sys/class/gpio" sysfsRootZ >>= cd "export")
+                isInappropriateTypeError result1 `shouldBe` True
+                let Left result2 = (cd "sys/class/gpio" sysfsRootZ >>= cd "export/foobar")
+                isInappropriateTypeError result2 `shouldBe` True
+                let Left result3 = cd "sys/class/gpio/unexport" sysfsRootZ
+                isInappropriateTypeError result3 `shouldBe` True
+                let Left result4 = cd "sys/class/gpio/unexport/baz" sysfsRootZ
+                isInappropriateTypeError result4 `shouldBe` True
 
            it "'.' in paths" $
              do cd "sys/." sysfsRootZ `shouldBe` cd "sys" sysfsRootZ
@@ -88,12 +111,16 @@ spec =
                 dirName dir1 `shouldBe` "gpio"
                 parentName crumb1 `shouldBe` "class"
            it "fails when changing to a non-existent child" $
-             do cd "/foobar" sysfsRootZ `shouldBe` (Left $ NoSuchFileOrDirectory "/foobar")
+             do let Left result = cd "/foobar" sysfsRootZ
+                isDoesNotExistError result `shouldBe` True
            it "fails when changing to a non-existent grandchild" $
-             cd "/sys/class/foobar" sysfsRootZ `shouldBe` (Left $ NoSuchFileOrDirectory "/sys/class/foobar")
+             do let Left result = cd "/sys/class/foobar" sysfsRootZ
+                isDoesNotExistError result `shouldBe` True
            it "fails when changing to a file name rather than a directory name" $
-             do cd "/sys/class/gpio/export" sysfsRootZ `shouldBe` (Left $ NotADirectory "/sys/class/gpio/export")
-                cd "/sys/class/gpio/unexport/baz" sysfsRootZ `shouldBe` (Left $ NotADirectory "/sys/class/gpio/unexport/baz")
+             do let Left result1 = cd "/sys/class/gpio/export" sysfsRootZ
+                isInappropriateTypeError result1 `shouldBe` True
+                let Left result2 = cd "/sys/class/gpio/unexport/baz" sysfsRootZ
+                isInappropriateTypeError result2 `shouldBe` True
 
            it "cd / is root" $
              cd "/" sysfsRootZ `shouldBe` Right sysfsRootZ
@@ -150,17 +177,22 @@ spec =
                  parentName crumb `shouldBe` "abc"
 
             it "fails when a subdir with the same name already exists" $
-              mkdir "sys" sysfsRootZ `shouldBe` (Left $ FileExists "sys")
+              do let Left result = mkdir "sys" sysfsRootZ
+                 isAlreadyExistsError result `shouldBe` True
 
             it "fails when a file with the same name already exists" $
-              (cd "/sys/class/gpio" sysfsRootZ >>= mkdir "export") `shouldBe` (Left $ FileExists "export")
+              do let Left result = (cd "/sys/class/gpio" sysfsRootZ >>= mkdir "export")
+                 isAlreadyExistsError result `shouldBe` True
 
             it "fails with an invalid name" $
-              mkdir "" sysfsRootZ `shouldBe` (Left $ InvalidName "")
+              do let Left result = mkdir "" sysfsRootZ
+                 isInvalidArgumentError result `shouldBe` True
 
             it "fails when the name contains a '/'" $
-              do mkdir "/abc" sysfsRootZ `shouldBe` (Left $ InvalidName "/abc")
-                 mkdir "sys/foobar" sysfsRootZ `shouldBe` (Left $ InvalidName "sys/foobar")
+              do let Left result1 = mkdir "/abc" sysfsRootZ
+                 isInvalidArgumentError result1 `shouldBe` True
+                 let Left result2 = mkdir "sys/foobar" sysfsRootZ
+                 isInvalidArgumentError result2 `shouldBe` True
 
        describe "mkfile" $
          do it "creates a file in the current directory when clobber is False" $
@@ -184,11 +216,14 @@ spec =
                  rest `shouldBe` [File {_fileName = "export", _fileType = Export},File {_fileName = "unexport", _fileType = Unexport}]
 
             it "fails when a subdir with the same name already exists" $ do
-              mkfile "sys" (Const []) True sysfsRootZ `shouldBe` (Left $ FileExists "sys")
-              mkfile "sys" (Const []) False sysfsRootZ `shouldBe` (Left $ FileExists "sys")
+              let Left result1 = mkfile "sys" (Const []) True sysfsRootZ
+              isAlreadyExistsError result1 `shouldBe` True
+              let Left result2 = mkfile "sys" (Const []) False sysfsRootZ
+              isAlreadyExistsError result2 `shouldBe` True
 
             it "fails when a file with the same name already exists and clobber is False" $
-              (cd "/sys/class/gpio" sysfsRootZ >>= mkfile "export" (Const []) False) `shouldBe` (Left $ FileExists "export")
+              do let Left result = (cd "/sys/class/gpio" sysfsRootZ >>= mkfile "export" (Const []) False)
+                 isAlreadyExistsError result `shouldBe` True
 
             it "overwrites an existing file's contents when a file with the same name already exists and clobber is True" $
               do let Right z1 = cd "/sys/class/gpio" sysfsRootZ
@@ -202,14 +237,20 @@ spec =
                  rest `shouldBe` [File {_fileName = "export", _fileType = Export},File {_fileName = "unexport", _fileType = Unexport}]
 
             it "fails with an invalid name" $ do
-              mkfile "" (Const []) False sysfsRootZ `shouldBe` (Left $ InvalidName "")
-              mkfile "" (Const []) True sysfsRootZ `shouldBe` (Left $ InvalidName "")
+              let Left result1 = mkfile "" (Const []) False sysfsRootZ
+              isInvalidArgumentError result1 `shouldBe` True
+              let Left result2 = mkfile "" (Const []) True sysfsRootZ
+              isInvalidArgumentError result2 `shouldBe` True
 
             it "fails when the name contains a '/'" $
-              do mkfile "/abc" (Const []) False sysfsRootZ `shouldBe` (Left $ InvalidName "/abc")
-                 mkfile "/abc" (Const []) True sysfsRootZ `shouldBe` (Left $ InvalidName "/abc")
-                 mkfile "sys/foobar" (Const []) False sysfsRootZ `shouldBe` (Left $ InvalidName "sys/foobar")
-                 mkfile "sys/foobar" (Const []) True sysfsRootZ `shouldBe` (Left $ InvalidName "sys/foobar")
+              do let Left result1 = mkfile "/abc" (Const []) False sysfsRootZ
+                 isInvalidArgumentError result1 `shouldBe` True
+                 let Left result2 = mkfile "/abc" (Const []) True sysfsRootZ
+                 isInvalidArgumentError result2 `shouldBe` True
+                 let Left result3 = mkfile "sys/foobar" (Const []) False sysfsRootZ
+                 isInvalidArgumentError result3 `shouldBe` True
+                 let Left result4 = mkfile "sys/foobar" (Const []) True sysfsRootZ
+                 isInvalidArgumentError result4 `shouldBe` True
 
        describe "findFile" $
          do it "finds files in the current directory" $
@@ -240,14 +281,18 @@ spec =
                  parentName crumb3 `shouldBe` "/"
 
             it "fails when no subdir with the name exists" $
-              rmdir "foo" sysfsRootZ `shouldBe` (Left $ NoSuchFileOrDirectory "foo")
+              do let Left result = rmdir "foo" sysfsRootZ
+                 isDoesNotExistError result `shouldBe` True
 
             it "fails when a file is named" $
-              (cd "/sys/class/gpio" sysfsRootZ >>= rmdir "export") `shouldBe` (Left $ NotADirectory "export")
+              do let Left result = (cd "/sys/class/gpio" sysfsRootZ >>= rmdir "export")
+                 isInappropriateTypeError result `shouldBe` True
 
             it "fails when the name contains a '/'" $
-              do rmdir "/sys" sysfsRootZ `shouldBe` (Left $ NoSuchFileOrDirectory "/sys")
-                 rmdir "sys/class" sysfsRootZ `shouldBe` (Left $ NoSuchFileOrDirectory "sys/class")
+              do let Left result1 = rmdir "/sys" sysfsRootZ
+                 isDoesNotExistError result1 `shouldBe` True
+                 let Left result2 = rmdir "sys/class" sysfsRootZ
+                 isDoesNotExistError result2 `shouldBe` True
 
        describe "rmfile" $
          do it "removes a file in the current directory" $
@@ -262,13 +307,16 @@ spec =
                  files dir3 `shouldBe` []
 
             it "fails when no file with the name exists" $
-              rmfile "foo" sysfsRootZ `shouldBe` (Left $ NoSuchFileOrDirectory "foo")
+              do let Left result = rmfile "foo" sysfsRootZ
+                 isDoesNotExistError result `shouldBe` True
 
             it "fails when a directory is named" $
-              (cd "/sys/class" sysfsRootZ >>= rmfile "gpio") `shouldBe` (Left $ NotAFile "gpio")
+              do let Left result = (cd "/sys/class" sysfsRootZ >>= rmfile "gpio")
+                 isInappropriateTypeError result `shouldBe` True
 
             it "fails when the name contains a '/'" $
-              rmfile "/sys/class/gpio/export" sysfsRootZ `shouldBe` (Left $ NoSuchFileOrDirectory "/sys/class/gpio/export")
+              do let Left result = rmfile "/sys/class/gpio/export" sysfsRootZ
+                 isDoesNotExistError result `shouldBe` True
 
        describe "pathFromRoot" $
          do it "returns the path from the current directory to the root directory" $
