@@ -438,6 +438,9 @@ spec =
           it "in setPinActiveLevel" $
              evalSysfsGpioMock' (invalidHandle (\d -> setPinActiveLevel d High)) initialMockWorld [chip0] `shouldBe` Left (Just $ NotExported (Pin 1))
 
+          it "in togglePinActiveLevel" $
+             evalSysfsGpioMock' (invalidHandle togglePinActiveLevel) initialMockWorld [chip0] `shouldBe` Left (Just $ NotExported (Pin 1))
+
      describe "withPin" $
        do it "opens and closes the pin as expected" $
             let testChip = MockGpioChip "testChip" 1 [defaultMockPinState {_value = High}]
