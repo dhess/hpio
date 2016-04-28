@@ -11,11 +11,16 @@ Monad type classes and instances for Linux @sysfs@ GPIO operations.
 
 -}
 
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE Trustworthy #-}
+
+#ifndef MIN_VERSION_base
+#define MIN_VERSION_base(x,y,z) 1
+#endif
 
 module System.GPIO.Linux.Sysfs.Monad
        ( -- * MonadSysfs class
@@ -52,6 +57,10 @@ module System.GPIO.Linux.Sysfs.Monad
        , readPinActiveLow
        , writePinActiveLow
        ) where
+
+#if ! MIN_VERSION_base(4,8,0)
+import Prelude.Compat ((<$>), Applicative, Monoid)
+#endif
 
 import Prelude hiding (readFile, writeFile)
 import Control.Applicative (Alternative)
@@ -250,7 +259,7 @@ instance MonadTrans SysfsGpioT where
 -- versions of the package.
 newtype PinDescriptor = PinDescriptor { _pin :: Pin } deriving (Show, Eq, Ord)
 
-instance (MonadCatch m, MonadThrow m, MonadSysfs m) => MonadGpio PinDescriptor (SysfsGpioT m) where
+instance (Functor m, MonadCatch m, MonadThrow m, MonadSysfs m) => MonadGpio PinDescriptor (SysfsGpioT m) where
   pins =
     lift sysfsIsPresent >>= \case
       False -> return []

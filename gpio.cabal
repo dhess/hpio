@@ -67,6 +67,7 @@ Library
                       , TypeSynonymInstances
   Build-Depends:        QuickCheck
                       , base ==4.*
+                      , base-compat
                       , bytestring
                       , containers
                       , directory
@@ -74,6 +75,7 @@ Library
                       , filepath
                       , inline-c
                       , mtl
+                      , mtl-compat
                       , text
                       , transformers
                       , transformers-compat
@@ -87,8 +89,10 @@ Executable gpio-sysfs-example
   HS-Source-Dirs:       examples
   Build-Depends:        base ==4.*
                       , async
+                      , base-compat
                       , gpio
                       , mtl
+                      , mtl-compat
                       , optparse-applicative
                       , transformers
                       , transformers-compat
@@ -100,9 +104,11 @@ Executable gpio-example
   HS-Source-Dirs:       examples
   Build-Depends:        base ==4.*
                       , async
+                      , base-compat
                       , exceptions
                       , gpio
                       , mtl
+                      , mtl-compat
                       , optparse-applicative
                       , transformers
                       , transformers-compat
@@ -115,9 +121,11 @@ Executable gpio-reader-example
   HS-Source-Dirs:       examples
   Build-Depends:        base ==4.*
                       , async
+                      , base-compat
                       , exceptions
                       , gpio
                       , mtl
+                      , mtl-compat
                       , optparse-applicative
                       , transformers
                       , transformers-compat
@@ -135,6 +143,7 @@ Test-Suite spec
   Main-Is:              Main.hs
   Build-Depends:        QuickCheck
                       , base ==4.*
+                      , base-compat
                       , bytestring
                       , containers
                       , directory
@@ -143,6 +152,7 @@ Test-Suite spec
                       , hspec
                       , inline-c
                       , mtl
+                      , mtl-compat
                       , text
                       , transformers
                       , transformers-compat

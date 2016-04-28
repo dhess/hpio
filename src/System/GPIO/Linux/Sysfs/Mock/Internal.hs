@@ -22,9 +22,14 @@ and please do not submit requests for addtional functionality.
 
 -}
 
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE Safe #-}
+
+#ifndef MIN_VERSION_base
+#define MIN_VERSION_base(x,y,z) 1
+#endif
 
 module System.GPIO.Linux.Sysfs.Mock.Internal
        ( -- * Mock filesystem types
@@ -49,6 +54,10 @@ module System.GPIO.Linux.Sysfs.Mock.Internal
        , rmdir
        , rmfile
        ) where
+
+#if ! MIN_VERSION_base(4,8,0)
+import Prelude.Compat ((<$>))
+#endif
 
 import Data.ByteString (ByteString)
 import Data.Foldable (foldlM)

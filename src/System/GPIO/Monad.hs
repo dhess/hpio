@@ -11,17 +11,26 @@ A monadic context for GPIO computations.
 
 -}
 
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE Safe #-}
 
+#ifndef MIN_VERSION_base
+#define MIN_VERSION_base(x,y,z) 1
+#endif
+
 module System.GPIO.Monad
        ( -- * MonadGpio class
          MonadGpio(..)
        , withPin
        ) where
+
+#if ! MIN_VERSION_base(4,8,0)
+import Prelude.Compat (Monoid)
+#endif
 
 import Control.Monad.Catch (MonadMask, bracket)
 import Control.Monad.Catch.Pure (CatchT)
