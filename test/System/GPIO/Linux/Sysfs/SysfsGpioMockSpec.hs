@@ -97,25 +97,21 @@ testTogglePinDirection =
      closePin d
      return (dir1, dir2, dir3, dir4, dir5)
 
-testSampleWritePin :: (MonadGpio h m) => m (PinValue, PinValue, PinValue)
-testSampleWritePin =
-  do d <- openPin (Pin 1)
-     setPinDirection d Out
-     val1 <- samplePin d
+testSampleWritePin :: (MonadGpio h m) => h -> m (PinValue, PinValue, PinValue)
+testSampleWritePin d =
+  do val1 <- samplePin d
      case val1 of
        Low ->
          do writePin d High
             val2 <- samplePin d
             writePin d Low
             val3 <- samplePin d
-            closePin d
             return (val1,val2,val3)
        High ->
          do writePin d Low
             val2 <- samplePin d
             writePin d High
             val3 <- samplePin d
-            closePin d
             return (val1,val2,val3)
 
 testSampleWritePinIdempotent :: (MonadGpio h m) => m (PinValue, PinValue)
@@ -361,9 +357,23 @@ spec =
           it "times out" $
             pendingWith "need to implement this"
 
+     describe "samplePin" $
+       do context "returns the pin's logical level" $
+            do it "when the active level is high" $
+                 evalSysfsGpioMock' (withPin (Pin 1) (\h -> setPinActiveLevel h High >> samplePin h)) initialMockWorld [chip0] `shouldBe` Right Low
+               it "when the active level is low" $
+                 evalSysfsGpioMock' (withPin (Pin 1) (\h -> setPinActiveLevel h Low >> samplePin h)) initialMockWorld [chip0] `shouldBe` Right High
+
      describe "writePin" $
-       do it "sets the pin value" $
-            evalSysfsGpioMock' testSampleWritePin initialMockWorld [chip0] `shouldBe` Right (Low, High, Low)
+       do context "sets the pin's logical value" $
+            do it "when the active level is high" $
+                 let Right (result, world) = runSysfsGpioMock' (withPin (Pin 1) testSampleWritePin) initialMockWorld [chip0]
+                 in do result `shouldBe` (Low, High, Low)
+                       Map.lookup (Pin 1) (mockWorldPins world) `shouldBe` Just defaultMockPinState
+               it "when the active level is low" $
+                 let Right (result, world) = runSysfsGpioMock' (withPin (Pin 1) (\h -> setPinActiveLevel h Low >> testSampleWritePin h)) initialMockWorld [chip0]
+                 in do result `shouldBe` (High, Low, High)
+                       Map.lookup (Pin 1) (mockWorldPins world) `shouldBe` Just (defaultMockPinState {_activeLow = True, _value = Low})
 
           it "is idempotent" $
             evalSysfsGpioMock' testSampleWritePinIdempotent initialMockWorld [chip0] `shouldBe` Right (Low, Low)
@@ -372,9 +382,20 @@ spec =
             evalSysfsGpioMock' testWritePinFailsOnInputPin initialMockWorld [chip0] `shouldBe` Left (Just $ PermissionDenied (Pin 1))
 
      describe "writePin'" $
-       do it "sets the pin value and direction" $
-            let testChip = MockGpioChip "testChip" 1 [defaultMockPinState {_direction = In}, defaultMockPinState {_value = High}]
-            in evalSysfsGpioMock' testWritePin' initialMockWorld [testChip] `shouldBe` Right (High, Low, Just Out, Just Out)
+       do context "sets the pin's logical value and direction" $
+            do it "when the active level is high" $
+                 let testChip = MockGpioChip "testChip" 1 [defaultMockPinState {_direction = In}, defaultMockPinState {_value = High}]
+                     Right (result, world) = runSysfsGpioMock' testWritePin' initialMockWorld [testChip]
+                 in do result `shouldBe` (High, Low, Just Out, Just Out)
+                       Map.lookup (Pin 1) (mockWorldPins world) `shouldBe` Just (defaultMockPinState {_value = High})
+                       Map.lookup (Pin 2) (mockWorldPins world) `shouldBe` Just defaultMockPinState
+
+               it "when the active level is low" $
+                 let testChip = MockGpioChip "testChip" 1 [defaultMockPinState {_direction = In, _activeLow = True}, defaultMockPinState {_activeLow = True, _value = High}]
+                     Right (result, world) = runSysfsGpioMock' testWritePin' initialMockWorld [testChip]
+                 in do result `shouldBe` (High, Low, Just Out, Just Out)
+                       Map.lookup (Pin 1) (mockWorldPins world) `shouldBe` Just (defaultMockPinState {_activeLow = True})
+                       Map.lookup (Pin 2) (mockWorldPins world) `shouldBe` Just (defaultMockPinState {_activeLow = True, _value = High})
 
           it "is idempotent" $
             evalSysfsGpioMock' testWritePinIdempotent' initialMockWorld [chip0] `shouldBe` Right (High, High, Low, Low)
