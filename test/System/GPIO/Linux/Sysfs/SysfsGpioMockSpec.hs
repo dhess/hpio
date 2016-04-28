@@ -182,6 +182,15 @@ testTogglePinValue =
      closePin d
      return (val1, val2, val3, val4, val5)
 
+testTogglePinActiveLevel :: (MonadGpio h m) => h -> m (PinValue, PinValue, PinValue, PinValue, PinValue)
+testTogglePinActiveLevel h =
+  do val1 <- getPinActiveLevel h
+     val2 <- togglePinActiveLevel h
+     val3 <- getPinActiveLevel h
+     val4 <- togglePinActiveLevel h
+     val5 <- getPinActiveLevel h
+     return (val1, val2, val3, val4, val5)
+
 invalidHandle :: (MonadGpio h m) => (h -> m a) -> m a
 invalidHandle action =
   do d <- openPin (Pin 1)
@@ -330,6 +339,12 @@ spec =
                   it "sets the pin's active level to high" $
                     let (Right world) = execSysfsGpioMock' (withPin (Pin 1) (\h -> setPinActiveLevel h High)) initialMockWorld [chip0]
                     in Map.lookup (Pin 1) (mockWorldPins world) `shouldBe` Just (defaultMockPinState {_activeLow = False})
+
+     describe "togglePinActiveLevel" $
+       do it "toggles the pin's active level when the pin is configured for output" $
+            evalSysfsGpioMock' (withPin (Pin 1) testTogglePinActiveLevel) initialMockWorld [chip0] `shouldBe` Right (High, Low, Low, High, High)
+          it "and when the pin is configured for input" $
+            evalSysfsGpioMock' (withPin (Pin 1) (\h -> setPinDirection h In >> testTogglePinActiveLevel h)) initialMockWorld [chip0] `shouldBe` Right (High, Low, Low, High, High)
 
      describe "readPin" $
        do it "waits for the specified trigger and returns the pin's value" $

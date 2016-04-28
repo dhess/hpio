@@ -331,6 +331,13 @@ instance (Functor m, MonadCatch m, MonadThrow m, MonadSysfs m) => MonadGpio PinD
   setPinActiveLevel (PinDescriptor p) v =
     lift $ writePinActiveLow p $ valueToBool (invertValue v)
 
+  -- NB: see 'getPinActiveLevel'.
+  togglePinActiveLevel h =
+    do level <- getPinActiveLevel h
+       let newLevel = invertValue level
+       setPinActiveLevel h newLevel
+       return newLevel
+
 -- | Test whether the @sysfs@ GPIO filesystem is available.
 sysfsIsPresent :: (MonadSysfs m) => m Bool
 sysfsIsPresent = doesDirectoryExist sysfsPath

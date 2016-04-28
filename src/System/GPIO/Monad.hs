@@ -150,6 +150,8 @@ class Monad m => MonadGpio h m | m -> h where
 
   -- | Toggle the pin's 'PinValue'. It is an error to call this
   -- function when the pin is not configured for output.
+  --
+  -- Returns the pin's new value.
   togglePinValue :: h -> m PinValue
 
   -- | Get the pin's 'PinReadTrigger' mode.
@@ -175,6 +177,9 @@ class Monad m => MonadGpio h m | m -> h where
   -- | Set the pin's "active" level, 'Low' or 'High'.
   setPinActiveLevel :: h -> PinValue -> m ()
 
+  -- | Toggle the pin's "active" level. Returns the pin's new level.
+  togglePinActiveLevel :: h -> m PinValue
+
 instance (MonadGpio h m) => MonadGpio h (IdentityT m) where
   pins = lift pins
   openPin = lift . openPin
@@ -192,6 +197,7 @@ instance (MonadGpio h m) => MonadGpio h (IdentityT m) where
   setPinReadTrigger h trigger = lift $ setPinReadTrigger h trigger
   getPinActiveLevel = lift . getPinActiveLevel
   setPinActiveLevel h v = lift $ setPinActiveLevel h v
+  togglePinActiveLevel = lift . togglePinActiveLevel
 
 instance (MonadGpio h m) => MonadGpio h (ContT r m) where
   pins = lift pins
@@ -210,6 +216,7 @@ instance (MonadGpio h m) => MonadGpio h (ContT r m) where
   setPinReadTrigger h trigger = lift $ setPinReadTrigger h trigger
   getPinActiveLevel = lift . getPinActiveLevel
   setPinActiveLevel h v = lift $ setPinActiveLevel h v
+  togglePinActiveLevel = lift . togglePinActiveLevel
 
 instance (MonadGpio h m) => MonadGpio h (CatchT m) where
   pins = lift pins
@@ -228,6 +235,7 @@ instance (MonadGpio h m) => MonadGpio h (CatchT m) where
   setPinReadTrigger h trigger = lift $ setPinReadTrigger h trigger
   getPinActiveLevel = lift . getPinActiveLevel
   setPinActiveLevel h v = lift $ setPinActiveLevel h v
+  togglePinActiveLevel = lift . togglePinActiveLevel
 
 instance (MonadGpio h m) => MonadGpio h (ExceptT e m) where
   pins = lift pins
@@ -246,6 +254,7 @@ instance (MonadGpio h m) => MonadGpio h (ExceptT e m) where
   setPinReadTrigger h trigger = lift $ setPinReadTrigger h trigger
   getPinActiveLevel = lift . getPinActiveLevel
   setPinActiveLevel h v = lift $ setPinActiveLevel h v
+  togglePinActiveLevel = lift . togglePinActiveLevel
 
 instance (MonadGpio h m) => MonadGpio h (ListT m) where
   pins = lift pins
@@ -264,6 +273,7 @@ instance (MonadGpio h m) => MonadGpio h (ListT m) where
   setPinReadTrigger h trigger = lift $ setPinReadTrigger h trigger
   getPinActiveLevel = lift . getPinActiveLevel
   setPinActiveLevel h v = lift $ setPinActiveLevel h v
+  togglePinActiveLevel = lift . togglePinActiveLevel
 
 instance (MonadGpio h m) => MonadGpio h (MaybeT m) where
   pins = lift pins
@@ -282,6 +292,7 @@ instance (MonadGpio h m) => MonadGpio h (MaybeT m) where
   setPinReadTrigger h trigger = lift $ setPinReadTrigger h trigger
   getPinActiveLevel = lift . getPinActiveLevel
   setPinActiveLevel h v = lift $ setPinActiveLevel h v
+  togglePinActiveLevel = lift . togglePinActiveLevel
 
 instance (MonadGpio h m) => MonadGpio h (ReaderT r m) where
   pins = lift pins
@@ -300,6 +311,7 @@ instance (MonadGpio h m) => MonadGpio h (ReaderT r m) where
   setPinReadTrigger h trigger = lift $ setPinReadTrigger h trigger
   getPinActiveLevel = lift . getPinActiveLevel
   setPinActiveLevel h v = lift $ setPinActiveLevel h v
+  togglePinActiveLevel = lift . togglePinActiveLevel
 
 instance (MonadGpio h m, Monoid w) => MonadGpio h (LazyRWS.RWST r w s m) where
   pins = lift pins
@@ -318,6 +330,7 @@ instance (MonadGpio h m, Monoid w) => MonadGpio h (LazyRWS.RWST r w s m) where
   setPinReadTrigger h trigger = lift $ setPinReadTrigger h trigger
   getPinActiveLevel = lift . getPinActiveLevel
   setPinActiveLevel h v = lift $ setPinActiveLevel h v
+  togglePinActiveLevel = lift . togglePinActiveLevel
 
 instance (MonadGpio h m, Monoid w) => MonadGpio h (StrictRWS.RWST r w s m) where
   pins = lift pins
@@ -336,6 +349,7 @@ instance (MonadGpio h m, Monoid w) => MonadGpio h (StrictRWS.RWST r w s m) where
   setPinReadTrigger h trigger = lift $ setPinReadTrigger h trigger
   getPinActiveLevel = lift . getPinActiveLevel
   setPinActiveLevel h v = lift $ setPinActiveLevel h v
+  togglePinActiveLevel = lift . togglePinActiveLevel
 
 instance (MonadGpio h m) => MonadGpio h (LazyState.StateT s m) where
   pins = lift pins
@@ -354,6 +368,7 @@ instance (MonadGpio h m) => MonadGpio h (LazyState.StateT s m) where
   setPinReadTrigger h trigger = lift $ setPinReadTrigger h trigger
   getPinActiveLevel = lift . getPinActiveLevel
   setPinActiveLevel h v = lift $ setPinActiveLevel h v
+  togglePinActiveLevel = lift . togglePinActiveLevel
 
 instance (MonadGpio h m) => MonadGpio h (StrictState.StateT s m) where
   pins = lift pins
@@ -372,6 +387,7 @@ instance (MonadGpio h m) => MonadGpio h (StrictState.StateT s m) where
   setPinReadTrigger h trigger = lift $ setPinReadTrigger h trigger
   getPinActiveLevel = lift . getPinActiveLevel
   setPinActiveLevel h v = lift $ setPinActiveLevel h v
+  togglePinActiveLevel = lift . togglePinActiveLevel
 
 instance (MonadGpio h m, Monoid w) => MonadGpio h (LazyWriter.WriterT w m) where
   pins = lift pins
@@ -390,6 +406,7 @@ instance (MonadGpio h m, Monoid w) => MonadGpio h (LazyWriter.WriterT w m) where
   setPinReadTrigger h trigger = lift $ setPinReadTrigger h trigger
   getPinActiveLevel = lift . getPinActiveLevel
   setPinActiveLevel h v = lift $ setPinActiveLevel h v
+  togglePinActiveLevel = lift . togglePinActiveLevel
 
 instance (MonadGpio h m, Monoid w) => MonadGpio h (StrictWriter.WriterT w m) where
   pins = lift pins
@@ -408,6 +425,7 @@ instance (MonadGpio h m, Monoid w) => MonadGpio h (StrictWriter.WriterT w m) whe
   setPinReadTrigger h trigger = lift $ setPinReadTrigger h trigger
   getPinActiveLevel = lift . getPinActiveLevel
   setPinActiveLevel h v = lift $ setPinActiveLevel h v
+  togglePinActiveLevel = lift . togglePinActiveLevel
 
 -- | Exception-safe pin management.
 --
