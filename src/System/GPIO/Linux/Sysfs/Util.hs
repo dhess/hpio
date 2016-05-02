@@ -115,7 +115,7 @@ pinDirectionToBS Out = "out\n"
 -- | Convert a 'PinValue' value to the corresponding 'ByteString'
 -- value expected by a pin's @direction@ attribute in the @sysfs@
 -- GPIO, which can be used to configure the pin for output and
--- simultaneously set the pin's (logical) value; see the
+-- simultaneously set the pin's (physical) signal level; see the
 -- <https://www.kernel.org/doc/Documentation/gpio/sysfs.txt Linux
 -- kernel documentation> for details.
 pinDirectionValueToBS :: PinValue -> ByteString
@@ -125,11 +125,11 @@ pinDirectionValueToBS High = "high\n"
 -- | When writing a pin's @direction@ attribute in the @sysfs@ GPIO
 -- filesystem with a 'ByteString' value, @"in\n"@ configures the pin
 -- for input, and @"out\n"@ configures the pin for output while also
--- initializing the pin's (logical) value as low.
+-- initializing the pin's (physical) signal level to a low value.
 --
 -- Furthermore, you may write @"low\n"@ or @"high\n"@ to the
 -- @direction@ attribute to configure the pin for output and
--- simulataneously set the pin's (logical) value.
+-- simulataneously set the pin's physical value.
 --
 -- Therefore, writing a pin's @direction@ attribute potentially
 -- affects both its direction and its value.
@@ -173,9 +173,9 @@ pinValueToBS High = "1\n"
 -- 'ByteString', to its corresponding 'PinValue'.
 --
 -- Note that the @sysfs@ @value@ attribute is quite liberal: a
--- 'ByteString' value of "0\n" will set the pin's (logical) value to
--- low, but any other (non-empty) 'ByteString' value will set it to
--- high.
+-- 'ByteString' value of "0\n" will set the pin's (logical) signal
+-- level to low, but any other (non-empty) 'ByteString' value will set
+-- it to high.
 bsToPinValue :: ByteString -> Maybe PinValue
 bsToPinValue "0\n" = Just Low
 bsToPinValue bs

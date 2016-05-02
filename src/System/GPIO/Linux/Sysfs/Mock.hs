@@ -127,23 +127,24 @@ data MockPinState =
   MockPinState {_direction :: !PinDirection
                ,_userVisibleDirection :: !Bool
                ,_activeLow :: !Bool
-               ,_value :: !PinValue -- This is the line level
+               ,_value :: !PinValue -- This is the line level, not the
+                                    -- logical level
                ,_edge :: Maybe SysfsEdge}
   deriving (Show,Eq)
 
--- | Pin values in Linux @sysfs@ GPIO can be inverted on read/write,
--- depending on the value of their @active_low@ attribute. This
--- function returns the 'MockPinState' value taking into consideration
--- its "active low" value.
+-- | Linux @sysfs@ GPIO natively supports active-low logic levels. A
+-- pin's "active" level is controlled by the pin's @active_low@
+-- attribute. We call the pin's signal level as modulated by its
+-- active level the pin's "logical value." This function returns the
+-- mock pin's logical value.
 logicalValue :: MockPinState -> PinValue
 logicalValue s
   | _activeLow s = invertValue $ _value s
   | otherwise = _value s
 
--- | Pin values in Linux @sysfs@ GPIO can be inverted on read/write,
--- depending on the value of their @active_low@ attribute. This
--- function sets the 'MockPinState' value to the given /logical/
--- value, i.e., taking into consideration its "active low" value.
+-- | This function sets the 'MockPinState' signal level to the given
+-- /logical/ value; i.e., the value set takes into consideration the
+-- pin's active level.
 setLogicalValue :: PinValue -> MockPinState -> MockPinState
 setLogicalValue v s
   | _activeLow s = s {_value = invertValue v}
@@ -194,12 +195,12 @@ type MockPins = Map Pin MockPinState
 -- @sysfs@ GPIO filesystem consistent with the behavior that would be
 -- seen in an actual @sysfs@ GPIO filesystem.
 --
--- The high/low value on a GPIO pin can, of course, be manipulated by
--- the circuit to which the pin is conected. A future version of this
--- implementation may permit the direct manipulation of mock pin
--- values in order to simulate simple circuits, but currently the only
--- way to manipulate pin state is via the mock @sysfs@ GPIO
--- filesystem.
+-- The high/low signal level on a real GPIO pin can, of course, be
+-- manipulated by the circuit to which the pin is conected. A future
+-- version of this implementation may permit the direct manipulation
+-- of mock pin values in order to simulate simple circuits, but
+-- currently the only way to manipulate pin state is via the mock
+-- @sysfs@ GPIO filesystem.
 data MockWorld =
   MockWorld {_zipper :: MockFSZipper
             ,_pins :: MockPins}
@@ -505,11 +506,17 @@ writeFile path bs =
             Just edge -> putPinState pin (\s -> s {_edge = Just edge})
             Nothing -> throwM writeError
     Just (Direction pin) ->
+      -- NB: In Linux @sysfs@, writing a pin's @direction@ attribute
+      -- with a "high" or "low" value sets the pin's /physical/ signal
+      -- level to that state. In other words, the pin's @active_low@
+      -- attribute is not considered when setting the pin's signal
+      -- level via the @direction@ attribute. We faithfully mimic that
+      -- behavior here.
       do visible <- _userVisibleDirection <$> pinState pin
          if visible
             then case bsToPinDirection bs of
                    Just (dir, Nothing) -> putPinState pin (\s -> s {_direction = dir})
-                   Just (dir, Just v) -> putPinState pin $ setLogicalValue v . (\s -> s {_direction = dir})
+                   Just (dir, Just v) -> putPinState pin (\s -> s {_direction = dir, _value = v})
                    Nothing -> throwM writeError
             else throwM $ InternalError ("Mock pin " ++ show pin ++ " has no direction but direction attribute is exported")
     Just _ -> throwM permissionError

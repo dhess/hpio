@@ -50,9 +50,58 @@ import qualified Control.Monad.Trans.Writer.Strict as StrictWriter (WriterT)
 
 import System.GPIO.Types (Pin, PinDirection, PinReadTrigger, PinValue)
 
--- | A monad type class for GPIO computations.
+-- | A monad type class for GPIO computations. The type class
+-- specifies a DSL for writing portable GPIO programs, and instances
+-- of the type class provide the implementation needed to interpret
+-- these programs on a particular GPIO platform.
 --
--- 'h' is an abstract pin handle for operating on opened pins.
+-- In the type signature, 'h' represents a (platform-dependent)
+-- abstract pin handle, for operating on opened pins. It is analogous
+-- to a file handle.
+--
+-- == Active-high versus active-low logic
+--
+-- The DSL supports both active-high and active-low logic. That is,
+-- the "active level" of a GPIO pin can be configured as 'High' or
+-- 'Low'. If a pin's active level is 'High', then for that pin, a
+-- 'PinValue' of 'High' corresponds to a "high" physical signal level,
+-- and a 'PinValue' of 'Low' corresponds to a "low" physical signal
+-- level. The converse is true when the pin's active level is 'Low'.
+--
+-- (Note that this explanation oversimplifies the reality of circuit
+-- design, as in order to predict the actual voltage level seen on a
+-- given pin, one must also consider factors such as
+-- open-drain/open-collector output, what other active sources and
+-- passive elements are connected to the pin, etc. However, these
+-- additional factors are outside the scope of this DSL and must be
+-- considered in the context of your particular GPIO hardware and the
+-- circuit to which it's connected.)
+--
+-- Despite the potential confusion, the advantage of supporting
+-- active-low logic is that you can, if you choose, write your program
+-- in terms of "positive" logic (where 'High' always means "on" and
+-- 'Low' always means "off"), and, with the same program, interface
+-- with either positive (active-high) or negative (active-low) logic
+-- simply by setting the pin's active level before running the
+-- program.
+--
+-- In the documentation for this package, whenever you see a reference
+-- to a "pin value" or "signal level", unless otherwise noted, we mean
+-- the /logical/ value or level, not the /physical/ value or level;
+-- that is, we mean the abstract notion of the pin being "on" or
+-- "off," independent of the voltage level seen on the physical pin.
+-- If the pin is configured as active-high, then the logical and
+-- physical values are one and the same; if not, they are the inverse
+-- of each other.
+--
+-- Note that the active-high/active-low setting is per-pin; each pin's
+-- active level is independent of the others.
+--
+-- Not all platforms natively support active-low logic. On platforms
+-- without native support, the platform interpreter will invert values
+-- (both read and written) in software when a pin is configured as
+-- active-low.
+
 class Monad m => MonadGpio h m | m -> h where
 
   -- | Get a list of available GPIO pins on the system.
@@ -85,6 +134,14 @@ class Monad m => MonadGpio h m | m -> h where
   -- 'getPinDirection' on the pin handle to make sure this particular
   -- pin's direction is configurable. It is an error to call this
   -- function if the pin's direction cannot be changed.
+  --
+  -- Note that, on some GPIO platforms (e.g., Linux @sysfs@), setting
+  -- a pin's direction to 'Out' also sets its value to a constant
+  -- value; i.e., the platform has no memory of the pin's previous
+  -- output value, if any. This value is platform-dependent and
+  -- therefore, from the perspective of the DSL, is undefined. If you
+  -- want to guarantee that a particular value is driven when a pin is
+  -- configured for output, see the 'writePin'' action.
   setPinDirection :: h -> PinDirection -> m ()
 
   -- | Toggle the pin's 'PinDirection'.
@@ -93,19 +150,17 @@ class Monad m => MonadGpio h m | m -> h where
   -- 'Nothing'. Otherwise, it returns the new direction.
   togglePinDirection :: h -> m (Maybe PinDirection)
 
-  -- | Sample the pin's /logical/ 'PinValue', where "sample" means
-  -- "read the value without blocking." Note that the pin's /physical/
-  -- line level is the inverse of the returned value when the pin's
-  -- active level is 'Low'. (See 'getPinActiveLevel'.)
+  -- | Sample the pin's signal level, where "sample" means "read the
+  -- value without blocking."
   samplePin :: h -> m PinValue
 
-  -- | Read the pin's /logical/ 'PinValue', potentially blocking the
-  -- current thread until an event corresponding to the pin's
-  -- 'PinReadTrigger' occurs.
+  -- | Read the pin's signal level, potentially blocking the current
+  -- thread until an event corresponding to the pin's 'PinReadTrigger'
+  -- occurs.
   --
   -- If the pin does not support blocking reads, then this function
-  -- behaves like 'samplePin' and returns the pin's logical value
-  -- without blocking.
+  -- behaves like 'samplePin' and returns the pin's value without
+  -- blocking.
   --
   -- Note: due to its interaction with the threading system, this
   -- function may behave differently across different implementations
@@ -115,50 +170,75 @@ class Monad m => MonadGpio h m | m -> h where
   -- | Same as 'readPin', except with a timeout, specified in
   -- microseconds. If no event occurs before the timeout expires, this
   -- function returns 'Nothing'; otherwise, it returns the pin's
-  -- /logical/ 'PinValue' wrapped in a 'Just'.
+  -- signal level wrapped in a 'Just'.
   --
   -- If the timeout value is negative, this function behaves just like
   -- 'readPin'.
   --
   -- If the pin does not support blocking reads, then this function
-  -- behaves like 'samplePin' and returns the pin's logical value
-  -- without blocking.
+  -- behaves like 'samplePin' and returns the pin's value without
+  -- blocking.
   --
   -- Note: due to its interaction with the threading system, this
   -- function may behave differently across different implementations
   -- of Haskell. It has only been tested with GHC.
   readPinTimeout :: h -> Int -> m (Maybe PinValue)
 
-  -- | Set the pin's /logical/ 'PinValue'. It is an error to call this
+  -- | Set the pin's signal level. It is an error to call this
   -- function when the pin is not configured for output.
   writePin :: h -> PinValue -> m ()
 
-  -- | Configure the pin for output and simultaneously set its
-  -- 'PinValue'. As long as the pin can be configured for output, you
-  -- can call this function regardless of the pin's current
+  -- | Configure the pin for output and simultaneously set its signal
+  -- level. As long as the pin can be configured for output, you can
+  -- call this function regardless of the pin's current
   -- 'PinDirection'. If the pin cannot be configured for output, it is
   -- an error to call this function. (See 'getPinDirection' to
   -- determine safely whether the pin can be configured for output.)
   --
   -- On some platforms (e.g., Linux 'sysfs' GPIO), this operation is
-  -- atomic, permitting glitch-free operation when configuring an
-  -- output pin's initial value. If the platform can't guarantee
-  -- atomic operation, this command is performed as two separate steps
-  -- (first setting the direction to 'Out', and then setting the
-  -- 'PinValue').
+  -- atomic, such that the pin will drive the given value immediately
+  -- upon being configured for output ("glitch-free"). If the platform
+  -- can't guarantee atomic operation, this command is performed as
+  -- two separate steps (first setting the direction to 'Out', and
+  -- then setting the 'PinValue'), so the pin may glitch (i.e.,
+  -- briefly drive the opposite value before the proper value can be
+  -- set).
+  --
+  -- NB: this DSL action is subtly different than its native
+  -- equivalent on Linux. See
+  -- 'System.GPIO.Linux.Sysfs.Monad.writePinDirectionWithValue' for
+  -- details.
   writePin' :: h -> PinValue -> m ()
 
-  -- | Toggle the pin's 'PinValue'. It is an error to call this
+  -- | Toggle the pin's signal level. It is an error to call this
   -- function when the pin is not configured for output.
   --
-  -- Returns the pin's new value.
+  -- Returns the pin's new signal level.
   togglePinValue :: h -> m PinValue
 
   -- | Get the pin's 'PinReadTrigger' mode.
   --
+  -- Think of a 'PinReadTrigger' as an interrupt mode. Combined with
+  -- the 'readPin' and 'readPinTimeout' actions, you can block the
+  -- current thread on a GPIO pin until a particular event occurs: in
+  -- logic terms, a leading signal edge ('RisingEdge'), a trailing
+  -- signal edge ('FallingEdge'), or any change of level ('Level').
+  --
+  -- You can also disable interrupts on the pin so that reads will
+  -- block indefinitely (or until they time out, in the case of
+  -- 'readPinTimeout') until the trigger is set to a different value
+  -- again. This functionality is useful when, for example, one thread
+  -- is dedicated to servicing interrupts on a pin, and another thread
+  -- wants to mask interrupts on that pin for some period of time.
+  --
   -- Some pins (or GPIO platforms) may not support edge- or
   -- level-triggered blocking reads. In such cases, this function
-  -- returns 'Nothing'.
+  -- returns 'Nothing'; calls to 'readPin' will block indefinitely;
+  -- and calls to 'readPinTimeout' will always time out.
+  --
+  -- (Note that 'RisingEdge' and 'FallingEdge' are relative to the
+  -- pin's active level; i.e., they refer to the pin's /logical/
+  -- signal edges, not its physical signal edges.)
   getPinReadTrigger :: h -> m (Maybe PinReadTrigger)
 
   -- | Set the pin's 'PinReadTrigger' mode.
@@ -169,15 +249,15 @@ class Monad m => MonadGpio h m | m -> h where
   -- reads, call 'getReadPinTrigger' on the pin.
   setPinReadTrigger :: h -> PinReadTrigger -> m ()
 
-  -- | Get the pin's "active" level: 'Low' means the pin is configured
-  -- to be active low, and 'High' means the pin is configured to be
-  -- active high.
+  -- | Get the pin's active level: 'Low' means the pin is configured
+  -- for active-low logic, and 'High' means the pin is configured as
+  -- active-high.
   getPinActiveLevel :: h -> m PinValue
 
-  -- | Set the pin's "active" level, 'Low' or 'High'.
+  -- | Set the pin's active level, 'Low' or 'High'.
   setPinActiveLevel :: h -> PinValue -> m ()
 
-  -- | Toggle the pin's "active" level. Returns the pin's new level.
+  -- | Toggle the pin's active level. Returns the pin's new level.
   togglePinActiveLevel :: h -> m PinValue
 
 instance (MonadGpio h m) => MonadGpio h (IdentityT m) where

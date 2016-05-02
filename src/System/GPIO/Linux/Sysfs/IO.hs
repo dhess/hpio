@@ -84,8 +84,8 @@ C.include "<unistd.h>"
 --
 -- On certain combinations of kernels+hardware, a "dummy read(2)" is
 -- needed before the poll(2) operation. As read(2) on a GPIO sysfs
--- pin's "value" file doesn't block, it doesn't hurt to do this in all
--- cases, anyway.
+-- pin's @value@ attribute doesn't block, it doesn't hurt to do this
+-- in all cases, anyway.
 --
 -- The Linux man page for poll(2) states that setting POLLERR in the
 -- @events@ field is meaningless. However, the kernel GPIO
@@ -95,13 +95,13 @@ C.include "<unistd.h>"
 -- When poll(2) returns, an lseek(2) is needed before read(2), per the
 -- Linux kernel documentation.
 --
--- It appears that poll(2) on the GPIO sysfs pin's "value" file always
--- returns POLLERR in @revents@, even if there is no error. (This is
--- supposedly true for all sysfs files, not just for GPIO.) We simply
--- ignore that bit and only consider the return value of poll(2) to
--- determine whether an error has occurred. (Presumably, if POLLERR is
--- set and poll(2) returns no error, then the subsequent lseek(2) or
--- read(2) will fail.)
+-- It appears that poll(2) on the GPIO sysfs pin's @value@ attribute
+-- always returns POLLERR in @revents@, even if there is no error.
+-- (This is supposedly true for all sysfs files, not just for GPIO.)
+-- We simply ignore that bit and only consider the return value of
+-- poll(2) to determine whether an error has occurred. (Presumably, if
+-- POLLERR is set and poll(2) returns no error, then the subsequent
+-- lseek(2) or read(2) will fail.)
 --
 -- Ref:
 -- https://e2e.ti.com/support/dsp/davinci_digital_media_processors/f/716/t/182883

@@ -434,6 +434,9 @@ readPinDirection p =
 --
 -- It is an error to call this function if the pin has no @direction@
 -- attribute.
+--
+-- Note that, in Linux @sysfs@ GPIO, changing a pin's direction to
+-- "out" will also set its /physical/ signal level to "low".
 writePinDirection :: (MonadSysfs m, MonadCatch m) => Pin -> PinDirection -> m ()
 writePinDirection p d =
   catchIOError
@@ -451,18 +454,39 @@ writePinDirection p d =
       | otherwise = throwM e
 
 -- | Pins whose direction can be set may be configured for output by
--- writing a 'PinValue' to their @direction@ attribute. This enables
--- glitch-free output configuration, assuming the pin is currently
--- configured for input, or some kind of tri-stated or floating
--- high-impedance mode.
+-- writing a 'PinValue' to their @direction@ attribute, such that the
+-- given value will be driven on the pin as soon as it's configured
+-- for output. This enables glitch-free output configuration, assuming
+-- the pin is currently configured for input, or some kind of
+-- tri-stated or floating high-impedance mode.
 --
--- It is an error to call this function if the pin has no
--- @direction@ attribute.
+-- It is an error to call this function if the pin has no @direction@
+-- attribute.
+--
+-- NB: for some unfathomable reason, writing "high" or "low" to a
+-- pin's @direction@ attribute sets its /physical/ signal level; i.e.,
+-- it ignores the value of the pin's @active_low@ attribute. Contrast
+-- this behavior with the behavior of writing to the pin's @value@
+-- attribute, which respects the value of the pin's @active_low@
+-- attribute and sets the pin's /logical/ signal level.
+--
+-- Rather than slavishly following the Linux @sysfs@ GPIO spec, we
+-- choose to be consistent by taking into account the pin's active
+-- level when writing the @direction@ attribute. In other words, the
+-- 'PinValue' argument to this action is the /logical/ signal level
+-- that will be set on the pin. If you're using this action to program
+-- directly to the Linux @sysfs@ GPIO interface and expecting things
+-- to behave as they do with raw @sysfs@ GPIO operations, keep this in
+-- mind!
 writePinDirectionWithValue :: (MonadSysfs m, MonadCatch m) => Pin -> PinValue -> m ()
 writePinDirectionWithValue p v =
-  catchIOError
-    (writeFile (pinDirectionFileName p) (pinDirectionValueToBS v))
-    mapIOError
+  do activeLow <- readPinActiveLow p
+     let f = case activeLow of
+               True -> invertValue
+               False -> id
+     catchIOError
+       (writeFile (pinDirectionFileName p) (pinDirectionValueToBS $ f v))
+       mapIOError
   where
     mapIOError :: (MonadSysfs m, MonadThrow m) => IOError -> m ()
     mapIOError e
@@ -474,7 +498,7 @@ writePinDirectionWithValue p v =
       | isPermissionError e = throwM $ PermissionDenied p
       | otherwise = throwM e
 
--- | Read the given pin's value.
+-- | Read the pin's signal level.
 --
 -- Note that this function never blocks, regardless of the pin's
 -- @edge@ attribute setting.
@@ -537,7 +561,7 @@ threadWaitReadPinValue' p timeout =
       | isPermissionError e = throwM $ PermissionDenied p
       | otherwise = throwM e
 
--- | Set the given pin's value.
+-- | Set the pin's signal level.
 --
 -- It is an error to call this function if the pin is configured as
 -- an input pin.
