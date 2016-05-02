@@ -62,7 +62,7 @@ matrix:
 
   # Build on OS X in addition to Linux.
   # OS X builds are much slower, so we only test a few configurations here.
-  - env: BUILD=stack ARGS="--resolver lts-2"
+  - env: BUILD=stack ARGS="--resolver lts-2" STACK_YAML=stack-lts-2.yaml
     compiler: ": #stack 7.8.4 osx"
     os: osx
 
