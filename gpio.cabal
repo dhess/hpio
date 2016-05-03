@@ -25,7 +25,6 @@ Description:
   .
   Example programs are provided in the 'examples' directory of the
   source code distribution.
-
 Extra-Doc-Files:        README.md
 Extra-Source-Files:     .travis.yml
                       , default.nix
@@ -33,6 +32,14 @@ Extra-Source-Files:     .travis.yml
                       , stack.yaml
                       , stack-lts-2.yaml
                       , stack-lts-3.yaml                                
+
+-- Enable Linux BeagleBone-specific tests. See
+-- test/System/GPIO/Linux/Sysfs/BeagleBoneSpec.hs for requirements.
+--
+-- > cabal test -flinux-bbone-tests
+Flag linux-bbone-tests
+  Default: False
+  Manual: True
 
 Library
   Default-Language:     Haskell2010
@@ -169,6 +176,9 @@ Test-Suite spec
                       , System.GPIO.Linux.Sysfs.Util
                       , System.GPIO.Monad
                       , System.GPIO.Types
+  C-Sources:            src/System/GPIO/Linux/Sysfs/IO.c
+  If flag(linux-bbone-tests)
+    cpp-options: -DRUN_LINUX_BBONE_TESTS=1
 
 Source-Repository head
   Type:                 git
