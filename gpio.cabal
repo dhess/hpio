@@ -146,10 +146,11 @@ Test-Suite spec
   Default-Language:     Haskell2010
   Hs-Source-Dirs:       src
                       , test
-  Ghc-Options:          -Wall
+  Ghc-Options:          -Wall -threaded
   Main-Is:              Main.hs
   Build-Depends:        QuickCheck
                       , base ==4.*
+                      , async
                       , base-compat
                       , bytestring
                       , containers

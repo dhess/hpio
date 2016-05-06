@@ -4,13 +4,15 @@
 
 module System.GPIO.Linux.Sysfs.LinuxBboneSpec (spec) where
 
-import Control.Concurrent (threadDelay)
+import Control.Concurrent (forkIO, threadDelay)
+import Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar)
+import Control.Monad (void)
 import Control.Monad.Catch (throwM)
 import Control.Monad.IO.Class (liftIO)
 import System.Directory (doesDirectoryExist)
 import System.GPIO.Linux.Sysfs (runSysfsGpioIO)
 import System.GPIO.Monad (MonadGpio(..), withPin)
-import System.GPIO.Types (Pin(..), PinDirection(..), PinValue(..))
+import System.GPIO.Types (Pin(..), PinDirection(..), PinReadTrigger(..), PinValue(..))
 import Test.Hspec
 
 -- Note: make sure the tests are always compiled, but only actually
@@ -175,3 +177,182 @@ runTests =
                           val3 <- samplePin h1
                           return (val1, val2, val3))
                   `shouldReturn` (Low, High, Low)
+         context "writePin'" $
+           -- Note: if these tests fail, you might not have hooked pin
+           -- P9-15 up to pin P8-15!
+           do it "writes the pin's value and configures it for output simultaneously" $
+                runSysfsGpioIO
+                  (withPin testPin1 $ \h1 ->
+                     withPin testPin2 $ \h2 ->
+                       do setPinDirection h1 In
+                          setPinActiveLevel h1 High
+                          setPinDirection h2 In
+                          setPinActiveLevel h2 High
+                          writePin' h2 High
+                          -- give the pin time to settle
+                          liftIO $ threadDelay 250000
+                          val1 <- samplePin h1
+                          writePin' h2 Low
+                          liftIO $ threadDelay 250000
+                          val2 <- samplePin h1
+                          writePin' h2 High
+                          liftIO $ threadDelay 250000
+                          val3 <- samplePin h1
+                          return (val1, val2, val3))
+                  `shouldReturn` (High, Low, High)
+              it "writePin' obeys the pin's active level" $
+                runSysfsGpioIO
+                  (withPin testPin1 $ \h1 ->
+                     withPin testPin2 $ \h2 ->
+                       do setPinDirection h1 In
+                          setPinActiveLevel h1 High
+                          setPinDirection h2 In
+                          setPinActiveLevel h2 Low
+                          writePin' h2 High
+                          -- give the pin time to settle
+                          liftIO $ threadDelay 250000
+                          val1 <- samplePin h1
+                          writePin' h2 Low
+                          liftIO $ threadDelay 250000
+                          val2 <- samplePin h1
+                          writePin' h2 High
+                          liftIO $ threadDelay 250000
+                          val3 <- samplePin h1
+                          return (val1, val2, val3))
+                  `shouldReturn` (Low, High, Low)
+         context "togglePinValue" $
+           -- Note: if these tests fail, you might not have hooked pin
+           -- P9-15 up to pin P8-15!
+           do it "toggles the pin's value and returns the previous value" $
+                runSysfsGpioIO
+                  (withPin testPin1 $ \h1 ->
+                     withPin testPin2 $ \h2 ->
+                       do setPinDirection h1 In
+                          setPinActiveLevel h1 High
+                          setPinDirection h2 Out
+                          setPinActiveLevel h2 High
+                          h2_val1 <- togglePinValue h2
+                          -- give the pin time to settle
+                          liftIO $ threadDelay 250000
+                          h1_val1 <- samplePin h1
+                          h2_val2 <- togglePinValue h2
+                          liftIO $ threadDelay 250000
+                          h1_val2 <- samplePin h1
+                          h2_val3 <- togglePinValue h2
+                          liftIO $ threadDelay 250000
+                          h1_val3 <- samplePin h1
+                          return (h2_val1, h1_val1, h2_val2, h1_val2, h2_val3, h1_val3))
+                  `shouldReturn` (High, High, Low, Low, High, High)
+              it "togglePinValue obeys the pin's active level" $
+                runSysfsGpioIO
+                  (withPin testPin1 $ \h1 ->
+                     withPin testPin2 $ \h2 ->
+                       do setPinDirection h1 In
+                          setPinActiveLevel h1 High
+                          setPinDirection h2 Out
+                          setPinActiveLevel h2 Low
+                          writePin h2 Low
+                          h2_val1 <- togglePinValue h2
+                          -- give the pin time to settle
+                          liftIO $ threadDelay 250000
+                          h1_val1 <- samplePin h1
+                          h2_val2 <- togglePinValue h2
+                          liftIO $ threadDelay 250000
+                          h1_val2 <- samplePin h1
+                          h2_val3 <- togglePinValue h2
+                          liftIO $ threadDelay 250000
+                          h1_val3 <- samplePin h1
+                          return (h2_val1, h1_val1, h2_val2, h1_val2, h2_val3, h1_val3))
+                  `shouldReturn` (High, Low, Low, High, High, Low)
+         context "readPin/ReadPinTimeout/getPinReadTrigger/setPinReadTrigger" $
+           -- Note: if these tests fail, you might not have hooked pin
+           -- P9-15 up to pin P8-15!
+           do it "readPin waits for rising edge" $
+                do mvar <- liftIO $ newEmptyMVar
+                   void $ liftIO $ forkIO $
+                     do runSysfsGpioIO $
+                          withPin testPin2 $ \h ->
+                            do setPinDirection h Out
+                               setPinActiveLevel h High
+                               writePin h High
+                               liftIO $ void $ takeMVar mvar
+                               liftIO $ threadDelay 250000
+                               void $ togglePinValue h
+                               liftIO $ threadDelay 250000
+                               void $ togglePinValue h -- trigger
+                               liftIO $ threadDelay 250000
+                               void $ togglePinValue h
+                               liftIO $ threadDelay 250000
+                               void $ togglePinValue h -- trigger
+                        putMVar mvar () -- synchronize finish
+                   runSysfsGpioIO
+                      (withPin testPin1 $ \h ->
+                         do setPinDirection h In
+                            setPinActiveLevel h High
+                            setPinReadTrigger h RisingEdge
+                            liftIO $ putMVar mvar ()
+                            val1 <- readPin h
+                            val2 <- readPin h
+                            liftIO $ void $ takeMVar mvar -- synchronize finish
+                            return (val1, val2))
+                   `shouldReturn` (High, High)
+              it "readPin waits for falling edge" $
+                do mvar <- liftIO $ newEmptyMVar
+                   void $ liftIO $ forkIO $
+                     do runSysfsGpioIO $
+                          withPin testPin2 $ \h ->
+                            do setPinDirection h Out
+                               setPinActiveLevel h High
+                               writePin h Low
+                               liftIO $ void $ takeMVar mvar
+                               liftIO $ threadDelay 250000
+                               void $ togglePinValue h
+                               liftIO $ threadDelay 250000
+                               void $ togglePinValue h -- trigger
+                               liftIO $ threadDelay 250000
+                               void $ togglePinValue h
+                               liftIO $ threadDelay 250000
+                               void $ togglePinValue h -- trigger
+                        putMVar mvar () -- synchronize finish
+                   runSysfsGpioIO
+                      (withPin testPin1 $ \h ->
+                         do setPinDirection h In
+                            setPinActiveLevel h High
+                            setPinReadTrigger h FallingEdge
+                            liftIO $ putMVar mvar ()
+                            val1 <- readPin h
+                            val2 <- readPin h
+                            liftIO $ void $ takeMVar mvar -- synchronize finish
+                            return (val1, val2))
+                   `shouldReturn` (Low, Low)
+              it "readPin waits for level changes" $
+                do mvar <- liftIO $ newEmptyMVar
+                   void $ liftIO $ forkIO $
+                     do runSysfsGpioIO $
+                          withPin testPin2 $ \h ->
+                            do setPinDirection h Out
+                               setPinActiveLevel h High
+                               writePin h High
+                               liftIO $ void $ takeMVar mvar
+                               liftIO $ threadDelay 250000
+                               void $ togglePinValue h -- trigger
+                               liftIO $ threadDelay 250000
+                               void $ togglePinValue h -- trigger
+                               liftIO $ threadDelay 250000
+                               void $ togglePinValue h -- trigger
+                               liftIO $ threadDelay 250000
+                               void $ togglePinValue h -- trigger
+                        putMVar mvar () -- synchronize finish
+                   runSysfsGpioIO
+                      (withPin testPin1 $ \h ->
+                         do setPinDirection h In
+                            setPinActiveLevel h High
+                            setPinReadTrigger h Level
+                            liftIO $ putMVar mvar ()
+                            val1 <- readPin h
+                            val2 <- readPin h
+                            val3 <- readPin h
+                            val4 <- readPin h
+                            liftIO $ void $ takeMVar mvar -- synchronize finish
+                            return (val1, val2, val3, val4))
+                   `shouldReturn` (Low, High, Low, High)
