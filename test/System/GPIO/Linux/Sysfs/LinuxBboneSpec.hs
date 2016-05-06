@@ -200,6 +200,38 @@ runTests =
                           val3 <- samplePin h1
                           return (val1, val2, val3))
                   `shouldReturn` (Low, High, Low)
+              it "samplePin works on output pins" $
+                 runSysfsGpioIO
+                   (withPin testPin2 $ \h ->
+                      do setPinDirection h Out
+                         setPinActiveLevel h High
+                         writePin h High
+                         liftIO $ threadDelay 250000
+                         val1 <- samplePin h
+                         writePin h Low
+                         liftIO $ threadDelay 250000
+                         val2 <- samplePin h
+                         writePin h High
+                         liftIO $ threadDelay 250000
+                         val3 <- samplePin h
+                         return (val1, val2, val3))
+                   `shouldReturn` (High, Low, High)
+              it "samplePin works on output pins (active-low)" $
+                 runSysfsGpioIO
+                   (withPin testPin2 $ \h ->
+                      do setPinDirection h Out
+                         setPinActiveLevel h Low
+                         writePin h High
+                         liftIO $ threadDelay 250000
+                         val1 <- samplePin h
+                         writePin h Low
+                         liftIO $ threadDelay 250000
+                         val2 <- samplePin h
+                         writePin h High
+                         liftIO $ threadDelay 250000
+                         val3 <- samplePin h
+                         return (val1, val2, val3))
+                   `shouldReturn` (High, Low, High)
               it "writePin obeys the pin's active level" $
                 runSysfsGpioIO
                   (withPin testPin1 $ \h1 ->
