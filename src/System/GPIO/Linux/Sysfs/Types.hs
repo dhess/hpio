@@ -85,7 +85,8 @@ data SysfsException
   | PermissionDenied Pin
     -- ^ The operation on the specified pin is not permitted, either
     -- due to insufficient permissions, or because the pin's attribute
-    -- cannot be modified
+    -- cannot be modified (e.g., trying to write to a pin that's
+    -- configured for input).
   | AlreadyExported Pin
     -- ^ The pin has already been exported
   | InvalidPin Pin

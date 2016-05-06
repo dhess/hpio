@@ -10,10 +10,25 @@ import Control.Monad (void)
 import Control.Monad.Catch (throwM)
 import Control.Monad.IO.Class (liftIO)
 import System.Directory (doesDirectoryExist)
-import System.GPIO.Linux.Sysfs (runSysfsGpioIO)
+import System.GPIO.Linux.Sysfs (SysfsException(..), runSysfsGpioIO)
 import System.GPIO.Monad (MonadGpio(..), withPin)
 import System.GPIO.Types (Pin(..), PinDirection(..), PinReadTrigger(..), PinValue(..))
 import Test.Hspec
+
+isInvalidPinError :: SysfsException -> Bool
+isInvalidPinError (InvalidPin _) = True
+isInvalidPinError _ = False
+
+isNotExportedError :: SysfsException -> Bool
+isNotExportedError (NotExported _) = True
+isNotExportedError _ = False
+
+isPermissionDeniedError :: SysfsException -> Bool
+isPermissionDeniedError (PermissionDenied _) = True
+isPermissionDeniedError _ = False
+
+-- Note: it's not practical to test all exceptional cases, but we do
+-- our best.
 
 -- Note: make sure the tests are always compiled, but only actually
 -- run on the proper platform.
@@ -41,6 +56,9 @@ testPin1 = Pin 48
 testPin2 :: Pin
 testPin2 = Pin 47
 
+invalidPin :: Pin
+invalidPin = Pin 9000
+
 runTests :: Spec
 runTests =
   do
@@ -49,14 +67,34 @@ runTests =
            it "returns the full list of pins on the system" $
              runSysfsGpioIO pins `shouldReturn` (map Pin [0..127])
          context "openPin/closePin" $
-           it "exports/unexports the pin" $
-             runSysfsGpioIO
-               (do h <- openPin testPin1
-                   exported <- liftIO $ doesDirectoryExist "/sys/class/gpio/gpio48"
-                   closePin h
-                   stillExported <- liftIO $ doesDirectoryExist "/sys/class/gpio/gpio48"
-                   return (exported, stillExported))
-               `shouldReturn` (True, False)
+           do it "exports/unexports the pin" $
+                runSysfsGpioIO
+                  (do h <- openPin testPin1
+                      exported <- liftIO $ doesDirectoryExist "/sys/class/gpio/gpio48"
+                      closePin h
+                      stillExported <- liftIO $ doesDirectoryExist "/sys/class/gpio/gpio48"
+                      return (exported, stillExported))
+                `shouldReturn` (True, False)
+              it "openPin doesn't complain if the pin is already exported" $
+                  runSysfsGpioIO
+                    (withPin testPin1 $ \_ ->
+                       do h <- openPin testPin1
+                          void $ getPinDirection h
+                          return True)
+                    `shouldReturn` True
+              it "openPin fails if the pin is invalid" $
+                  runSysfsGpioIO
+                    (do h <- openPin invalidPin
+                        dir <- getPinDirection h
+                        return dir)
+                    `shouldThrow` isInvalidPinError
+              it "closePin fails if the pin is already unexported" $
+                  runSysfsGpioIO
+                    (withPin testPin1 $ \_ ->
+                       do h <- openPin testPin1
+                          closePin h
+                          closePin h)
+                    `shouldThrow` isNotExportedError
          context "withPin" $
            do it "exports/unexports the pin" $
                 do runSysfsGpioIO
@@ -70,6 +108,11 @@ runTests =
                         throwM $ userError "Foo")
                      `shouldThrow` anyIOException
                    doesDirectoryExist "/sys/class/gpio/gpio48" `shouldReturn` False
+              it "fails if the pin is invalid" $
+                do runSysfsGpioIO
+                     (withPin invalidPin $ const $
+                        liftIO $ doesDirectoryExist "/sys/class/gpio/gpio9000")
+                     `shouldThrow` isInvalidPinError
          context "getPinDirection/setPinDirection" $
            it "gets and sets the pin's direction" $
              runSysfsGpioIO
@@ -220,6 +263,12 @@ runTests =
                           val3 <- samplePin h1
                           return (val1, val2, val3))
                   `shouldReturn` (Low, High, Low)
+              it "fails if the pin is configured for input" $
+                runSysfsGpioIO
+                  (withPin testPin1 $ \h ->
+                     do setPinDirection h In
+                        writePin h High)
+                  `shouldThrow` isPermissionDeniedError
          context "togglePinValue" $
            -- Note: if these tests fail, you might not have hooked pin
            -- P9-15 up to pin P8-15!
@@ -264,6 +313,12 @@ runTests =
                           h1_val3 <- samplePin h1
                           return (h2_val1, h1_val1, h2_val2, h1_val2, h2_val3, h1_val3))
                   `shouldReturn` (High, Low, Low, High, High, Low)
+              it "fails if the pin is configured for input" $
+                runSysfsGpioIO
+                  (withPin testPin1 $ \h ->
+                     do setPinDirection h In
+                        void $ togglePinValue h)
+                  `shouldThrow` isPermissionDeniedError
          context "getPinReadTrigger/setPinReadTrigger" $
            it "gets and sets the pin's read trigger" $
              runSysfsGpioIO
@@ -770,3 +825,97 @@ runTests =
                              liftIO $ void $ takeMVar mvar -- synchronize finish
                              return val)
                    `shouldReturn` Just High
+         context "Various NotExported exceptions" $
+           do it "getPinDirection" $
+                runSysfsGpioIO
+                  (do h <- openPin testPin1
+                      closePin h
+                      v <- getPinDirection h
+                      return v)
+                  `shouldThrow` isNotExportedError
+              it "setPinDirection" $
+                 runSysfsGpioIO
+                   (do h <- openPin testPin1
+                       closePin h
+                       setPinDirection h Out)
+                   `shouldThrow` isNotExportedError
+              it "togglePinDirection" $
+                 runSysfsGpioIO
+                   (do h <- openPin testPin1
+                       closePin h
+                       v <- togglePinDirection h
+                       return v)
+                   `shouldThrow` isNotExportedError
+              it "getPinReadTrigger" $
+                runSysfsGpioIO
+                  (do h <- openPin testPin1
+                      closePin h
+                      v <- getPinReadTrigger h
+                      return v)
+                  `shouldThrow` isNotExportedError
+              it "setPinReadTrigger" $
+                 runSysfsGpioIO
+                   (do h <- openPin testPin1
+                       closePin h
+                       setPinReadTrigger h RisingEdge)
+                   `shouldThrow` isNotExportedError
+              it "getPinActiveLevel" $
+                runSysfsGpioIO
+                  (do h <- openPin testPin1
+                      closePin h
+                      v <- getPinActiveLevel h
+                      return v)
+                  `shouldThrow` isNotExportedError
+              it "setPinActiveLevel" $
+                runSysfsGpioIO
+                  (do h <- openPin testPin1
+                      closePin h
+                      setPinActiveLevel h High)
+                  `shouldThrow` isNotExportedError
+              it "toggleActiveLevel" $
+                 runSysfsGpioIO
+                   (do h <- openPin testPin1
+                       closePin h
+                       v <- togglePinActiveLevel h
+                       return v)
+                   `shouldThrow` isNotExportedError
+              it "samplePin" $
+                runSysfsGpioIO
+                  (do h <- openPin testPin1
+                      closePin h
+                      v <- samplePin h
+                      return v)
+                  `shouldThrow` isNotExportedError
+              it "readPin" $
+                runSysfsGpioIO
+                  (do h <- openPin testPin1
+                      closePin h
+                      v <- readPin h
+                      return v)
+                  `shouldThrow` isNotExportedError
+              it "readPinTimeout" $
+                runSysfsGpioIO
+                  (do h <- openPin testPin1
+                      closePin h
+                      v <- readPinTimeout h 100000
+                      return v)
+                  `shouldThrow` isNotExportedError
+              it "writePin" $
+                runSysfsGpioIO
+                  (do h <- openPin testPin1
+                      closePin h
+                      writePin h High)
+                  `shouldThrow` isNotExportedError
+              it "writePin'" $
+                runSysfsGpioIO
+                  (do h <- openPin testPin1
+                      closePin h
+                      writePin' h High)
+                  `shouldThrow` isNotExportedError
+              it "togglePinValue" $
+                runSysfsGpioIO
+                  (do h <- openPin testPin1
+                      closePin h
+                      v <- togglePinValue h
+                      return v)
+                  `shouldThrow` isNotExportedError
