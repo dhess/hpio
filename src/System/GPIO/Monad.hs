@@ -113,10 +113,46 @@ class Monad m => MonadGpio h m | m -> h where
   pins :: m [Pin]
 
   -- | Open a pin for use and return a handle to it.
+  --
+  -- Note that on some platforms (notably Linux), pin handles are
+  -- global resources and it is, strictly speaking, an error to
+  -- attempt to open a pin which has already been opened. However,
+  -- because there is generally no way to perform an atomic "only open
+  -- the pin if it hasn't already been opened" operation on such
+  -- platforms, this action will squash that particular error on those
+  -- platforms and return the global handle anyway, without making any
+  -- other state changes to the already-opened pin.
+  --
+  -- Keep in mind, however, that on these platforms where pin handles
+  -- are global resources, closing one pin handle will effectively
+  -- invalidate all other handles for the same pin. Be very careful to
+  -- coordinate the opening and closing of pins if you are operating
+  -- on the same pin in multiple threads.
   openPin :: Pin -> m h
 
-  -- | Close a pin; i.e., indicate to the system that you no longer
+  -- | Close the pin; i.e., indicate to the system that you no longer
   -- intend to use the pin via the given handle.
+  --
+  -- Note that on some platforms (notably Linux), pin handles are
+  -- global resources and it is, strictly speaking, an error to
+  -- attempt to close a pin which has already been closed via another
+  -- handle to the same pin. However, this action will squash that
+  -- error on those platforms and will simply return in that case
+  -- without making any changes to the GPIO environment.
+  --
+  -- Keep in mind, however, that on these platforms where pin handles
+  -- are global resources, opening multiple handles for the same pin
+  -- and then closing one of those handles will render all other
+  -- handles for the same pin invalid. Be very careful to coordinate
+  -- the opening and closing of pins if you are operating on the same
+  -- pin in multiple threads.
+  --
+  -- Note that there are also platforms (again, notably Linux) where
+  -- pins are effectively always open and cannot be closed. On such
+  -- platforms, invoking this action on such a pin will squash any
+  -- error that occurs when attempting to close the pin, and the
+  -- action will simply return without making any changes to the GPIO
+  -- environment.
   closePin :: h -> m ()
 
   -- | Get the pin's 'PinDirection'.
@@ -514,7 +550,6 @@ instance (MonadGpio h m, Monoid w) => MonadGpio h (StrictWriter.WriterT w m) whe
 -- an exception occuring within the computation, 'withPin' closes
 -- the handle using 'closePin' and then propagates the result,
 -- either by returning the value of the computation or by re-raising
--- the exception. If closing the handle raises an exception, this
--- exception will be raised by 'withPin'.
+-- the exception.
 withPin :: (MonadMask m, MonadGpio h m) => Pin -> (h -> m a) -> m a
 withPin p = bracket (openPin p) closePin

@@ -88,13 +88,13 @@ runTests =
                         dir <- getPinDirection h
                         return dir)
                     `shouldThrow` isInvalidPinError
-              it "closePin fails if the pin is already unexported" $
+              it "closePin doesn't complain the pin is already unexported" $
                   runSysfsGpioIO
                     (withPin testPin1 $ \_ ->
                        do h <- openPin testPin1
                           closePin h
                           closePin h)
-                    `shouldThrow` isNotExportedError
+                    `shouldReturn` ()
          context "withPin" $
            do it "exports/unexports the pin" $
                 do runSysfsGpioIO
@@ -107,6 +107,13 @@ runTests =
                      (withPin testPin1 $ const $
                         throwM $ userError "Foo")
                      `shouldThrow` anyIOException
+                   doesDirectoryExist "/sys/class/gpio/gpio48" `shouldReturn` False
+              it "handles double-open and double-close gracefully" $
+                do runSysfsGpioIO
+                     (withPin testPin1 $ const $
+                        withPin testPin1 $ const $
+                          liftIO $ doesDirectoryExist "/sys/class/gpio/gpio48")
+                     `shouldReturn` True
                    doesDirectoryExist "/sys/class/gpio/gpio48" `shouldReturn` False
               it "fails if the pin is invalid" $
                 do runSysfsGpioIO

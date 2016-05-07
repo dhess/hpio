@@ -43,6 +43,7 @@ module System.GPIO.Linux.Sysfs.Monad
        , exportPin
        , exportPin'
        , unexportPin
+       , unexportPin'
        , pinHasDirection
        , readPinDirection
        , writePinDirection
@@ -269,7 +270,7 @@ instance (Functor m, MonadCatch m, MonadThrow m, MonadSysfs m) => MonadGpio PinD
     lift sysfsIsPresent >>= \case
       False -> throwM SysfsNotPresent
       True ->
-        do lift $ exportPin' p
+        do lift $ exportPin p
            return $ PinDescriptor p
 
   closePin (PinDescriptor p) = lift $ unexportPin p
@@ -348,26 +349,10 @@ pinIsExported = doesDirectoryExist . pinDirName
 
 -- | Export the given pin.
 --
--- Note that it's an error to call this function to export a pin
--- that's already been exported.
-exportPin :: (MonadCatch m, MonadSysfs m) => Pin -> m ()
+-- Note that, if the pin is already exported, this is not an error; in
+-- this situation, the pin remains exported and its state unchanged.
+exportPin :: (MonadSysfs m, MonadCatch m) => Pin -> m ()
 exportPin pin@(Pin n) =
-  catchIOError
-    (unlockedWriteFile exportFileName (intToBS n))
-    mapIOError
-  where
-    mapIOError :: (MonadThrow m) => IOError -> m ()
-    mapIOError e
-      | isAlreadyInUseError e = throwM $ AlreadyExported pin
-      | isInvalidArgumentError e = throwM $ InvalidPin pin
-      | isPermissionError e = throwM $ PermissionDenied pin
-      | otherwise = throwM e
-
--- | Export the given pin, but, unlike 'exportPin', if the pin is
--- already exported, this is not an error; in this situation, the pin
--- remains exported and its state unchanged.
-exportPin' :: (MonadSysfs m, MonadCatch m) => Pin -> m ()
-exportPin' pin@(Pin n) =
   catchIOError
     (unlockedWriteFile exportFileName (intToBS n))
     mapIOError
@@ -379,12 +364,48 @@ exportPin' pin@(Pin n) =
       | isPermissionError e = throwM $ PermissionDenied pin
       | otherwise = throwM e
 
+-- | Export the given pin.
+--
+-- Note that, unlike 'exportPin', it's an error to call this function
+-- to export a pin that's already been exported. This is the standard
+-- Linux @sysfs@ GPIO behavior.
+exportPin' :: (MonadCatch m, MonadSysfs m) => Pin -> m ()
+exportPin' pin@(Pin n) =
+  catchIOError
+    (unlockedWriteFile exportFileName (intToBS n))
+    mapIOError
+  where
+    mapIOError :: (MonadThrow m) => IOError -> m ()
+    mapIOError e
+      | isAlreadyInUseError e = throwM $ AlreadyExported pin
+      | isInvalidArgumentError e = throwM $ InvalidPin pin
+      | isPermissionError e = throwM $ PermissionDenied pin
+      | otherwise = throwM e
+
 -- | Unexport the given pin.
 --
--- It is an error to call this function if the pin is not currently
--- exported.
+-- Note that, if the pin is already unexported or cannot be
+-- unexported, this is not an error. In this situation, the pin
+-- remains exported and its state unchanged.
 unexportPin :: (MonadSysfs m, MonadCatch m) => Pin -> m ()
 unexportPin pin@(Pin n) =
+  catchIOError
+    (unlockedWriteFile unexportFileName (intToBS n))
+    mapIOError
+  where
+    mapIOError :: (MonadThrow m) => IOError -> m ()
+    mapIOError e
+      | isInvalidArgumentError e = return ()
+      | isPermissionError e = throwM $ PermissionDenied pin
+      | otherwise = throwM e
+
+-- | Unexport the given pin.
+--
+-- Note that, unlike 'unexportPin', it is an error to call this
+-- function if the pin is not currently exported. This is the standard
+-- Linux @sysfs@ GPIO behavior.
+unexportPin' :: (MonadSysfs m, MonadCatch m) => Pin -> m ()
+unexportPin' pin@(Pin n) =
   catchIOError
     (unlockedWriteFile unexportFileName (intToBS n))
     mapIOError
