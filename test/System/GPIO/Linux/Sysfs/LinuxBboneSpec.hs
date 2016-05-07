@@ -8,7 +8,7 @@ import Control.Concurrent (forkIO, threadDelay)
 import Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar)
 import Control.Monad (void)
 import Control.Monad.Catch (throwM)
-import Control.Monad.IO.Class (liftIO)
+import Control.Monad.IO.Class (MonadIO, liftIO)
 import System.Directory (doesDirectoryExist)
 import System.GPIO.Linux.Sysfs (SysfsException(..), runSysfsGpioIO)
 import System.GPIO.Monad (MonadGpio(..), withPin)
@@ -58,6 +58,15 @@ testPin2 = Pin 47
 
 invalidPin :: Pin
 invalidPin = Pin 9000
+
+-- Note: tests which modify pin state have a slight delay between
+-- opening the pin and modifying any state. This is so that, if the
+-- user running the tests is not root and is using a udev action to
+-- change pin ownership (which is the only way at the time of writing
+-- to do that), the script has time to run.
+
+udevScriptWait :: MonadIO m => m ()
+udevScriptWait = liftIO $ threadDelay 500000
 
 runTests :: Spec
 runTests =
@@ -124,7 +133,8 @@ runTests =
            it "gets and sets the pin's direction" $
              runSysfsGpioIO
                (withPin testPin1 $ \h ->
-                 do setPinDirection h In
+                 do udevScriptWait
+                    setPinDirection h In
                     dir1 <- getPinDirection h
                     setPinDirection h Out
                     dir2 <- getPinDirection h
@@ -136,7 +146,8 @@ runTests =
            it "toggles the pin's direction" $
              runSysfsGpioIO
                (withPin testPin1 $ \h ->
-                 do setPinDirection h In
+                 do udevScriptWait
+                    setPinDirection h In
                     dir1 <- togglePinDirection h
                     dir2 <- togglePinDirection h
                     dir3 <- togglePinDirection h
@@ -146,7 +157,8 @@ runTests =
            it "gets and sets the pin's active level" $
              runSysfsGpioIO
                (withPin testPin1 $ \h ->
-                 do setPinActiveLevel h Low
+                 do udevScriptWait
+                    setPinActiveLevel h Low
                     level1 <- getPinActiveLevel h
                     setPinActiveLevel h High
                     level2 <- getPinActiveLevel h
@@ -158,7 +170,8 @@ runTests =
            it "toggles the pin's active level" $
              runSysfsGpioIO
                (withPin testPin1 $ \h ->
-                 do setPinActiveLevel h High
+                 do udevScriptWait
+                    setPinActiveLevel h High
                     level1 <- togglePinActiveLevel h
                     level2 <- togglePinActiveLevel h
                     level3 <- togglePinActiveLevel h
@@ -171,7 +184,8 @@ runTests =
                 runSysfsGpioIO
                   (withPin testPin1 $ \h1 ->
                      withPin testPin2 $ \h2 ->
-                       do setPinDirection h1 In
+                       do udevScriptWait
+                          setPinDirection h1 In
                           setPinActiveLevel h1 High
                           setPinDirection h2 Out
                           setPinActiveLevel h2 High
@@ -191,7 +205,8 @@ runTests =
                 runSysfsGpioIO
                   (withPin testPin1 $ \h1 ->
                      withPin testPin2 $ \h2 ->
-                       do setPinDirection h1 In
+                       do udevScriptWait
+                          setPinDirection h1 In
                           setPinActiveLevel h1 Low
                           setPinDirection h2 Out
                           setPinActiveLevel h2 High
@@ -210,7 +225,8 @@ runTests =
               it "samplePin works on output pins" $
                  runSysfsGpioIO
                    (withPin testPin2 $ \h ->
-                      do setPinDirection h Out
+                      do udevScriptWait
+                         setPinDirection h Out
                          setPinActiveLevel h High
                          writePin h High
                          liftIO $ threadDelay 250000
@@ -226,7 +242,8 @@ runTests =
               it "samplePin works on output pins (active-low)" $
                  runSysfsGpioIO
                    (withPin testPin2 $ \h ->
-                      do setPinDirection h Out
+                      do udevScriptWait
+                         setPinDirection h Out
                          setPinActiveLevel h Low
                          writePin h High
                          liftIO $ threadDelay 250000
@@ -243,7 +260,8 @@ runTests =
                 runSysfsGpioIO
                   (withPin testPin1 $ \h1 ->
                      withPin testPin2 $ \h2 ->
-                       do setPinDirection h1 In
+                       do udevScriptWait
+                          setPinDirection h1 In
                           setPinActiveLevel h1 High
                           setPinDirection h2 Out
                           setPinActiveLevel h2 Low
@@ -266,7 +284,8 @@ runTests =
                 runSysfsGpioIO
                   (withPin testPin1 $ \h1 ->
                      withPin testPin2 $ \h2 ->
-                       do setPinDirection h1 In
+                       do udevScriptWait
+                          setPinDirection h1 In
                           setPinActiveLevel h1 High
                           setPinDirection h2 In
                           setPinActiveLevel h2 High
@@ -286,7 +305,8 @@ runTests =
                 runSysfsGpioIO
                   (withPin testPin1 $ \h1 ->
                      withPin testPin2 $ \h2 ->
-                       do setPinDirection h1 In
+                       do udevScriptWait
+                          setPinDirection h1 In
                           setPinActiveLevel h1 High
                           setPinDirection h2 In
                           setPinActiveLevel h2 Low
@@ -305,7 +325,8 @@ runTests =
               it "fails if the pin is configured for input" $
                 runSysfsGpioIO
                   (withPin testPin1 $ \h ->
-                     do setPinDirection h In
+                     do udevScriptWait
+                        setPinDirection h In
                         writePin h High)
                   `shouldThrow` isPermissionDeniedError
          context "togglePinValue" $
@@ -315,7 +336,8 @@ runTests =
                 runSysfsGpioIO
                   (withPin testPin1 $ \h1 ->
                      withPin testPin2 $ \h2 ->
-                       do setPinDirection h1 In
+                       do udevScriptWait
+                          setPinDirection h1 In
                           setPinActiveLevel h1 High
                           setPinDirection h2 Out
                           setPinActiveLevel h2 High
@@ -335,7 +357,8 @@ runTests =
                 runSysfsGpioIO
                   (withPin testPin1 $ \h1 ->
                      withPin testPin2 $ \h2 ->
-                       do setPinDirection h1 In
+                       do udevScriptWait
+                          setPinDirection h1 In
                           setPinActiveLevel h1 High
                           setPinDirection h2 Out
                           setPinActiveLevel h2 Low
@@ -355,14 +378,16 @@ runTests =
               it "fails if the pin is configured for input" $
                 runSysfsGpioIO
                   (withPin testPin1 $ \h ->
-                     do setPinDirection h In
+                     do udevScriptWait
+                        setPinDirection h In
                         void $ togglePinValue h)
                   `shouldThrow` isPermissionDeniedError
          context "getPinReadTrigger/setPinReadTrigger" $
            it "gets and sets the pin's read trigger" $
              runSysfsGpioIO
                (withPin testPin1 $ \h ->
-                 do setPinReadTrigger h RisingEdge
+                 do udevScriptWait
+                    setPinReadTrigger h RisingEdge
                     trigger1 <- getPinReadTrigger h
                     setPinReadTrigger h FallingEdge
                     trigger2 <- getPinReadTrigger h
@@ -380,7 +405,8 @@ runTests =
                    void $ liftIO $ forkIO $
                      do runSysfsGpioIO $
                           withPin testPin2 $ \h ->
-                            do setPinDirection h Out
+                            do udevScriptWait
+                               setPinDirection h Out
                                setPinActiveLevel h High
                                writePin h High
                                liftIO $ void $ takeMVar mvar
@@ -395,7 +421,8 @@ runTests =
                         putMVar mvar () -- synchronize finish
                    runSysfsGpioIO
                       (withPin testPin1 $ \h ->
-                         do setPinDirection h In
+                         do udevScriptWait
+                            setPinDirection h In
                             setPinActiveLevel h High
                             setPinReadTrigger h RisingEdge
                             liftIO $ putMVar mvar ()
@@ -409,7 +436,8 @@ runTests =
                    void $ liftIO $ forkIO $
                      do runSysfsGpioIO $
                           withPin testPin2 $ \h ->
-                            do setPinDirection h Out
+                            do udevScriptWait
+                               setPinDirection h Out
                                setPinActiveLevel h High
                                writePin h Low
                                liftIO $ void $ takeMVar mvar
@@ -424,7 +452,8 @@ runTests =
                         putMVar mvar () -- synchronize finish
                    runSysfsGpioIO
                       (withPin testPin1 $ \h ->
-                         do setPinDirection h In
+                         do udevScriptWait
+                            setPinDirection h In
                             setPinActiveLevel h High
                             setPinReadTrigger h FallingEdge
                             liftIO $ putMVar mvar ()
@@ -438,7 +467,8 @@ runTests =
                    void $ liftIO $ forkIO $
                      do runSysfsGpioIO $
                           withPin testPin2 $ \h ->
-                            do setPinDirection h Out
+                            do udevScriptWait
+                               setPinDirection h Out
                                setPinActiveLevel h High
                                writePin h High
                                liftIO $ void $ takeMVar mvar
@@ -453,7 +483,8 @@ runTests =
                         putMVar mvar () -- synchronize finish
                    runSysfsGpioIO
                       (withPin testPin1 $ \h ->
-                         do setPinDirection h In
+                         do udevScriptWait
+                            setPinDirection h In
                             setPinActiveLevel h High
                             setPinReadTrigger h Level
                             liftIO $ putMVar mvar ()
@@ -469,7 +500,8 @@ runTests =
                    runSysfsGpioIO
                      (withPin testPin1 $ \inPin ->
                         withPin testPin2 $ \outPin ->
-                          do setPinDirection inPin In
+                          do udevScriptWait
+                             setPinDirection inPin In
                              setPinActiveLevel inPin High
                              setPinReadTrigger inPin Disabled
                              setPinDirection outPin Out
@@ -497,7 +529,8 @@ runTests =
                    void $ liftIO $ forkIO $
                      do runSysfsGpioIO $
                           withPin testPin2 $ \h ->
-                            do setPinDirection h Out
+                            do udevScriptWait
+                               setPinDirection h Out
                                setPinActiveLevel h High
                                writePin h Low
                                liftIO $ void $ takeMVar mvar
@@ -512,7 +545,8 @@ runTests =
                         putMVar mvar () -- synchronize finish
                    runSysfsGpioIO
                       (withPin testPin1 $ \h ->
-                         do setPinDirection h In
+                         do udevScriptWait
+                            setPinDirection h In
                             setPinActiveLevel h Low
                             setPinReadTrigger h RisingEdge
                             liftIO $ putMVar mvar ()
@@ -526,7 +560,8 @@ runTests =
                    void $ liftIO $ forkIO $
                      do runSysfsGpioIO $
                           withPin testPin2 $ \h ->
-                            do setPinDirection h Out
+                            do udevScriptWait
+                               setPinDirection h Out
                                setPinActiveLevel h High
                                writePin h High
                                liftIO $ void $ takeMVar mvar
@@ -541,7 +576,8 @@ runTests =
                         putMVar mvar () -- synchronize finish
                    runSysfsGpioIO
                       (withPin testPin1 $ \h ->
-                         do setPinDirection h In
+                         do udevScriptWait
+                            setPinDirection h In
                             setPinActiveLevel h Low
                             setPinReadTrigger h FallingEdge
                             liftIO $ putMVar mvar ()
@@ -555,7 +591,8 @@ runTests =
                    void $ liftIO $ forkIO $
                      do runSysfsGpioIO $
                           withPin testPin2 $ \h ->
-                            do setPinDirection h Out
+                            do udevScriptWait
+                               setPinDirection h Out
                                setPinActiveLevel h High
                                writePin h Low
                                liftIO $ void $ takeMVar mvar
@@ -570,7 +607,8 @@ runTests =
                         putMVar mvar () -- synchronize finish
                    runSysfsGpioIO
                       (withPin testPin1 $ \h ->
-                         do setPinDirection h In
+                         do udevScriptWait
+                            setPinDirection h In
                             setPinActiveLevel h Low
                             setPinReadTrigger h Level
                             liftIO $ putMVar mvar ()
@@ -586,7 +624,8 @@ runTests =
                    runSysfsGpioIO
                      (withPin testPin1 $ \inPin ->
                         withPin testPin2 $ \outPin ->
-                          do setPinDirection inPin In
+                          do udevScriptWait
+                             setPinDirection inPin In
                              setPinActiveLevel inPin Low
                              setPinReadTrigger inPin Disabled
                              setPinDirection outPin Out
@@ -614,7 +653,8 @@ runTests =
                    void $ liftIO $ forkIO $
                      do runSysfsGpioIO $
                           withPin testPin2 $ \h ->
-                            do setPinDirection h Out
+                            do udevScriptWait
+                               setPinDirection h Out
                                setPinActiveLevel h High
                                writePin h High
                                liftIO $ void $ takeMVar mvar
@@ -629,7 +669,8 @@ runTests =
                         putMVar mvar () -- synchronize finish
                    runSysfsGpioIO
                       (withPin testPin1 $ \h ->
-                         do setPinDirection h In
+                         do udevScriptWait
+                            setPinDirection h In
                             setPinActiveLevel h High
                             setPinReadTrigger h RisingEdge
                             liftIO $ putMVar mvar ()
@@ -643,7 +684,8 @@ runTests =
                    void $ liftIO $ forkIO $
                      do runSysfsGpioIO $
                           withPin testPin2 $ \h ->
-                            do setPinDirection h Out
+                            do udevScriptWait
+                               setPinDirection h Out
                                setPinActiveLevel h High
                                writePin h Low
                                liftIO $ void $ takeMVar mvar
@@ -658,7 +700,8 @@ runTests =
                         putMVar mvar () -- synchronize finish
                    runSysfsGpioIO
                       (withPin testPin1 $ \h ->
-                         do setPinDirection h In
+                         do udevScriptWait
+                            setPinDirection h In
                             setPinActiveLevel h High
                             setPinReadTrigger h FallingEdge
                             liftIO $ putMVar mvar ()
@@ -672,7 +715,8 @@ runTests =
                    void $ liftIO $ forkIO $
                      do runSysfsGpioIO $
                           withPin testPin2 $ \h ->
-                            do setPinDirection h Out
+                            do udevScriptWait
+                               setPinDirection h Out
                                setPinActiveLevel h High
                                writePin h High
                                liftIO $ void $ takeMVar mvar
@@ -687,7 +731,8 @@ runTests =
                         putMVar mvar () -- synchronize finish
                    runSysfsGpioIO
                       (withPin testPin1 $ \h ->
-                         do setPinDirection h In
+                         do udevScriptWait
+                            setPinDirection h In
                             setPinActiveLevel h High
                             setPinReadTrigger h Level
                             liftIO $ putMVar mvar ()
@@ -703,7 +748,8 @@ runTests =
                    runSysfsGpioIO
                      (withPin testPin1 $ \inPin ->
                         withPin testPin2 $ \outPin ->
-                          do setPinDirection inPin In
+                          do udevScriptWait
+                             setPinDirection inPin In
                              setPinActiveLevel inPin High
                              setPinReadTrigger inPin Disabled
                              setPinDirection outPin Out
@@ -728,7 +774,8 @@ runTests =
                     runSysfsGpioIO
                       (withPin testPin1 $ \inPin ->
                          withPin testPin2 $ \outPin ->
-                           do setPinDirection inPin In
+                           do udevScriptWait
+                              setPinDirection inPin In
                               setPinActiveLevel inPin High
                               setPinReadTrigger inPin Disabled
                               setPinDirection outPin Out
@@ -755,7 +802,8 @@ runTests =
                    void $ liftIO $ forkIO $
                      do runSysfsGpioIO $
                           withPin testPin2 $ \h ->
-                            do setPinDirection h Out
+                            do udevScriptWait
+                               setPinDirection h Out
                                setPinActiveLevel h High
                                writePin h Low
                                liftIO $ void $ takeMVar mvar
@@ -770,7 +818,8 @@ runTests =
                         putMVar mvar () -- synchronize finish
                    runSysfsGpioIO
                       (withPin testPin1 $ \h ->
-                         do setPinDirection h In
+                         do udevScriptWait
+                            setPinDirection h In
                             setPinActiveLevel h Low
                             setPinReadTrigger h RisingEdge
                             liftIO $ putMVar mvar ()
@@ -784,7 +833,8 @@ runTests =
                    void $ liftIO $ forkIO $
                      do runSysfsGpioIO $
                           withPin testPin2 $ \h ->
-                            do setPinDirection h Out
+                            do udevScriptWait
+                               setPinDirection h Out
                                setPinActiveLevel h High
                                writePin h High
                                liftIO $ void $ takeMVar mvar
@@ -799,7 +849,8 @@ runTests =
                         putMVar mvar () -- synchronize finish
                    runSysfsGpioIO
                       (withPin testPin1 $ \h ->
-                         do setPinDirection h In
+                         do udevScriptWait
+                            setPinDirection h In
                             setPinActiveLevel h Low
                             setPinReadTrigger h FallingEdge
                             liftIO $ putMVar mvar ()
@@ -813,7 +864,8 @@ runTests =
                    void $ liftIO $ forkIO $
                      do runSysfsGpioIO $
                           withPin testPin2 $ \h ->
-                            do setPinDirection h Out
+                            do udevScriptWait
+                               setPinDirection h Out
                                setPinActiveLevel h High
                                writePin h Low
                                liftIO $ void $ takeMVar mvar
@@ -828,7 +880,8 @@ runTests =
                         putMVar mvar () -- synchronize finish
                    runSysfsGpioIO
                       (withPin testPin1 $ \h ->
-                         do setPinDirection h In
+                         do udevScriptWait
+                            setPinDirection h In
                             setPinActiveLevel h Low
                             setPinReadTrigger h Level
                             liftIO $ putMVar mvar ()
@@ -844,7 +897,8 @@ runTests =
                    runSysfsGpioIO
                      (withPin testPin1 $ \inPin ->
                         withPin testPin2 $ \outPin ->
-                          do setPinDirection inPin In
+                          do udevScriptWait
+                             setPinDirection inPin In
                              setPinActiveLevel inPin Low
                              setPinReadTrigger inPin Disabled
                              setPinDirection outPin Out
