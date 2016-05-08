@@ -27,6 +27,10 @@ isPermissionDeniedError :: SysfsException -> Bool
 isPermissionDeniedError (PermissionDenied _) = True
 isPermissionDeniedError _ = False
 
+isInvalidOperationError :: SysfsException -> Bool
+isInvalidOperationError (InvalidOperation _) = True
+isInvalidOperationError _ = False
+
 -- Note: it's not practical to test all exceptional cases, but we do
 -- our best.
 
@@ -383,20 +387,28 @@ runTests =
                         void $ togglePinValue h)
                   `shouldThrow` isPermissionDeniedError
          context "getPinReadTrigger/setPinReadTrigger" $
-           it "gets and sets the pin's read trigger" $
-             runSysfsGpioIO
-               (withPin testPin1 $ \h ->
-                 do udevScriptWait
-                    setPinReadTrigger h RisingEdge
-                    trigger1 <- getPinReadTrigger h
-                    setPinReadTrigger h FallingEdge
-                    trigger2 <- getPinReadTrigger h
-                    setPinReadTrigger h Level
-                    trigger3 <- getPinReadTrigger h
-                    setPinReadTrigger h Disabled
-                    trigger4 <- getPinReadTrigger h
-                    return (trigger1, trigger2, trigger3, trigger4))
-               `shouldReturn` (Just RisingEdge, Just FallingEdge, Just Level, Just Disabled)
+           do it "gets and sets the pin's read trigger" $
+                runSysfsGpioIO
+                  (withPin testPin1 $ \h ->
+                    do udevScriptWait
+                       setPinDirection h In
+                       setPinReadTrigger h RisingEdge
+                       trigger1 <- getPinReadTrigger h
+                       setPinReadTrigger h FallingEdge
+                       trigger2 <- getPinReadTrigger h
+                       setPinReadTrigger h Level
+                       trigger3 <- getPinReadTrigger h
+                       setPinReadTrigger h Disabled
+                       trigger4 <- getPinReadTrigger h
+                       return (trigger1, trigger2, trigger3, trigger4))
+                `shouldReturn` (Just RisingEdge, Just FallingEdge, Just Level, Just Disabled)
+              it "setPinReadTrigger should fail on an output pin" $
+                runSysfsGpioIO
+                  (withPin testPin2 $ \h ->
+                    do udevScriptWait
+                       setPinDirection h Out
+                       setPinReadTrigger h Level)
+                `shouldThrow` isInvalidOperationError
          context "readPin" $
            -- Note: if these tests fail, you might not have hooked pin
            -- P9-15 up to pin P8-15!

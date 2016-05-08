@@ -635,7 +635,7 @@ readPinEdge p =
 -- | Write the given pin's @edge@ attribute.
 --
 -- It is an error to call this function when the pin has no @edge@
--- attribute.
+-- attribute, or when the pin is configured for output.
 writePinEdge :: (MonadSysfs m, MonadCatch m) => Pin -> SysfsEdge -> m ()
 writePinEdge p v =
   catchIOError
@@ -649,6 +649,7 @@ writePinEdge p v =
              if exported
                 then throwM $ NoEdgeAttribute p
                 else throwM $ NotExported p
+      | isInvalidArgumentError e = throwM $ InvalidOperation p
       | isPermissionError e = throwM $ PermissionDenied p
       | otherwise = throwM e
 

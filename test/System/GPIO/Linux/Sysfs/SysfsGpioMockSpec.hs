@@ -49,6 +49,7 @@ testSetDirection =
 testSetReadTrigger :: (MonadGpio h m) => m (Maybe PinReadTrigger, Maybe PinReadTrigger, Maybe PinReadTrigger, Maybe PinReadTrigger)
 testSetReadTrigger =
   do d <- openPin (Pin 1)
+     setPinDirection d In
      setPinReadTrigger d Disabled
      t1 <- getPinReadTrigger d
      setPinReadTrigger d RisingEdge
@@ -63,6 +64,7 @@ testSetReadTrigger =
 testSetReadTriggerIdempotent :: (MonadGpio h m) => m (Maybe PinReadTrigger, Maybe PinReadTrigger)
 testSetReadTriggerIdempotent =
   do d <- openPin (Pin 1)
+     setPinDirection d In
      setPinReadTrigger d FallingEdge
      t1 <- getPinReadTrigger d
      setPinReadTrigger d FallingEdge
@@ -314,6 +316,8 @@ spec =
           it "fails when the pin's read trigger is not settable" $
             let testChip = MockGpioChip "testChip" 1 [defaultMockPinState {_edge = Nothing}, defaultMockPinState]
             in evalSysfsGpioMock' testSetReadTrigger initialMockWorld [testChip] `shouldBe` Left (Just $ NoEdgeAttribute (Pin 1))
+          it "fails when the pin is configured for output" $
+            evalSysfsGpioMock' (withPin (Pin 1) $ \h -> setPinReadTrigger h Level) initialMockWorld [chip0] `shouldBe` Left (Just $ InvalidOperation (Pin 1))
 
      describe "getPinActiveLevel" $
        do context "when active level is high" $

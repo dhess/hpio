@@ -231,7 +231,7 @@ class Monad m => MonadGpio h m | m -> h where
   -- an error to call this function. (See 'getPinDirection' to
   -- determine safely whether the pin can be configured for output.)
   --
-  -- On some platforms (e.g., Linux 'sysfs' GPIO), this operation is
+  -- On some platforms (e.g., Linux @sysfs@ GPIO), this operation is
   -- atomic, such that the pin will drive the given value immediately
   -- upon being configured for output ("glitch-free"). If the platform
   -- can't guarantee atomic operation, this command is performed as
@@ -256,9 +256,9 @@ class Monad m => MonadGpio h m | m -> h where
   --
   -- Think of a 'PinReadTrigger' as an interrupt mode. Combined with
   -- the 'readPin' and 'readPinTimeout' actions, you can block the
-  -- current thread on a GPIO pin until a particular event occurs: in
-  -- logic terms, a leading signal edge ('RisingEdge'), a trailing
-  -- signal edge ('FallingEdge'), or any change of level ('Level').
+  -- current thread on an input pin until a particular event occurs: a
+  -- leading signal edge ('RisingEdge'), a trailing signal edge
+  -- ('FallingEdge'), or any change of level ('Level').
   --
   -- You can also disable interrupts on the pin so that reads will
   -- block indefinitely (or until they time out, in the case of
@@ -267,10 +267,10 @@ class Monad m => MonadGpio h m | m -> h where
   -- is dedicated to servicing interrupts on a pin, and another thread
   -- wants to mask interrupts on that pin for some period of time.
   --
-  -- Some pins (or GPIO platforms) may not support edge- or
-  -- level-triggered blocking reads. In such cases, this function
-  -- returns 'Nothing'; calls to 'readPin' will block indefinitely;
-  -- and calls to 'readPinTimeout' will always time out.
+  -- Some pins may not support edge- or level-triggered blocking
+  -- reads. In such cases, this function returns 'Nothing'; calls to
+  -- 'readPin' will block indefinitely; and calls to 'readPinTimeout'
+  -- will always time out.
   --
   -- (Note that 'RisingEdge' and 'FallingEdge' are relative to the
   -- pin's active level; i.e., they refer to the pin's /logical/
@@ -279,10 +279,22 @@ class Monad m => MonadGpio h m | m -> h where
 
   -- | Set the pin's 'PinReadTrigger' mode.
   --
-  -- Some pins (or entire platforms) may not support edge- or
-  -- level-triggered blocking reads. In such cases, it is an error to
-  -- call this function. To determine whether a pin supports blocking
-  -- reads, call 'getReadPinTrigger' on the pin.
+  -- Some pins and/or pin configurations (e.g., a pin configured for
+  -- output) may not support edge- or level-triggered blocking reads.
+  -- In such cases, it is an error to call this function. To determine
+  -- whether an pin supports blocking reads in input mode, call
+  -- 'getReadPinTrigger' on the pin.
+  --
+  -- In general, there is no portable way to determine whether a pin
+  -- in output mode supports blocking reads. (With Linux @sysfs@ GPIO,
+  -- at least, this operation will always fail when the pin is
+  -- configured for output.) If you want to perform a blocking read on
+  -- a pin in output mode for some reason, you can attempt to set its
+  -- read trigger using this action, but be prepared for it to fail.
+  -- Probably the safest and most portable way to achieve this effect
+  -- is to connect the output pin to a spare input pin, and perform
+  -- blocking reads on that input pin, as the input pin's signal level
+  -- will then track the output pin's signal level.
   setPinReadTrigger :: h -> PinReadTrigger -> m ()
 
   -- | Get the pin's active level: 'Low' means the pin is configured

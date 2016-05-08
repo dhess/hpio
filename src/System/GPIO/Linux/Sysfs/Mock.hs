@@ -499,12 +499,13 @@ writeFile path bs =
         _ ->
           throwM permissionError
     Just (Edge pin) ->
-      _edge <$> pinState pin >>= \case
-        Nothing -> throwM $ InternalError ("Mock pin " ++ show pin ++ " has no edge but edge attribute is exported")
-        Just _ ->
-          case bsToSysfsEdge bs of
-            Just edge -> putPinState pin (\s -> s {_edge = Just edge})
-            Nothing -> throwM writeError
+      do ps <- pinState pin
+         case (_edge ps, _direction ps) of
+           (Nothing, _) -> throwM $ InternalError ("Mock pin " ++ show pin ++ " has no edge but edge attribute is exported")
+           (_, Out) -> throwM $ mkIOError InvalidArgument "Mock.writeFile" Nothing (Just path)
+           _ -> case bsToSysfsEdge bs of
+                  Just edge -> putPinState pin (\s -> s {_edge = Just edge})
+                  Nothing -> throwM writeError
     Just (Direction pin) ->
       -- NB: In Linux @sysfs@, writing a pin's @direction@ attribute
       -- with a "high" or "low" value sets the pin's /physical/ signal
