@@ -206,9 +206,12 @@ data MockWorld =
             ,_pins :: MockPins}
   deriving (Show,Eq)
 
+-- | Get the pin map from a 'MockWorld'.
 mockWorldPins :: MockWorld -> MockPins
 mockWorldPins = _pins
 
+-- | The initial 'MockWorld', representing a @sysfs@ filesystem with
+-- no pins.
 initialMockWorld :: MockWorld
 initialMockWorld = MockWorld sysfsRootZipper Map.empty
 
@@ -283,12 +286,19 @@ instance (Functor m, MonadThrow m) => M.MonadSysfs (SysfsMockT m) where
 -- which adds mock GPIO computations to this mock @sysfs@ environment.
 type SysfsMock = SysfsMockT Catch
 
+-- | A pure version of 'runSysfsMockT' which returns errors in a
+-- 'Left', and both the computation result and the final state of the
+-- 'MockWorld' in a 'Right'.
 runSysfsMock :: SysfsMock a -> MockWorld -> [MockGpioChip] -> Either SomeException (a, MockWorld)
 runSysfsMock a w chips = runCatch $ runSysfsMockT a w chips
 
+-- | Like 'runSysfsMock', but returns only the computation result in a
+-- 'Right'.
 evalSysfsMock :: SysfsMock a -> MockWorld -> [MockGpioChip] -> Either SomeException a
 evalSysfsMock a w chips = fst <$> runSysfsMock a w chips
 
+-- | Like 'runSysfsMock', but returns only the final 'MockWorld' state
+-- in a 'Right'.
 execSysfsMock :: SysfsMock a -> MockWorld -> [MockGpioChip] -> Either SomeException MockWorld
 execSysfsMock a w chips = snd <$> runSysfsMock a w chips
 
@@ -422,11 +432,14 @@ mkfile path filetype =
     do parent <- cd parentName
        either throwM putZipper (Internal.mkfile childName filetype False parent)
 
+-- | Check whether the specified directory exists in the mock
+-- filesystem.
 doesDirectoryExist :: (Monad m) => FilePath -> SysfsMockT m Bool
 doesDirectoryExist path =
   do cwz <- getZipper
      return $ either (const False) (const True) (Internal.cd path cwz)
 
+-- | Check whether the specified file exists in the mock filesystem.
 doesFileExist :: (Monad m) => FilePath -> SysfsMockT m Bool
 doesFileExist path =
   let (dirPath, fileName) = splitFileName path
@@ -437,11 +450,14 @@ doesFileExist path =
          Right z ->
            return $ isJust (findFile fileName (_cwd z))
 
+-- | Get a directory listing for the specified directory in the mock
+-- filesystem.
 getDirectoryContents :: (Functor m, MonadThrow m) => FilePath -> SysfsMockT m [FilePath]
 getDirectoryContents path =
   do parent <- _cwd <$> cd path
      return $ fmap dirName (subdirs parent) ++ fmap _fileName (files parent)
 
+-- | Read the contents of the specified file in the mock filesystem.
 readFile :: (Functor m, MonadThrow m) => FilePath -> SysfsMockT m ByteString
 readFile path =
   fileAt path >>= \case
@@ -465,6 +481,8 @@ readFile path =
         Just edge -> return $ sysfsEdgeToBS edge
     Just _ -> throwM $ mkIOError PermissionDenied "Mock.readFile" Nothing (Just path)
 
+-- | Write the contents of the specified file in the mock filesystem.
+--
 -- In some cases in 'writeFile', more than one kind of error can occur
 -- (e.g., when exporting a pin, the pin number may be invalid, or the
 -- pin may already be exported). We try to emulate what a real @sysfs@
@@ -568,9 +586,13 @@ fileAt path =
     do parent <- _cwd <$> cd dirPath
        return $ findFile fileName parent
 
+-- | For the mock filesystem, this action is equivalent to
+-- 'writeFile'.
 unlockedWriteFile :: (Functor m, MonadThrow m) => FilePath -> ByteString -> SysfsMockT m ()
 unlockedWriteFile = writeFile
 
+-- | Polling is not implemented for the mock filesystem, so this
+-- action always returns the value @1@.
 pollFile :: (Monad m) => FilePath -> Int -> SysfsMockT m CInt
 pollFile _ _ = return 1
 
