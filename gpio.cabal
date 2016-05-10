@@ -59,12 +59,15 @@ Library
   Other-Extensions:     CPP
                       , DeriveDataTypeable
                       , DeriveGeneric
+                      , ExistentialQuantification
                       , FlexibleContexts
                       , FlexibleInstances
+                      , FunctionalDependencies
                       , GADTs
                       , GeneralizedNewtypeDeriving
                       , KindSignatures
                       , LambdaCase
+                      , MultiParamTypeClasses
                       , OverloadedStrings
                       , PackageImports
                       , QuasiQuotes
@@ -72,6 +75,7 @@ Library
                       , TemplateHaskell
                       , Trustworthy
                       , TypeSynonymInstances
+                      , UndecidableInstances
   Build-Depends:        QuickCheck
                       , base ==4.*
                       , base-compat

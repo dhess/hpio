@@ -19,7 +19,7 @@ mkDerivation {
     optparse-applicative transformers transformers-compat
   ];
   testHaskellDepends = [
-    base base-compat bytestring containers directory exceptions
+    async base base-compat bytestring containers directory exceptions
     filepath hspec inline-c mtl mtl-compat QuickCheck text transformers
     transformers-compat unix unix-bytestring
   ];

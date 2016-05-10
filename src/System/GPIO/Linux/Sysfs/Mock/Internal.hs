@@ -23,7 +23,6 @@ and please do not submit requests for addtional functionality.
 -}
 
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE Safe #-}
 
