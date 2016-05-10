@@ -864,6 +864,15 @@ runTests =
                               liftIO $ void $ takeMVar mvar -- synchronize finish
                               return val)
                     `shouldReturn` Nothing
+              it "readPinTimeout times out on output pins" $
+                 do runSysfsGpioIO
+                      (withPin testPin2 $ \outPin ->
+                        do udevScriptWait
+                           setPinDirection outPin Out
+                           setPinActiveLevel outPin High
+                           val <- readPinTimeout outPin 1000000
+                           return val)
+                    `shouldReturn` Nothing
          context "readPinTimeout with active-low logic" $
            -- Note: if these tests fail, you might not have hooked pin
            -- P9-15 up to pin P8-15!
