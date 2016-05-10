@@ -504,9 +504,7 @@ writePinDirection p Out =
 writePinDirectionWithValue :: (MonadSysfs m, MonadCatch m) => Pin -> PinValue -> m ()
 writePinDirectionWithValue p v =
   do activeLow <- readPinActiveLow p
-     let f = case activeLow of
-               True -> invertValue
-               False -> id
+     let f = if activeLow then invertValue else id
      resetEdge p
      writeDirection p (pinDirectionValueToBS $ f v)
 

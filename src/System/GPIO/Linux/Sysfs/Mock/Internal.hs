@@ -95,7 +95,7 @@ type Directory = Tree DirNode
 -- Getters.
 
 directory :: Name -> [File] -> [Directory] -> Directory
-directory name fs subs = Node (DirNode name fs) subs
+directory name fs = Node (DirNode name fs)
 
 dirName :: Directory -> Name
 dirName = _dirNodeName . dirNode
