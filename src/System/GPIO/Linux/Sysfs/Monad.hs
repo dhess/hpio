@@ -313,11 +313,8 @@ instance (Functor m, MonadCatch m, MonadThrow m, MonadSysfs m) => MonadGpio PinD
        return newVal
 
   getPinReadTrigger (PinDescriptor p) =
-    lift (pinHasEdge p) >>= \case
-      False -> return Nothing
-      True ->
-        do edge <- lift $ readPinEdge p
-           return $ Just (toPinReadTrigger edge)
+    do edge <- lift $ getPinEdge p
+       return $ toPinReadTrigger <$> edge
 
   setPinReadTrigger (PinDescriptor p) trigger =
     lift $ writePinEdge p $ toSysfsEdge trigger
@@ -338,6 +335,14 @@ instance (Functor m, MonadCatch m, MonadThrow m, MonadSysfs m) => MonadGpio PinD
        let newLevel = invertValue level
        setPinActiveLevel h newLevel
        return newLevel
+
+getPinEdge :: (MonadSysfs m, MonadThrow m, MonadCatch m) => Pin -> m (Maybe SysfsEdge)
+getPinEdge p =
+    pinHasEdge p >>= \case
+      False -> return Nothing
+      True ->
+        do edge <- readPinEdge p
+           return $ Just edge
 
 -- | Test whether the @sysfs@ GPIO filesystem is available.
 sysfsIsPresent :: (MonadSysfs m) => m Bool
@@ -457,22 +462,19 @@ readPinDirection p =
 -- attribute.
 --
 -- Note that, in Linux @sysfs@ GPIO, changing a pin's direction to
--- "out" will also set its /physical/ signal level to "low".
+-- @out@ will also set its /physical/ signal level to @low@.
+--
+-- NB: in Linux @sysfs@, if an input pin is cofigured for edge- or
+-- level-triggered reads, it's an error to set its direction to @out@.
+-- However, this action will handle that case gracefully by setting
+-- the pin's @edge@ attribute to @none@ before setting the pin's
+-- direction to @out@.
 writePinDirection :: (MonadSysfs m, MonadCatch m) => Pin -> PinDirection -> m ()
-writePinDirection p d =
-  catchIOError
-    (writeFile (pinDirectionFileName p) (pinDirectionToBS d))
-    mapIOError
-  where
-    mapIOError :: (MonadSysfs m, MonadThrow m) => IOError -> m ()
-    mapIOError e
-      | isDoesNotExistError e =
-          do exported <- pinIsExported p
-             if exported
-                then throwM $ NoDirectionAttribute p
-                else throwM $ NotExported p
-      | isPermissionError e = throwM $ PermissionDenied p
-      | otherwise = throwM e
+writePinDirection p In =
+  writeDirection p (pinDirectionToBS In)
+writePinDirection p Out =
+  do resetEdge p
+     writeDirection p (pinDirectionToBS Out)
 
 -- | Pins whose direction can be set may be configured for output by
 -- writing a 'PinValue' to their @direction@ attribute, such that the
@@ -505,9 +507,21 @@ writePinDirectionWithValue p v =
      let f = case activeLow of
                True -> invertValue
                False -> id
-     catchIOError
-       (writeFile (pinDirectionFileName p) (pinDirectionValueToBS $ f v))
-       mapIOError
+     resetEdge p
+     writeDirection p (pinDirectionValueToBS $ f v)
+
+resetEdge :: (MonadSysfs m, MonadCatch m) => Pin -> m ()
+resetEdge p =
+  getPinEdge p >>= \case
+    Nothing -> return ()
+    Just None -> return ()
+    _ -> writePinEdge p None
+
+writeDirection :: (MonadSysfs m, MonadCatch m) => Pin -> ByteString -> m ()
+writeDirection p bs =
+  catchIOError
+    (writeFile (pinDirectionFileName p) bs)
+    mapIOError
   where
     mapIOError :: (MonadSysfs m, MonadThrow m) => IOError -> m ()
     mapIOError e
@@ -518,7 +532,6 @@ writePinDirectionWithValue p v =
                 else throwM $ NotExported p
       | isPermissionError e = throwM $ PermissionDenied p
       | otherwise = throwM e
-
 -- | Read the pin's signal level.
 --
 -- Note that this function never blocks, regardless of the pin's

@@ -134,29 +134,59 @@ runTests =
                         liftIO $ doesDirectoryExist "/sys/class/gpio/gpio9000")
                      `shouldThrow` isInvalidPinError
          context "getPinDirection/setPinDirection" $
-           it "gets and sets the pin's direction" $
-             runSysfsGpioIO
-               (withPin testPin1 $ \h ->
-                 do udevScriptWait
-                    setPinDirection h In
-                    dir1 <- getPinDirection h
-                    setPinDirection h Out
-                    dir2 <- getPinDirection h
-                    setPinDirection h In
-                    dir3 <- getPinDirection h
-                    return (dir1, dir2, dir3))
-               `shouldReturn` (Just In, Just Out, Just In)
+           do it "gets and sets the pin's direction" $
+                runSysfsGpioIO
+                  (withPin testPin1 $ \h ->
+                    do udevScriptWait
+                       setPinDirection h In
+                       dir1 <- getPinDirection h
+                       setPinDirection h Out
+                       dir2 <- getPinDirection h
+                       setPinDirection h In
+                       dir3 <- getPinDirection h
+                       return (dir1, dir2, dir3))
+                  `shouldReturn` (Just In, Just Out, Just In)
+              it "can set the pin's direction to 'Out' when it's configured for edge-triggered reads" $
+                runSysfsGpioIO
+                  (withPin testPin1 $ \h ->
+                    do udevScriptWait
+                       setPinDirection h In
+                       setPinReadTrigger h RisingEdge
+                       setPinDirection h Out
+                       setPinDirection h In
+                       setPinReadTrigger h FallingEdge
+                       setPinDirection h Out
+                       setPinDirection h In
+                       setPinReadTrigger h Level
+                       setPinDirection h Out
+                       return True)
+                  `shouldReturn` True
          context "togglePinDirection" $
-           it "toggles the pin's direction" $
-             runSysfsGpioIO
-               (withPin testPin1 $ \h ->
-                 do udevScriptWait
-                    setPinDirection h In
-                    dir1 <- togglePinDirection h
-                    dir2 <- togglePinDirection h
-                    dir3 <- togglePinDirection h
-                    return (dir1, dir2, dir3))
-               `shouldReturn` (Just Out, Just In, Just Out)
+           do it "toggles the pin's direction" $
+                runSysfsGpioIO
+                  (withPin testPin1 $ \h ->
+                    do udevScriptWait
+                       setPinDirection h In
+                       dir1 <- togglePinDirection h
+                       dir2 <- togglePinDirection h
+                       dir3 <- togglePinDirection h
+                       return (dir1, dir2, dir3))
+                  `shouldReturn` (Just Out, Just In, Just Out)
+              it "can set the pin's direction to 'Out' when it's configured for edge-triggered reads" $
+                 runSysfsGpioIO
+                   (withPin testPin1 $ \h ->
+                     do udevScriptWait
+                        setPinDirection h In
+                        setPinReadTrigger h RisingEdge
+                        dir1 <- togglePinDirection h
+                        setPinDirection h In
+                        setPinReadTrigger h FallingEdge
+                        dir2 <- togglePinDirection h
+                        setPinDirection h In
+                        setPinReadTrigger h Level
+                        dir3 <- togglePinDirection h
+                        return (dir1, dir2, dir3))
+                   `shouldReturn` (Just Out, Just Out, Just Out)
          context "getPinActiveLevel/setPinActiveLevel" $
            it "gets and sets the pin's active level" $
              runSysfsGpioIO
@@ -281,6 +311,13 @@ runTests =
                           val3 <- samplePin h1
                           return (val1, val2, val3))
                   `shouldReturn` (Low, High, Low)
+              it "fails if the pin is configured for input" $
+                runSysfsGpioIO
+                  (withPin testPin1 $ \h ->
+                     do udevScriptWait
+                        setPinDirection h In
+                        writePin h High)
+                  `shouldThrow` isPermissionDeniedError
          context "writePin'" $
            -- Note: if these tests fail, you might not have hooked pin
            -- P9-15 up to pin P8-15!
@@ -300,6 +337,34 @@ runTests =
                           writePin' h2 Low
                           liftIO $ threadDelay 250000
                           val2 <- samplePin h1
+                          writePin' h2 High
+                          liftIO $ threadDelay 250000
+                          val3 <- samplePin h1
+                          return (val1, val2, val3))
+                  `shouldReturn` (High, Low, High)
+              it "works when the pin is configured for input and edge- or level-triggered reads" $
+                runSysfsGpioIO
+                  (withPin testPin1 $ \h1 ->
+                     withPin testPin2 $ \h2 ->
+                       do udevScriptWait
+                          setPinDirection h1 In
+                          setPinActiveLevel h1 High
+                          setPinDirection h2 In
+                          setPinActiveLevel h2 High
+                          setPinReadTrigger h2 RisingEdge
+                          writePin' h2 High
+                          -- give the pin time to settle
+                          liftIO $ threadDelay 250000
+                          val1 <- samplePin h1
+                          setPinDirection h2 In
+                          setPinActiveLevel h2 High
+                          setPinReadTrigger h2 FallingEdge
+                          writePin' h2 Low
+                          liftIO $ threadDelay 250000
+                          val2 <- samplePin h1
+                          setPinDirection h2 In
+                          setPinActiveLevel h2 High
+                          setPinReadTrigger h2 Level
                           writePin' h2 High
                           liftIO $ threadDelay 250000
                           val3 <- samplePin h1
@@ -326,13 +391,6 @@ runTests =
                           val3 <- samplePin h1
                           return (val1, val2, val3))
                   `shouldReturn` (Low, High, Low)
-              it "fails if the pin is configured for input" $
-                runSysfsGpioIO
-                  (withPin testPin1 $ \h ->
-                     do udevScriptWait
-                        setPinDirection h In
-                        writePin h High)
-                  `shouldThrow` isPermissionDeniedError
          context "togglePinValue" $
            -- Note: if these tests fail, you might not have hooked pin
            -- P9-15 up to pin P8-15!

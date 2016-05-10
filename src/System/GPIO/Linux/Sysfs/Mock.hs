@@ -513,13 +513,21 @@ writeFile path bs =
       -- attribute is not considered when setting the pin's signal
       -- level via the @direction@ attribute. We faithfully mimic that
       -- behavior here.
-      do visible <- _userVisibleDirection <$> pinState pin
-         if visible
-            then case bsToPinDirection bs of
-                   Just (dir, Nothing) -> putPinState pin (\s -> s {_direction = dir})
-                   Just (dir, Just v) -> putPinState pin (\s -> s {_direction = dir, _value = v})
-                   Nothing -> throwM writeError
-            else throwM $ InternalError ("Mock pin " ++ show pin ++ " has no direction but direction attribute is exported")
+      --
+      -- NB: In Linux @sysfs@, if an input pin has been configured to
+      -- generate interrupts (i.e., its @edge@ attribute is not
+      -- @none@), changing its @direction@ attribute to @out@
+      -- generates an I/O error. We emulate that behavior here.
+      do ps <- pinState pin
+         case (_userVisibleDirection ps, _edge ps, bsToPinDirection bs) of
+           (False, _, _) -> throwM $ InternalError ("Mock pin " ++ show pin ++ " has no direction but direction attribute is exported")
+           (True, _, Nothing) -> throwM writeError
+           (True, Nothing, Just (dir, Nothing)) -> putPinState pin (\s -> s {_direction = dir})
+           (True, Nothing, Just (dir, Just v)) -> putPinState pin (\s -> s {_direction = dir, _value = v})
+           (True, Just None, Just (dir, Nothing)) -> putPinState pin (\s -> s {_direction = dir})
+           (True, Just None, Just (dir, Just v)) -> putPinState pin (\s -> s {_direction = dir, _value = v})
+           (True, _, Just (In, _)) -> putPinState pin (\s -> s {_direction = In})
+           (True, _, Just (Out, _)) -> throwM $ mkIOError HardwareFault "Mock.writeFile" Nothing (Just path)
     Just _ -> throwM permissionError
   where
     writeError :: IOError

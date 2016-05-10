@@ -3,6 +3,7 @@
 module System.GPIO.Linux.Sysfs.SysfsGpioMockSpec (spec) where
 
 import Control.Exception (fromException)
+import Control.Monad (void)
 import Control.Monad.Catch (MonadCatch, MonadMask, handle)
 import qualified Data.Map.Strict as Map (lookup)
 
@@ -283,6 +284,22 @@ spec =
             let expectedResult = Right (Out, In, Out)
             in evalSysfsGpioMock' testSetDirection initialMockWorld [chip0] `shouldBe` expectedResult
 
+          it "can change the pin direction to 'Out' when the pin is configured for edge- or level-triggered reads " $
+            evalSysfsGpioMock'
+              (withPin (Pin 1) $ \h ->
+                do setPinDirection h In
+                   setPinReadTrigger h RisingEdge
+                   setPinDirection h Out
+                   setPinDirection h In
+                   setPinReadTrigger h FallingEdge
+                   setPinDirection h Out
+                   setPinDirection h In
+                   setPinReadTrigger h Level
+                   setPinDirection h Out
+                   return True)
+              initialMockWorld
+              [chip0]
+            `shouldBe` Right True
           it "is idempotent" $
             evalSysfsGpioMock' testSetDirectionIdempotent initialMockWorld [chip0] `shouldBe` Right (Out, Out)
 
@@ -293,6 +310,22 @@ spec =
      describe "togglePinDirection" $
        do it "toggles pin direction" $
             evalSysfsGpioMock' testTogglePinDirection initialMockWorld [chip0] `shouldBe` Right (Out, In, In, Out, Out)
+          it "toggles the pin's direction when the pin is configured for input and edge- or level-triggered reads" $
+            evalSysfsGpioMock'
+              (withPin (Pin 1) $ \h ->
+                do setPinDirection h In
+                   setPinReadTrigger h RisingEdge
+                   void $ togglePinDirection h
+                   setPinDirection h In
+                   setPinReadTrigger h FallingEdge
+                   void $ togglePinDirection h
+                   setPinDirection h In
+                   setPinReadTrigger h Level
+                   void $ togglePinDirection h
+                   return True)
+              initialMockWorld
+              [chip0]
+            `shouldBe` Right True
           it "returns Nothing when the pin direction is not settable" $
             let testChip = MockGpioChip "testChip" 1 [defaultMockPinState {_userVisibleDirection = False}]
             in evalSysfsGpioMock' (withPin (Pin 1) togglePinDirection) initialMockWorld [testChip] `shouldBe` Right Nothing
@@ -406,6 +439,25 @@ spec =
                        Map.lookup (Pin 1) (mockWorldPins world) `shouldBe` Just (defaultMockPinState {_activeLow = True})
                        Map.lookup (Pin 2) (mockWorldPins world) `shouldBe` Just (defaultMockPinState {_activeLow = True, _value = High})
 
+          it "works when the pin is configured for input and edge- or level-triggered reads" $
+            evalSysfsGpioMock'
+              (withPin (Pin 1) $ \h ->
+                do setPinDirection h In
+                   setPinReadTrigger h RisingEdge
+                   writePin' h High
+                   val1 <- samplePin h
+                   setPinDirection h In
+                   setPinReadTrigger h RisingEdge
+                   writePin' h High
+                   val2 <- samplePin h
+                   setPinDirection h In
+                   setPinReadTrigger h RisingEdge
+                   writePin' h High
+                   val3 <- samplePin h
+                   return (val1, val2, val3))
+              initialMockWorld
+              [chip0]
+            `shouldBe` Right (High, High, High)
           it "is idempotent" $
             evalSysfsGpioMock' testWritePinIdempotent' initialMockWorld [chip0] `shouldBe` Right (High, High, Low, Low)
 
