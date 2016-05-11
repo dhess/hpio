@@ -7,7 +7,7 @@ Maintainer  : Drew Hess <src@drewhess.com>
 Stability   : experimental
 Portability : non-portable
 
-A mock 'MonadSysfs' instance, for testing GPIO programs.
+A mock 'M.MonadSysfs' instance, for testing GPIO programs.
 
 Note that this monad only mocks the subset of @sysfs@ functionality
 required for GPIO programs. It does not mock the entire @sysfs@
@@ -28,13 +28,13 @@ filesystem.
 
 module System.GPIO.Linux.Sysfs.Mock
        ( -- * SysfsMock types
-         MockPinState(..)
+         MockWorld
+       , MockPinState(..)
        , defaultMockPinState
        , logicalValue
        , setLogicalValue
        , MockGpioChip(..)
        , MockPins
-       , MockWorld
        , mockWorldPins
        , initialMockWorld
          -- * The SysfsMock monad
@@ -135,7 +135,7 @@ data MockPinState =
 -- | Linux @sysfs@ GPIO natively supports active-low logic levels. A
 -- pin's "active" level is controlled by the pin's @active_low@
 -- attribute. We call the pin's signal level as modulated by its
--- active level the pin's "logical value." This function returns the
+-- active level the pin's /logical value/. This function returns the
 -- mock pin's logical value.
 logicalValue :: MockPinState -> PinValue
 logicalValue s
@@ -159,12 +159,13 @@ defaultMockPinState =
                ,_value = Low
                ,_edge = Just None}
 
--- | A mock "gpiochip".
+-- | A mock "gpiochip," which, in the Linux @sysfs@ GPIO filesystem,
+-- describes the GPIO pin numbers that are available to userspace.
 --
 -- Note that the '_initialPinStates' list is only used to construct a
 -- mock filesystem. For each 'MockPinState' value in the list, a mock
 -- pin is created in the mock filesystem with the path
--- @/sys/class/gpio/gpioN@, where @N@ is @_base@ + the pin's index in
+-- @\/sys\/class\/gpio\/gpioN@, where @N@ is @_base@ + the pin's index in
 -- the '_initialPinStates' list.
 data MockGpioChip =
   MockGpioChip {_label :: !String
@@ -259,9 +260,9 @@ putPinState pin f =
 -- or if any of the chips' pin ranges overlap, a 'MockFSException' is
 -- thrown.
 --
--- Typically, you will only need this function if you're trying to
--- mock Linux @sysfs@ GPIO computations using a custom monad
--- transformer stack. For simple cases, see 'runSysfsGpioMock'.
+-- Typically, you will only need this action if you're trying to mock
+-- Linux @sysfs@ GPIO computations using a custom monad transformer
+-- stack. For simple cases, see 'runSysfsGpioMock'.
 runSysfsMockT :: (Functor m, MonadThrow m) => SysfsMockT m a -> MockWorld -> [MockGpioChip] -> m (a, MockWorld)
 runSysfsMockT action world chips =
   do startState <- execStateT (unSysfsMockT $ pushd "/" (makeFileSystem chips)) world
@@ -278,7 +279,7 @@ instance (Functor m, MonadThrow m) => M.MonadSysfs (SysfsMockT m) where
 
 -- | The simplest possible (pure) mock @sysfs@ monad.
 --
--- N.B.: this monad /cannot/ run GPIO computations; its only use is to
+-- NB: this monad /cannot/ run GPIO computations; its only use is to
 -- mock @sysfs@ operations on an extremely limited mock @sysfs@
 -- simulator.
 --
@@ -482,14 +483,13 @@ readFile path =
     Just _ -> throwM $ mkIOError PermissionDenied "Mock.readFile" Nothing (Just path)
 
 -- | Write the contents of the specified file in the mock filesystem.
---
--- In some cases in 'writeFile', more than one kind of error can occur
--- (e.g., when exporting a pin, the pin number may be invalid, or the
--- pin may already be exported). We try to emulate what a real @sysfs@
--- filesystem would do, so the order in which error conditions are
--- checked matters here!
 writeFile :: (Functor m, MonadThrow m) => FilePath -> ByteString -> SysfsMockT m ()
 writeFile path bs =
+  -- NB: In some cases, more than one kind of error can occur (e.g.,
+  -- when exporting a pin, the pin number may be invalid, or the pin
+  -- may already be exported). We try to emulate what a real @sysfs@
+  -- filesystem would do, so the order in which error conditions are
+  -- checked matters here!
   fileAt path >>= \case
     Nothing ->
       do isDirectory <- doesDirectoryExist path

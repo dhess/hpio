@@ -28,7 +28,7 @@ module System.GPIO.Linux.Sysfs.Monad
          -- * GPIO via @sysfs@
        , PinDescriptor(..)
        , SysfsGpioT(..)
-         -- * Low-level @sysfs@ GPIO functions.
+         -- * Low-level @sysfs@ GPIO actions.
          --
          -- If you wish, you can bypass the portable GPIO computation
          -- layer provided by 'MonadGpio' and program directly to the
@@ -122,10 +122,9 @@ class (Monad m) => MonadSysfs m where
   unlockedWriteFile :: FilePath -> ByteString -> m ()
   -- | Poll a @sysfs@ file for reading, as in POSIX.1-2001 @poll(2)@.
   --
-  -- Note that the implementation of this function is only guaranteed
-  -- to work for @sysfs@ files, which have a peculiar way of signaling
-  -- readiness for reads, and you should not use it for any other
-  -- purpose.
+  -- Note that the implementation of this action is only guaranteed to
+  -- work for @sysfs@ files, which have a peculiar way of signaling
+  -- readiness for reads. Do not use it for any other purpose.
   pollFile :: FilePath -> Int -> m CInt
 
 instance (MonadSysfs m) => MonadSysfs (IdentityT m) where
@@ -245,20 +244,22 @@ instance (MonadSysfs m, Monoid w) => MonadSysfs (StrictWriter.WriterT w m) where
   unlockedWriteFile fn bs = lift $ unlockedWriteFile fn bs
   pollFile fn timeout = lift $ pollFile fn timeout
 
--- | An instance of 'MonadGpio' which translates operations in that
--- monad to operations on Linux's native @sysfs@ GPIO interface.
+-- | The @sysfs@ pin handle type. Currently it's just a newtype
+-- wrapper around a 'Pin'. The constructor is exported for
+-- convenience, but note that the implementation may change in future
+-- versions of the package.
+newtype PinDescriptor =
+  PinDescriptor {_pin :: Pin}
+  deriving (Show,Eq,Ord)
+
+-- | An instance of 'MonadGpio' which translates actions in that monad
+-- to operations on Linux's native @sysfs@ GPIO interface.
 newtype SysfsGpioT m a =
   SysfsGpioT {runSysfsGpioT :: m a}
   deriving (Functor,Alternative,Applicative,Monad,MonadFix,MonadPlus,MonadThrow,MonadCatch,MonadMask,MonadCont,MonadIO,MonadReader r,MonadError e,MonadWriter w,MonadState s,MonadRWS r w s)
 
 instance MonadTrans SysfsGpioT where
   lift = SysfsGpioT
-
--- | The @sysfs@ pin handle type. Currently it's just a newtype
--- wrapper around a 'Pin'. The constructor is exported for
--- convenience, but note that the implementation may change in future
--- versions of the package.
-newtype PinDescriptor = PinDescriptor { _pin :: Pin } deriving (Show, Eq, Ord)
 
 instance (Functor m, MonadCatch m, MonadThrow m, MonadSysfs m) => MonadGpio PinDescriptor (SysfsGpioT m) where
   pins =
@@ -371,8 +372,8 @@ exportPin pin@(Pin n) =
 
 -- | Export the given pin.
 --
--- Note that, unlike 'exportPin', it's an error to call this function
--- to export a pin that's already been exported. This is the standard
+-- Note that, unlike 'exportPin', it's an error to call this action to
+-- export a pin that's already been exported. This is the standard
 -- Linux @sysfs@ GPIO behavior.
 exportPin' :: (MonadCatch m, MonadSysfs m) => Pin -> m ()
 exportPin' pin@(Pin n) =
@@ -406,9 +407,9 @@ unexportPin pin@(Pin n) =
 
 -- | Unexport the given pin.
 --
--- Note that, unlike 'unexportPin', it is an error to call this
--- function if the pin is not currently exported. This is the standard
--- Linux @sysfs@ GPIO behavior.
+-- Note that, unlike 'unexportPin', it is an error to call this action
+-- if the pin is not currently exported. This is the standard Linux
+-- @sysfs@ GPIO behavior.
 unexportPin' :: (MonadSysfs m, MonadCatch m) => Pin -> m ()
 unexportPin' pin@(Pin n) =
   catchIOError
@@ -421,11 +422,10 @@ unexportPin' pin@(Pin n) =
       | isPermissionError e = throwM $ PermissionDenied pin
       | otherwise = throwM e
 
--- | Test whether the given pin's direction can be set via the
--- @sysfs@ GPIO filesystem. (Some pins have a hard-wired direction,
--- in which case their direction must be determined by some other
--- mechanism as the @direction@ attribute does not exist for such
--- pins.)
+-- | Test whether the given pin's direction can be set via the @sysfs@
+-- GPIO filesystem. (Some pins have a hard-wired direction, in which
+-- case their direction must be determined by some other mechanism, as
+-- the @direction@ attribute does not exist for such pins.)
 pinHasDirection :: (MonadSysfs m, MonadThrow m) => Pin -> m Bool
 pinHasDirection p =
   do exported <- pinIsExported p
@@ -435,7 +435,7 @@ pinHasDirection p =
 
 -- | Read the given pin's direction.
 --
--- It is an error to call this function if the pin has no @direction@
+-- It is an error to call this action if the pin has no @direction@
 -- attribute.
 readPinDirection :: (MonadSysfs m, MonadThrow m, MonadCatch m) => Pin -> m PinDirection
 readPinDirection p =
@@ -458,7 +458,7 @@ readPinDirection p =
 
 -- | Set the given pin's direction.
 --
--- It is an error to call this function if the pin has no @direction@
+-- It is an error to call this action if the pin has no @direction@
 -- attribute.
 --
 -- Note that, in Linux @sysfs@ GPIO, changing a pin's direction to
@@ -483,10 +483,10 @@ writePinDirection p Out =
 -- the pin is currently configured for input, or some kind of
 -- tri-stated or floating high-impedance mode.
 --
--- It is an error to call this function if the pin has no @direction@
+-- It is an error to call this action if the pin has no @direction@
 -- attribute.
 --
--- NB: for some unfathomable reason, writing "high" or "low" to a
+-- NB: for some unfathomable reason, writing @high@ or @low@ to a
 -- pin's @direction@ attribute sets its /physical/ signal level; i.e.,
 -- it ignores the value of the pin's @active_low@ attribute. Contrast
 -- this behavior with the behavior of writing to the pin's @value@
@@ -532,8 +532,8 @@ writeDirection p bs =
       | otherwise = throwM e
 -- | Read the pin's signal level.
 --
--- Note that this function never blocks, regardless of the pin's
--- @edge@ attribute setting.
+-- Note that this action never blocks, regardless of the pin's @edge@
+-- attribute setting.
 readPinValue :: (MonadSysfs m, MonadThrow m, MonadCatch m) => Pin -> m PinValue
 readPinValue p =
   catchIOError
@@ -553,8 +553,8 @@ readPinValue p =
 -- block until an event occurs on the pin as specified by the pin's
 -- current @edge@ attribute setting.
 --
--- If the pin has no @edge@ attribute, then this function will not
--- block and will act like 'readPinValue'.
+-- If the pin has no @edge@ attribute, then this action's behavior is
+-- undefined. (Most likely, it will block indefinitely.)
 threadWaitReadPinValue :: (Functor m, MonadSysfs m, MonadThrow m, MonadCatch m) => Pin -> m PinValue
 threadWaitReadPinValue p =
   threadWaitReadPinValue' p (-1) >>= \case
@@ -567,17 +567,22 @@ threadWaitReadPinValue p =
 
 -- | Same as 'threadWaitReadPinValue', except that a timeout value,
 -- specified in microseconds, is provided. If no event occurs before
--- the timeout expires, this function returns 'Nothing'; otherwise,
--- it returns the pin's value wrapped in a 'Just'.
+-- the timeout expires, this action returns 'Nothing'; otherwise, it
+-- returns the pin's value wrapped in a 'Just'.
 --
--- If the timeout value is negative, this function behaves just like
+-- If the timeout value is negative, this action behaves just like
 -- 'threadWaitReadPinValue'.
 --
 -- When specifying a timeout value, be careful not to exceed
 -- 'maxBound'.
 --
--- If the pin has no @edge@ attribute, then this function will not
--- block and will act like 'readPinValue'.
+-- If the pin has no @edge@ attribute, then this action's behavior is
+-- undefined. (Most likely, it will time out after the specified wait
+-- time and return 'Nothing'.)
+--
+-- NB: the curent implementation of this action limits the timeout
+-- precision to 1 millisecond, rather than 1 microsecond as the
+-- interface promises.
 threadWaitReadPinValue' :: (Functor m, MonadSysfs m, MonadThrow m, MonadCatch m) => Pin -> Int -> m (Maybe PinValue)
 threadWaitReadPinValue' p timeout =
   catchIOError
@@ -595,8 +600,8 @@ threadWaitReadPinValue' p timeout =
 
 -- | Set the pin's signal level.
 --
--- It is an error to call this function if the pin is configured as
--- an input pin.
+-- It is an error to call this action if the pin is configured as an
+-- input pin.
 writePinValue :: (MonadSysfs m, MonadCatch m) => Pin -> PinValue -> m ()
 writePinValue p v =
   catchIOError
@@ -620,7 +625,7 @@ pinHasEdge p =
 
 -- | Read the given pin's @edge@ attribute.
 --
--- It is an error to call this function when the pin has no @edge@
+-- It is an error to call this action when the pin has no @edge@
 -- attribute.
 readPinEdge :: (MonadSysfs m, MonadThrow m, MonadCatch m) => Pin -> m SysfsEdge
 readPinEdge p =
@@ -645,7 +650,7 @@ readPinEdge p =
 
 -- | Write the given pin's @edge@ attribute.
 --
--- It is an error to call this function when the pin has no @edge@
+-- It is an error to call this action when the pin has no @edge@
 -- attribute, or when the pin is configured for output.
 writePinEdge :: (MonadSysfs m, MonadCatch m) => Pin -> SysfsEdge -> m ()
 writePinEdge p v =
@@ -714,7 +719,7 @@ availablePins =
       | isPermissionError e = throwM SysfsPermissionDenied
       | otherwise = throwM e
 
--- Helper functions that aren't exported.
+-- Helper actions that aren't exported.
 --
 
 readIntFromFile :: (MonadSysfs m, MonadThrow m) => FilePath -> m Int

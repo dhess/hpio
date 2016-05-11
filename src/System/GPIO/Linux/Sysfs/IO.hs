@@ -135,15 +135,17 @@ pollSysfs fd timeout =
      } |]
 
 -- | An instance of 'MonadSysfs' which runs 'MonadSysfs' operations in
--- IO.
+-- IO. This instance must be run on an actual Linux @sysfs@ GPIO
+-- filesystem and will fail in any other environment.
 --
--- == Interactions with threads Some parts of this implementation use
--- the Haskell C FFI, and may block on C I/O operations.
--- (Specifically, 'pollFile' will block in the C FFI until its event
--- is triggered.) When using this implementation with GHC, you should
--- compile your program with the @-threaded@ option, so that threads
--- performing these blocking operations do not block other Haskell
--- threads in the system.
+-- == Interactions with threads
+--
+-- Some parts of this implementation use the Haskell C FFI, and may
+-- block on C I/O operations. (Specifically, 'pollFile' will block in
+-- the C FFI until its event is triggered.) When using this
+-- implementation with GHC, you should compile your program with the
+-- @-threaded@ option, so that threads performing these blocking
+-- operations do not block other Haskell threads in the system.
 --
 -- Note that the C FFI bits in this implementation are marked as
 -- 'interruptible', so that, on versions of GHC later than 7.8.1,

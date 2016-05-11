@@ -34,13 +34,21 @@ import Test.QuickCheck (Arbitrary(..), arbitraryBoundedEnum, genericShrink)
 -- @edge@ attribute in the @sysfs@ GPIO filesystem. This type
 -- represents the values that the @edge@ attribute can take.
 --
+-- Note that in Linux @sysfs@ GPIO, the signal edge referred to by the
+-- @edge@ attribute refers to the signal's /logical/ value; i.e., it
+-- takes into account the value of the pin's @active_low@ attribute.
+--
 -- This type is isomorphic to the 'PinReadTrigger' type. See
 -- 'toPinReadTrigger' and 'toSysfsEdge'.
 data SysfsEdge
   = None
+  -- ^ Interrupts disabled
   | Rising
+  -- ^ Interrupt on the (logical) signal's rising edge
   | Falling
+  -- ^ Interrupt on the (logical) signal's falling edge
   | Both
+  -- ^ Interrupt on any change to the signal level
   deriving (Bounded,Enum,Eq,Data,Ord,Read,Show,Generic,Typeable)
 
 instance Arbitrary SysfsEdge where
@@ -86,10 +94,10 @@ data SysfsException
     -- ^ The operation on the specified pin is not permitted, either
     -- due to insufficient permissions, or because the pin's attribute
     -- cannot be modified (e.g., trying to write to a pin that's
-    -- configured for input).
+    -- configured for input)
   | InvalidOperation Pin
     -- ^ The operation is invalid for the specified pin, or in the
-    -- specified pin's current configuration.
+    -- specified pin's current configuration
   | AlreadyExported Pin
     -- ^ The pin has already been exported
   | InvalidPin Pin
@@ -118,7 +126,7 @@ data SysfsException
   | InternalError String
     -- ^ An internal error has occurred in the interpreter, something
     -- which should "never happen" and should be reported to the
-    -- package maintainer.
+    -- package maintainer
   deriving (Eq,Show,Typeable)
 
 instance Exception SysfsException where

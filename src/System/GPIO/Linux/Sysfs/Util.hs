@@ -26,12 +26,12 @@ module System.GPIO.Linux.Sysfs.Util
        , pinValueFileName
          -- * Convert Haskell types to/from their @sysfs@ representation
          --
-         -- | A note on newlines: a Linux GPIO pin's "attributes"
+         -- | A note on newlines: a Linux GPIO pin's /attributes/
          -- (i.e., the @sysfs@ files representing a pin's state) are
          -- read and written as 'ByteString's. When reading their
          -- contents, the attribute files always return their
          -- (ASCII-encoded) value followed by a newline character
-         -- ('\n'). When writing their contents, the attribute files
+         -- (@\\n@). When writing their contents, the attribute files
          -- will accept their (ASCII-encoded) new value either with or
          -- without a trailing newline character. For consistency (and
          -- for the sake of isomorphic conversions back-and-forth), we
@@ -116,30 +116,33 @@ pinDirectionToBS Out = "out\n"
 -- value expected by a pin's @direction@ attribute in the @sysfs@
 -- GPIO, which can be used to configure the pin for output and
 -- simultaneously set the pin's (physical) signal level; see the
--- <https://www.kernel.org/doc/Documentation/gpio/sysfs.txt Linux
--- kernel documentation> for details.
+-- <https://www.kernel.org/doc/Documentation/gpio/sysfs.txt Linux kernel documentation>
+-- for details.
 pinDirectionValueToBS :: PinValue -> ByteString
 pinDirectionValueToBS Low = "low\n"
 pinDirectionValueToBS High = "high\n"
 
 -- | When writing a pin's @direction@ attribute in the @sysfs@ GPIO
--- filesystem with a 'ByteString' value, @"in\n"@ configures the pin
--- for input, and @"out\n"@ configures the pin for output while also
+-- filesystem with a 'ByteString' value, @in\\n@ configures the pin
+-- for input, and @out\\n@ configures the pin for output while also
 -- initializing the pin's (physical) signal level to a low value.
 --
--- Furthermore, you may write @"low\n"@ or @"high\n"@ to the
+-- Furthermore, you may write @low\\n@ or @high\\n@ to the
 -- @direction@ attribute to configure the pin for output and
 -- simulataneously set the pin's physical value.
 --
--- Therefore, writing a pin's @direction@ attribute potentially
--- affects both its direction and its value.
+-- Therefore, writing a pin's @direction@ attribute affects not only
+-- its direction, but also (potentially) its value. This function's
+-- return type reflects that possibility.
 --
--- See the <https://www.kernel.org/doc/Documentation/gpio/sysfs.txt
--- Linux kernel documentation> for details.
+-- See the
+-- <https://www.kernel.org/doc/Documentation/gpio/sysfs.txt Linux kernel documentation>
+-- for details.
 --
 -- This function converts a @direction@ attribute value, encoded as a
 -- strict 'ByteString', to its corresponding 'PinDirection' and
--- 'PinValue' pair, or 'Nothing' if the attribute encoding is invalid.
+-- (possible) 'PinValue' pair; or 'Nothing' if the attribute encoding
+-- is invalid.
 bsToPinDirection :: ByteString -> Maybe (PinDirection, Maybe PinValue)
 bsToPinDirection "in\n" = Just (In, Nothing)
 bsToPinDirection "out\n" = Just (Out, Just Low)
@@ -173,7 +176,7 @@ pinValueToBS High = "1\n"
 -- 'ByteString', to its corresponding 'PinValue'.
 --
 -- Note that the @sysfs@ @value@ attribute is quite liberal: a
--- 'ByteString' value of "0\n" will set the pin's (logical) signal
+-- 'ByteString' value of @0\\n@ will set the pin's (logical) signal
 -- level to low, but any other (non-empty) 'ByteString' value will set
 -- it to high.
 bsToPinValue :: ByteString -> Maybe PinValue
@@ -192,7 +195,7 @@ activeLowToBS True = "1\n"
 -- 'ByteString', to its corresponding 'Bool' value.
 --
 -- Note that the @sysfs@ @active_low@ attribute is quite liberal: a
--- 'ByteString' value of "0\n" returns 'False' and any other
+-- 'ByteString' value of @0\\n@ returns 'False' and any other
 -- (non-empty) 'ByteString' value returns 'True'.
 bsToActiveLow :: ByteString -> Maybe Bool
 bsToActiveLow "0\n" = Just False

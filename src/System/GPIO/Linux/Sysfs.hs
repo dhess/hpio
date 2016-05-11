@@ -16,12 +16,12 @@ the terminology used in this module.
 == Pin numbering
 
 The @sysfs@ GPIO implementation in this module uses the same pin
-numbering scheme as the @sysfs@ GPIO filesystem. For example, 'Pin' 13
-corresponds to @gpio13@ in the @sysfs@ filesystem. Note that the
-@sysfs@ pin numbering scheme is almost always different than the pin
-numbering scheme given by the platform/hardware documentation. Consult
-your platform documentation for the mapping of pin numbers between the
-two namespaces.
+numbering scheme as the @sysfs@ GPIO filesystem. For example,
+'System.GPIO.Types.Pin' 13 corresponds to @gpio13@ in the @sysfs@
+filesystem. Note that the @sysfs@ pin numbering scheme is almost
+always different than the pin numbering scheme given by the
+platform/hardware documentation. Consult your platform documentation
+for the mapping of pin numbers between the two namespaces.
 
 -}
 
@@ -30,40 +30,46 @@ two namespaces.
 module System.GPIO.Linux.Sysfs
        ( -- * The Linux @sysfs@ GPIO interpreter
          --
-         -- | These types and functions provide an instance of the
-         -- 'System.GPIO.Monad.MonadGpio' monad type class for running
-         -- GPIO computations on a Linux host via the @sysfs@ GPIO
-         -- filesystem.
+         -- | The 'SysfsGpioT' monad transformer provides an instance
+         -- of the 'System.GPIO.Monad.MonadGpio' monad type class for
+         -- running GPIO computations on a Linux host via the @sysfs@
+         -- GPIO filesystem.
          --
          -- The implementation abstracts back-end @sysfs@ filesystem
          -- operations via the
          -- 'System.GPIO.Linux.Sysfs.Monad.MonadSysfs' monad type
          -- class. Primarily, this abstraction exists in order to more
          -- easily test @sysfs@ GPIO programs on non-Linux systems, or
-         -- on Linux systems which lack actual GPIO functionality.
+         -- on Linux systems which lack actual GPIO functionality. For
+         -- real GPIO programs on real GPIO systems, you'll want to
+         -- use the 'SysfsIOT' monad transformer as the @sysfs@
+         -- back-end, which is designed to run on an actual Linux host
+         -- and perform real GPIO operations. For the straightforward
+         -- case of running @sysfs@ GPIO operations directly in 'IO',
+         -- use the provided 'runSysfsGpioIO' wrapper, which takes
+         -- care of all of this for you; for more complicated
+         -- transformer stacks based on the
+         -- 'Control.Monad.IO.Class.MonadIO' interface, use the
+         -- 'runSysfsGpioT' and 'runSysfsIOT' wrappers.
          --
-         -- For real GPIO programs on real GPIO systems, you'll want
-         -- to use the 'SysfsIO' monad (or its corresponding
-         -- 'SysfsIOT' monad transformer) as the @sysfs@ back-end,
-         -- which is designed to run on an actual Linux host and
-         -- perform real GPIO operations.
-         --
-         -- For testing purposes, you can use the
+         -- (For testing purposes, you can use the
          -- 'System.GPIO.Linux.Sysfs.Mock.SysfsMock' monad (or its
          -- corresponding 'System.GPIO.Linux.Sysfs.Mock.SysfsMockT'
          -- monad transformer) as the @sysfs@ back-end, which allows
-         -- you to run (mock) GPIO programs on any system. (Note that
-         -- these monads are not exported from here.)
+         -- you to run (mock) GPIO programs on any system. Note that
+         -- the testing monads are not exported from this module; you
+         -- must import the "System.GPIO.Linux.Sysfs.Mock" module
+         -- directly.)
          SysfsGpioT
        , runSysfsGpioT
-       , PinDescriptor(..)
        , SysfsGpioIO
        , runSysfsGpioIO
+       , PinDescriptor(..)
          -- * The Linux @sysfs@ monad
          --
        , MonadSysfs(..)
        , SysfsIOT(..)
-         -- * Low-level @sysfs@ GPIO functions
+         -- * Low-level @sysfs@ GPIO actions
          --
          -- | A slightly more low-level API is also available if you
          -- want to write directly to the Linux @sysfs@ GPIO
@@ -102,10 +108,10 @@ import System.GPIO.Linux.Sysfs.Monad
 import System.GPIO.Linux.Sysfs.IO
 import System.GPIO.Linux.Sysfs.Types
 
--- | A specialization of 'SysfsGpioT' which runs (real) GPIO
--- computations in 'IO' via @sysfs@.
+-- | A specialization of 'SysfsGpioT' which runs GPIO computations in
+-- 'IO' via @sysfs@.
 type SysfsGpioIO = SysfsGpioT (SysfsIOT IO)
 
--- | Run (real) GPIO computations in 'IO' via @sysfs@.
+-- | Run GPIO computations in 'IO' via @sysfs@.
 runSysfsGpioIO :: SysfsGpioIO a -> IO a
 runSysfsGpioIO action = runSysfsIOT $ runSysfsGpioT action

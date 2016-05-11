@@ -52,17 +52,17 @@ import System.GPIO.Types (Pin, PinDirection, PinReadTrigger, PinValue)
 
 -- | A monad type class for GPIO computations. The type class
 -- specifies a DSL for writing portable GPIO programs, and instances
--- of the type class provide the implementation needed to interpret
--- these programs on a particular GPIO platform.
+-- of the type class provide the interpreter needed to run these
+-- programs on a particular GPIO platform.
 --
 -- In the type signature, 'h' represents a (platform-dependent)
--- abstract pin handle, for operating on opened pins. It is analogous
+-- abstract pin handle for operating on opened pins. It is analogous
 -- to a file handle.
 --
 -- == Active-high versus active-low logic
 --
--- The DSL supports both active-high and active-low logic. That is,
--- the "active level" of a GPIO pin can be configured as 'High' or
+-- The DSL supports both /active-high/ and /active-low/ logic. That
+-- is, the /active level/ of a GPIO pin can be configured as 'High' or
 -- 'Low'. If a pin's active level is 'High', then for that pin, a
 -- 'PinValue' of 'High' corresponds to a "high" physical signal level,
 -- and a 'PinValue' of 'Low' corresponds to a "low" physical signal
@@ -86,7 +86,7 @@ import System.GPIO.Types (Pin, PinDirection, PinReadTrigger, PinValue)
 -- program.
 --
 -- In the documentation for this package, whenever you see a reference
--- to a "pin value" or "signal level", unless otherwise noted, we mean
+-- to a "pin value" or "signal level," unless otherwise noted, we mean
 -- the /logical/ value or level, not the /physical/ value or level;
 -- that is, we mean the abstract notion of the pin being "on" or
 -- "off," independent of the voltage level seen on the physical pin.
@@ -109,7 +109,7 @@ class Monad m => MonadGpio h m | m -> h where
   -- This command makes a best-effort attempt to find the available
   -- pins, but some systems may not make the complete list available at
   -- runtime. Therefore, there may be more pins available than are
-  -- returned by this function.
+  -- returned by this action.
   pins :: m [Pin]
 
   -- | Open a pin for use and return a handle to it.
@@ -137,8 +137,8 @@ class Monad m => MonadGpio h m | m -> h where
   -- global resources and it is, strictly speaking, an error to
   -- attempt to close a pin which has already been closed via another
   -- handle to the same pin. However, this action will squash that
-  -- error on those platforms and will simply return in that case
-  -- without making any changes to the GPIO environment.
+  -- error on those platforms and will simply return without making
+  -- any changes to the GPIO environment.
   --
   -- Keep in mind, however, that on these platforms where pin handles
   -- are global resources, opening multiple handles for the same pin
@@ -147,9 +147,9 @@ class Monad m => MonadGpio h m | m -> h where
   -- the opening and closing of pins if you are operating on the same
   -- pin in multiple threads.
   --
-  -- Note that there are also platforms (again, notably Linux) where
-  -- pins are effectively always open and cannot be closed. On such
-  -- platforms, invoking this action on such a pin will squash any
+  -- Note that there are also platforms (again, notably certain Linux
+  -- systems) where some pins are effectively always open and cannot
+  -- be closed. Invoking this action on such a pin will squash any
   -- error that occurs when attempting to close the pin, and the
   -- action will simply return without making any changes to the GPIO
   -- environment.
@@ -161,7 +161,7 @@ class Monad m => MonadGpio h m | m -> h where
   -- immutable, i.e., to be hard-wired as 'In' or 'Out'. On some
   -- systems (e.g., "System.GPIO.Linux.Sysfs"), the direction of
   -- hard-wired pins is not made available at run-time. In such cases,
-  -- this function returns 'Nothing'.
+  -- this action returns 'Nothing'.
   getPinDirection :: h -> m (Maybe PinDirection)
 
   -- | Set the pin's 'PinDirection'.
@@ -169,7 +169,7 @@ class Monad m => MonadGpio h m | m -> h where
   -- As some pins' direction cannot be changed, you should first call
   -- 'getPinDirection' on the pin handle to make sure this particular
   -- pin's direction is configurable. It is an error to call this
-  -- function if the pin's direction cannot be changed.
+  -- action if the pin's direction cannot be changed.
   --
   -- Note that, on some GPIO platforms (e.g., Linux @sysfs@), setting
   -- a pin's direction to 'Out' also sets its value to a constant
@@ -182,11 +182,11 @@ class Monad m => MonadGpio h m | m -> h where
 
   -- | Toggle the pin's 'PinDirection'.
   --
-  -- If the pin's direction cannot be changed, this function returns
+  -- If the pin's direction cannot be changed, this action returns
   -- 'Nothing'. Otherwise, it returns the new direction.
   togglePinDirection :: h -> m (Maybe PinDirection)
 
-  -- | Sample the pin's signal level, where "sample" means "read the
+  -- | Sample the pin's signal level, where "sample" means, "read the
   -- value without blocking."
   samplePin :: h -> m PinValue
 
@@ -194,60 +194,64 @@ class Monad m => MonadGpio h m | m -> h where
   -- thread until an event corresponding to the pin's 'PinReadTrigger'
   -- occurs.
   --
-  -- If the pin does not support blocking reads, then this function
-  -- behaves like 'samplePin' and returns the pin's value without
-  -- blocking.
+  -- If the pin does not support blocking reads, then this action's
+  -- behavior is plaform-dependent. To determine whether the pin
+  -- supports blocking reads, see 'getPinReadTrigger'.
   --
   -- Note: due to its interaction with the threading system, this
-  -- function may behave differently across different implementations
-  -- of Haskell. It has only been tested with GHC.
+  -- action may behave differently across different implementations of
+  -- Haskell. It has only been tested with GHC. (On GHC, you should
+  -- compile any program that uses this action with the @-threaded@
+  -- option.)
   readPin :: h -> m PinValue
 
   -- | Same as 'readPin', except with a timeout, specified in
   -- microseconds. If no event occurs before the timeout expires, this
-  -- function returns 'Nothing'; otherwise, it returns the pin's
+  -- action returns 'Nothing'; otherwise, it returns the pin's
   -- signal level wrapped in a 'Just'.
   --
-  -- If the timeout value is negative, this function behaves just like
+  -- If the timeout value is negative, this action behaves just like
   -- 'readPin'.
   --
-  -- If the pin does not support blocking reads, then this function
-  -- behaves like 'samplePin' and returns the pin's value without
-  -- blocking.
+  -- If the pin does not support blocking reads, then this action's
+  -- behavior is platform-dependent. To determine whether the pin
+  -- supports blocking reads, see 'getPinReadTrigger'.
   --
   -- Note: due to its interaction with the threading system, this
-  -- function may behave differently across different implementations
-  -- of Haskell. It has only been tested with GHC.
+  -- action may behave differently across different implementations of
+  -- Haskell. It has only been tested with GHC. (On GHC, you should
+  -- compile any program that uses this action with the @-threaded@
+  -- option.)
   readPinTimeout :: h -> Int -> m (Maybe PinValue)
 
   -- | Set the pin's signal level. It is an error to call this
-  -- function when the pin is not configured for output.
+  -- action when the pin is not configured for output.
   writePin :: h -> PinValue -> m ()
 
   -- | Configure the pin for output and simultaneously set its signal
   -- level. As long as the pin can be configured for output, you can
-  -- call this function regardless of the pin's current
+  -- call this action regardless of the pin's current
   -- 'PinDirection'. If the pin cannot be configured for output, it is
-  -- an error to call this function. (See 'getPinDirection' to
+  -- an error to call this action. (See 'getPinDirection' to
   -- determine safely whether the pin can be configured for output.)
   --
   -- On some platforms (e.g., Linux @sysfs@ GPIO), this operation is
-  -- atomic, such that the pin will drive the given value immediately
-  -- upon being configured for output ("glitch-free"). If the platform
-  -- can't guarantee atomic operation, this command is performed as
-  -- two separate steps (first setting the direction to 'Out', and
-  -- then setting the 'PinValue'), so the pin may glitch (i.e.,
-  -- briefly drive the opposite value before the proper value can be
-  -- set).
+  -- atomic ("glitch-free"), such that the pin will drive the given
+  -- value immediately upon being configured for output. If the
+  -- platform can't guarantee atomic operation, this command is
+  -- performed as two separate steps (first setting the direction to
+  -- 'Out', and then setting the 'PinValue'), so the pin may glitch
+  -- (i.e., briefly drive the opposite value before the proper value
+  -- can be set).
   --
   -- NB: this DSL action is subtly different than its native
-  -- equivalent on Linux. See
+  -- equivalent on Linux @sysfs@ GPIO. See
   -- 'System.GPIO.Linux.Sysfs.Monad.writePinDirectionWithValue' for
   -- details.
   writePin' :: h -> PinValue -> m ()
 
   -- | Toggle the pin's signal level. It is an error to call this
-  -- function when the pin is not configured for output.
+  -- action when the pin is not configured for output.
   --
   -- Returns the pin's new signal level.
   togglePinValue :: h -> m PinValue
@@ -268,9 +272,7 @@ class Monad m => MonadGpio h m | m -> h where
   -- wants to mask interrupts on that pin for some period of time.
   --
   -- Some pins may not support edge- or level-triggered blocking
-  -- reads. In such cases, this function returns 'Nothing'; calls to
-  -- 'readPin' will block indefinitely; and calls to 'readPinTimeout'
-  -- will always time out.
+  -- reads. In such cases, this action returns 'Nothing'.
   --
   -- (Note that 'RisingEdge' and 'FallingEdge' are relative to the
   -- pin's active level; i.e., they refer to the pin's /logical/
@@ -281,9 +283,9 @@ class Monad m => MonadGpio h m | m -> h where
   --
   -- Some pins and/or pin configurations (e.g., a pin configured for
   -- output) may not support edge- or level-triggered blocking reads.
-  -- In such cases, it is an error to call this function. To determine
+  -- In such cases, it is an error to call this action. To determine
   -- whether an pin supports blocking reads in input mode, call
-  -- 'getReadPinTrigger' on the pin.
+  -- 'getPinReadTrigger' on the pin.
   --
   -- In general, there is no portable way to determine whether a pin
   -- in output mode supports blocking reads. (With Linux @sysfs@ GPIO,
@@ -292,9 +294,9 @@ class Monad m => MonadGpio h m | m -> h where
   -- a pin in output mode for some reason, you can attempt to set its
   -- read trigger using this action, but be prepared for it to fail.
   -- Probably the safest and most portable way to achieve this effect
-  -- is to connect the output pin to a spare input pin, and perform
-  -- blocking reads on that input pin, as the input pin's signal level
-  -- will then track the output pin's signal level.
+  -- is to connect the output pin to a spare high-impedance input pin,
+  -- so that the input pin's signal level will track the output pin's
+  -- signal level; and then perform blocking reads on that input pin.
   setPinReadTrigger :: h -> PinReadTrigger -> m ()
 
   -- | Get the pin's active level: 'Low' means the pin is configured
@@ -557,11 +559,11 @@ instance (MonadGpio h m, Monoid w) => MonadGpio h (StrictWriter.WriterT w m) whe
 
 -- | Exception-safe pin management.
 --
--- 'withPin' opens a pin using 'openPin' and passes the handle to
--- the given GPIO computation. Upon completion of the computation or
--- an exception occuring within the computation, 'withPin' closes
--- the handle using 'closePin' and then propagates the result,
--- either by returning the value of the computation or by re-raising
--- the exception.
+-- 'withPin' opens a pin using 'openPin' and passes the handle to the
+-- given GPIO computation. Upon completion of the computation, or an
+-- exception occuring within the computation, 'withPin' closes the
+-- handle using 'closePin' and then propagates the result, either by
+-- returning the value of the computation or by re-raising the
+-- exception.
 withPin :: (MonadMask m, MonadGpio h m) => Pin -> (h -> m a) -> m a
 withPin p = bracket (openPin p) closePin

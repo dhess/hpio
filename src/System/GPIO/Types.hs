@@ -51,8 +51,8 @@ import Test.QuickCheck (Arbitrary(..), arbitraryBoundedEnum, genericShrink)
 -- | A GPIO pin, identified by pin number.
 --
 -- Note that GPIO pin numbering is platform- and runtime-dependent.
--- See the documentation for each implementation for an explanation of
--- how pin numbers are assigned to physical pins.
+-- See the documentation for your particular platform for an
+-- explanation of how pin numbers are assigned to physical pins.
 newtype Pin =
   Pin Int
   deriving (Bounded,Enum,Eq,Data,Ord,Read,Ix,Show,Generic,Typeable)
@@ -75,7 +75,7 @@ instance Arbitrary PinDirection where
   arbitrary = arbitraryBoundedEnum
   shrink = genericShrink
 
--- | Binary pin value.
+-- | A pin's signal level as a binary value.
 data PinValue
   = Low
   | High
@@ -130,18 +130,29 @@ instance Arbitrary PinValue where
   arbitrary = arbitraryBoundedEnum
   shrink = genericShrink
 
--- | Pins can be configured so that reading the pin's value blocks
--- until an edge- or level-triggered event is detected. In this way, a
--- GPIO pin can be used as an edge- or level-triggered interrupt.
+-- | On some platforms, pins may be configured so that reading the
+-- pin's value blocks until an edge- or level-triggered event is
+-- detected. In this way, a GPIO pin can be used as an edge- or
+-- level-triggered interrupt.
 --
 -- When the pin's read trigger is set to 'Disabled', reading the pin's
 -- value will block indefinitely. (This is equivalent to
 -- masking/disabling interrupts on the pin.)
+--
+-- Note that the pin's read trigger is defined in terms of the pin's
+-- /logical/ signal value; i.e., when the pin is configured for
+-- active-low logic, 'RisingEdge' refers to the physical signal's
+-- trailing edge, and 'FallingEdge' refers to the physical signal's
+-- rising edge.
 data PinReadTrigger
   = Disabled
+  -- ^ Interrupts are disabled
   | RisingEdge
+  -- ^ Interrupt on the pin's (logical) rising edge
   | FallingEdge
+  -- ^ Interrupt on the pin's (logical) falling edge
   | Level
+  -- ^ Interrupt on any change to the pin's signal level
   deriving (Bounded,Enum,Eq,Data,Ord,Read,Show,Generic,Typeable)
 
 instance Arbitrary PinReadTrigger where
@@ -176,9 +187,11 @@ instance Show SomeGpioException where
 
 instance Exception SomeGpioException
 
+-- | Convert 'SomeGpioException' to 'SomeException'.
 gpioExceptionToException :: Exception e => e -> SomeException
 gpioExceptionToException = toException . SomeGpioException
 
+-- | Ask whether an exception is 'SomeGpioException'.
 gpioExceptionFromException :: Exception e => SomeException -> Maybe e
 gpioExceptionFromException x = do
     SomeGpioException a <- fromException x
