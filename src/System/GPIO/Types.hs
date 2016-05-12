@@ -62,6 +62,9 @@ instance Arbitrary Pin where
   shrink = genericShrink
 
 -- | Get the pin number as an 'Int'.
+--
+-- >>> pinNumber (Pin 5)
+-- 5
 pinNumber :: Pin -> Int
 pinNumber (Pin n) = n
 
@@ -160,20 +163,40 @@ instance Arbitrary PinReadTrigger where
   shrink = genericShrink
 
 -- | Invert a 'PinDirection' value.
+--
+-- >>> invertDirection In
+-- Out
+-- >>> invertDirection Out
+-- In
 invertDirection :: PinDirection -> PinDirection
 invertDirection In = Out
 invertDirection Out = In
 
 -- | Invert a 'PinValue'.
+--
+-- >>> invertValue High
+-- Low
+-- >>> invertValue Low
+-- High
 invertValue :: PinValue -> PinValue
 invertValue = complement
 
 -- | Convert a 'PinValue' to its logical boolean equivalent.
+--
+-- >>> valueToBool High
+-- True
+-- >>> valueToBool Low
+-- False
 valueToBool :: PinValue -> Bool
 valueToBool Low  = False
 valueToBool High = True
 
 -- | Convert a 'Bool' to its logical 'PinValue' equivalent.
+--
+-- >>> boolToValue True
+-- High
+-- >>> boolToValue False
+-- Low
 boolToValue :: Bool -> PinValue
 boolToValue False = Low
 boolToValue True  = High

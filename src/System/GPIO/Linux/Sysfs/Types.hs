@@ -57,6 +57,15 @@ instance Arbitrary SysfsEdge where
 
 -- | Convert a 'SysfsEdge' value to its equivalent 'PinReadTrigger'
 -- value.
+--
+-- >>> toPinReadTrigger None
+-- Disabled
+-- >>> toPinReadTrigger Rising
+-- RisingEdge
+-- >>> toPinReadTrigger Falling
+-- FallingEdge
+-- >>> toPinReadTrigger Both
+-- Level
 toPinReadTrigger :: SysfsEdge -> PinReadTrigger
 toPinReadTrigger None = Disabled
 toPinReadTrigger Rising = RisingEdge
@@ -65,6 +74,15 @@ toPinReadTrigger Both = Level
 
 -- | Convert a 'PinReadTrigger' value to its equivalent 'SysfsEdge'
 -- value.
+--
+-- >>> toSysfsEdge Disabled
+-- None
+-- >>> toSysfsEdge RisingEdge
+-- Rising
+-- >>> toSysfsEdge FallingEdge
+-- Falling
+-- >>> toSysfsEdge Level
+-- Both
 toSysfsEdge :: PinReadTrigger -> SysfsEdge
 toSysfsEdge Disabled = None
 toSysfsEdge RisingEdge = Rising

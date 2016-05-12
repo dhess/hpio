@@ -5,9 +5,10 @@ let
   inherit (nixpkgs) pkgs;
 
   f = { mkDerivation, async, base, base-compat, bytestring
-      , containers, directory, exceptions, filepath, hspec, inline-c, mtl
-      , mtl-compat, optparse-applicative, QuickCheck, stdenv, text
-      , transformers, transformers-compat, unix, unix-bytestring
+      , containers, directory, doctest, exceptions, filepath, hspec
+      , inline-c, mtl, mtl-compat, optparse-applicative, QuickCheck
+      , stdenv, text, transformers, transformers-compat, unix
+      , unix-bytestring
       }:
       mkDerivation {
         pname = "gpio";
@@ -25,9 +26,9 @@ let
           optparse-applicative transformers transformers-compat
         ];
         testHaskellDepends = [
-          async base base-compat bytestring containers directory exceptions
-          filepath hspec inline-c mtl mtl-compat QuickCheck text transformers
-          transformers-compat unix unix-bytestring
+          async base base-compat bytestring containers directory doctest
+          exceptions filepath hspec inline-c mtl mtl-compat QuickCheck text
+          transformers transformers-compat unix unix-bytestring
         ];
         homepage = "https://github.com/dhess/gpio";
         description = "Monads for GPIO in Haskell";

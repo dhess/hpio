@@ -125,11 +125,16 @@ import System.IO.Error (mkIOError)
 -- after they're unexported.
 data MockPinState =
   MockPinState {_direction :: !PinDirection
+               -- ^ The pin's direction
                ,_userVisibleDirection :: !Bool
+               -- ^ Is the pin's direction visible from the filesystem?
                ,_activeLow :: !Bool
-               ,_value :: !PinValue -- This is the line level, not the
-                                    -- logical level
-               ,_edge :: Maybe SysfsEdge}
+               -- ^ Is the pin configured as active-low?
+               ,_value :: !PinValue
+               -- ^ The pin's /physical/ signal level
+               ,_edge :: Maybe SysfsEdge
+               -- ^ The pin's interrupt mode (if supported)
+               }
   deriving (Show,Eq)
 
 -- | Linux @sysfs@ GPIO natively supports active-low logic levels. A
@@ -137,6 +142,15 @@ data MockPinState =
 -- attribute. We call the pin's signal level as modulated by its
 -- active level the pin's /logical value/. This function returns the
 -- mock pin's logical value.
+--
+-- >>> logicalValue defaultMockPinState
+-- Low
+-- >>> logicalValue defaultMockPinState { _value = High }
+-- High
+-- >>> logicalValue defaultMockPinState { _activeLow = True }
+-- High
+-- >>> logicalValue defaultMockPinState { _activeLow = True, _value = High }
+-- Low
 logicalValue :: MockPinState -> PinValue
 logicalValue s
   | _activeLow s = invertValue $ _value s
@@ -145,12 +159,20 @@ logicalValue s
 -- | This function sets the 'MockPinState' signal level to the given
 -- /logical/ value; i.e., the value set takes into consideration the
 -- pin's active level.
+--
+-- >>> _value $ setLogicalValue High defaultMockPinState
+-- High
+-- >>> _value $ setLogicalValue High defaultMockPinState { _activeLow = True }
+-- Low
 setLogicalValue :: PinValue -> MockPinState -> MockPinState
 setLogicalValue v s
   | _activeLow s = s {_value = invertValue v}
   | otherwise = s {_value = v}
 
 -- | Default initial state of mock pins.
+--
+-- >>> defaultMockPinState
+-- MockPinState {_direction = Out, _userVisibleDirection = True, _activeLow = False, _value = Low, _edge = Just None}
 defaultMockPinState :: MockPinState
 defaultMockPinState =
   MockPinState {_direction = Out
@@ -169,8 +191,12 @@ defaultMockPinState =
 -- the '_initialPinStates' list.
 data MockGpioChip =
   MockGpioChip {_label :: !String
+               -- ^ The name given to the chip in the filesystem
                ,_base :: !Int
-               ,_initialPinStates :: [MockPinState]}
+               -- ^ Start numbering the chip's pins from this number
+               ,_initialPinStates :: [MockPinState]
+               -- ^ The pins' initial states
+               }
   deriving (Show,Eq)
 
 -- | A type alias for a strict map of 'Pin' to its 'MockPinState'.
@@ -290,6 +316,10 @@ type SysfsMock = SysfsMockT Catch
 -- | A pure version of 'runSysfsMockT' which returns errors in a
 -- 'Left', and both the computation result and the final state of the
 -- 'MockWorld' in a 'Right'.
+--
+-- >>> let mockChip = MockGpioChip "chip0" 0 (replicate 16 defaultMockPinState)
+-- >>> fst <$> runSysfsMock (getDirectoryContents "/sys/class/gpio") initialMockWorld [mockChip]
+-- Right ["gpiochip0","export","unexport"]
 runSysfsMock :: SysfsMock a -> MockWorld -> [MockGpioChip] -> Either SomeException (a, MockWorld)
 runSysfsMock a w chips = runCatch $ runSysfsMockT a w chips
 
@@ -316,6 +346,13 @@ type SysfsGpioMock = SysfsGpioT SysfsMock
 -- with the GPIO pins as specified by the list of 'MockGpioChip's. If
 -- any of the chips in the list are already present in the filesystem,
 -- or if any of the chips' pin ranges overlap, an error is returned.
+--
+-- >>> import System.GPIO.Monad
+-- >>> let mockChip = MockGpioChip "chip0" 0 (replicate 16 defaultMockPinState)
+-- >>> fst <$> runSysfsGpioMock pins initialMockWorld [mockChip]
+-- Right [Pin 0,Pin 1,Pin 2,Pin 3,Pin 4,Pin 5,Pin 6,Pin 7,Pin 8,Pin 9,Pin 10,Pin 11,Pin 12,Pin 13,Pin 14,Pin 15]
+-- >>> fst <$> runSysfsGpioMock (openPin (Pin 32)) initialMockWorld [mockChip]
+-- Left InvalidPin (Pin 32)
 runSysfsGpioMock :: SysfsGpioMock a -> MockWorld -> [MockGpioChip] -> Either SomeException (a, MockWorld)
 runSysfsGpioMock a = runSysfsMock (runSysfsGpioT a)
 
