@@ -80,16 +80,16 @@ module System.GPIO.Linux.Sysfs
        , availablePins
        , pinIsExported
        , exportPin
-       , exportPin'
+       , exportPinChecked
        , unexportPin
-       , unexportPin'
+       , unexportPinChecked
        , pinHasDirection
        , readPinDirection
        , writePinDirection
        , writePinDirectionWithValue
        , readPinValue
        , threadWaitReadPinValue
-       , threadWaitReadPinValue'
+       , threadWaitReadPinValueTimeout
        , writePinValue
        , pinHasEdge
        , readPinEdge

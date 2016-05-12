@@ -41,16 +41,16 @@ module System.GPIO.Linux.Sysfs.Monad
        , availablePins
        , pinIsExported
        , exportPin
-       , exportPin'
+       , exportPinChecked
        , unexportPin
-       , unexportPin'
+       , unexportPinChecked
        , pinHasDirection
        , readPinDirection
        , writePinDirection
        , writePinDirectionWithValue
        , readPinValue
        , threadWaitReadPinValue
-       , threadWaitReadPinValue'
+       , threadWaitReadPinValueTimeout
        , writePinValue
        , pinHasEdge
        , readPinEdge
@@ -299,7 +299,7 @@ instance (Functor m, MonadCatch m, MonadThrow m, MonadSysfs m) => MonadGpio PinD
   readPin (PinDescriptor p) = lift $ threadWaitReadPinValue p
 
   readPinTimeout (PinDescriptor p) timeout =
-    lift $ threadWaitReadPinValue' p timeout
+    lift $ threadWaitReadPinValueTimeout p timeout
 
   writePin (PinDescriptor p) v =
     lift $ writePinValue p v
@@ -375,8 +375,8 @@ exportPin pin@(Pin n) =
 -- Note that, unlike 'exportPin', it's an error to call this action to
 -- export a pin that's already been exported. This is the standard
 -- Linux @sysfs@ GPIO behavior.
-exportPin' :: (MonadCatch m, MonadSysfs m) => Pin -> m ()
-exportPin' pin@(Pin n) =
+exportPinChecked :: (MonadCatch m, MonadSysfs m) => Pin -> m ()
+exportPinChecked pin@(Pin n) =
   catchIOError
     (unlockedWriteFile exportFileName (intToBS n))
     mapIOError
@@ -410,8 +410,8 @@ unexportPin pin@(Pin n) =
 -- Note that, unlike 'unexportPin', it is an error to call this action
 -- if the pin is not currently exported. This is the standard Linux
 -- @sysfs@ GPIO behavior.
-unexportPin' :: (MonadSysfs m, MonadCatch m) => Pin -> m ()
-unexportPin' pin@(Pin n) =
+unexportPinChecked :: (MonadSysfs m, MonadCatch m) => Pin -> m ()
+unexportPinChecked pin@(Pin n) =
   catchIOError
     (unlockedWriteFile unexportFileName (intToBS n))
     mapIOError
@@ -557,7 +557,7 @@ readPinValue p =
 -- undefined. (Most likely, it will block indefinitely.)
 threadWaitReadPinValue :: (Functor m, MonadSysfs m, MonadThrow m, MonadCatch m) => Pin -> m PinValue
 threadWaitReadPinValue p =
-  threadWaitReadPinValue' p (-1) >>= \case
+  threadWaitReadPinValueTimeout p (-1) >>= \case
      Just v -> return v
      -- 'Nothing' can only occur when the poll has timed out, but the
      -- (-1) timeout value above means the poll must either wait
@@ -583,8 +583,8 @@ threadWaitReadPinValue p =
 -- NB: the curent implementation of this action limits the timeout
 -- precision to 1 millisecond, rather than 1 microsecond as the
 -- interface promises.
-threadWaitReadPinValue' :: (Functor m, MonadSysfs m, MonadThrow m, MonadCatch m) => Pin -> Int -> m (Maybe PinValue)
-threadWaitReadPinValue' p timeout =
+threadWaitReadPinValueTimeout :: (Functor m, MonadSysfs m, MonadThrow m, MonadCatch m) => Pin -> Int -> m (Maybe PinValue)
+threadWaitReadPinValueTimeout p timeout =
   catchIOError
     (do pollResult <- pollFile (pinValueFileName p) timeout
         if pollResult > 0
