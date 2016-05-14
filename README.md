@@ -9,6 +9,6 @@ Currently only the Linux `sysfs` GPIO filesystem is supported, but
 support for other Unix GPIO platforms is planned.
 
 See the `examples` directory for examples of how to use the various
-included monads.
+included monads. A tutorial module is also included in the package.
 
 [![Travis CI build status](https://travis-ci.org/dhess/gpio.svg?branch=master)](https://travis-ci.org/dhess/gpio)

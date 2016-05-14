@@ -24,7 +24,8 @@ Description:
   platform API and avoid the overhead of the eDSL interpreter.
   .
   Example programs are provided in the 'examples' directory of the
-  source code distribution.
+  source code distribution. There is also a "System.GPIO.Tutorial"
+  module, which explains how to use the cross-platform DSL.
 Extra-Doc-Files:        README.md
 Extra-Source-Files:     .travis.yml
                       , default.nix
@@ -54,6 +55,7 @@ Library
                       , System.GPIO.Linux.Sysfs.Types
                       , System.GPIO.Linux.Sysfs.Util
                       , System.GPIO.Monad
+                      , System.GPIO.Tutorial
                       , System.GPIO.Types
   Other-Modules:        System.GPIO.Linux.Sysfs.Mock.Internal
   Other-Extensions:     CPP
@@ -189,6 +191,7 @@ Test-Suite spec
                       , System.GPIO.Linux.Sysfs.Types
                       , System.GPIO.Linux.Sysfs.Util
                       , System.GPIO.Monad
+                      , System.GPIO.Tutorial
                       , System.GPIO.Types
   C-Sources:            src/System/GPIO/Linux/Sysfs/IO.c
   If flag(linux-bbone-tests)
