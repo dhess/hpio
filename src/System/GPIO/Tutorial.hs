@@ -26,6 +26,9 @@ module System.GPIO.Tutorial (
     -- * Basic pin operations
     -- $basic_pin_operations
 
+    -- * Reading and writing pins
+    -- $reading_and_writing
+
     -- * Copyright
     -- $copyright
     ) where
@@ -344,7 +347,7 @@ runTutorial program =
   let chip0 :: MockGpioChip
       chip0 = MockGpioChip "chip0" 0 (replicate 16 defaultMockPinState)
       chip1 :: MockGpioChip
-      chip1 = MockGpioChip "chip1" 16 [defaultMockPinState {_direction = In, _userVisibleDirection = False, _edge = Nothing}]
+      chip1 = MockGpioChip "chip1" 16 [defaultMockPinState {_direction = In, _userVisibleDirection = False, _value = High, _edge = Nothing}]
   in
     evalSysfsGpioMockIO program initialMockWorld [chip0, chip1]
 
@@ -365,8 +368,8 @@ which you then use to operate on that pin. Then, when you're finished
 with a GPIO pin, you should allow the system to clean up any
 pin-related resources by /closing/ it.
 
-(Note that, because our interpreter is an instance of 'MonadIO', we
-can interleave 'IO' actions into our GPIO computations.)
+Opening and closing a pin are performed by the 'openPin' and
+'closePin' DSL actions, respectively:
 
 >>> :{
 runTutorial $
@@ -377,6 +380,9 @@ runTutorial $
 :}
 Opened pin 5
 Closed pin 5
+
+(Note that, because our interpreter is an instance of 'MonadIO', we
+can interleave 'IO' actions into our GPIO computations.)
 
 As with file handles, when an exception occurs in a computation, we
 should clean up any open pin handles. We could wrap each 'openPin' /
@@ -397,12 +403,13 @@ tutorial.
 
 == Pin configuration
 
-Every pin has an active level:
+Every pin has an active level, which we can query using
+'getPinActiveLevel':
 
 >>> runTutorial $ withPin (Pin 8) getPinActiveLevel
 High
 
-You can change it:
+You can change it using 'setPinActiveLevel':
 
 >>> :{
 runTutorial $
@@ -412,7 +419,7 @@ runTutorial $
 :}
 Low
 
-or toggle it:
+or toggle it using 'togglePinActiveLevel':
 
 >>> runTutorial $ withPin (Pin 8) togglePinActiveLevel
 Low
@@ -420,8 +427,8 @@ Low
 While all GPIO pins by definition have a direction (/in/ or /out/), on
 some platforms you may not be able to modify, or even query, a
 particular pin's direction in a portable way. Therefore, when querying
-a pin's direction using the cross-platform DSL, the returned value is
-wrapped in a 'Maybe':
+a pin's direction using the cross-platform DSL action
+'getPinDirection', the returned value is wrapped in a 'Maybe':
 
 >>> runTutorial $ withPin (Pin 10) getPinDirection
 Just Out
@@ -443,7 +450,7 @@ runTutorial $
 :}
 Just In
 
-You can also toggle it:
+You can also toggle it using 'togglePinDirection':
 
 >>> :{
 runTutorial $
@@ -484,8 +491,8 @@ tutorial, all of the exceptions shown here are of type
 Finally, some pins, /when configured for input/, may support edge- or
 level-triggered interrupts. As with the pin's direction, you can
 discover whether a pin supports this functionality by asking for its
-read trigger value, though this action is generally only valid when
-the pin is configured for input:
+read trigger value via the 'getPinReadTrigger' action, though this
+action is generally only valid when the pin is configured for input:
 
  >>> :{
  runTutorial $
@@ -507,9 +514,10 @@ does not support interrupts at all, whereas a read trigger value of
 'Disabled' means that the pin supports interrupts, but that they're
 currently disabled.
 
-If the pin supports interrupts, you can change its read trigger. In
-this example, we configure 'Pin' @5@ for level-triggered interrupts.
-Note that we must configure the pin for input before we do so:
+If the pin supports interrupts, you can change its read trigger using
+'setPinReadtrigger'. In this example, we configure 'Pin' @5@ for
+level-triggered interrupts. Note that we must configure the pin for
+input before we do so:
 
  >>> :{
  runTutorial $
@@ -549,6 +557,256 @@ attribute, which is used to configure the pin's read trigger.)
 
 See below for examples of how to make use of pin interrupts and a
 pin's read trigger setting.
+
+-}
+
+{- $reading_and_writing
+
+The core operation of GPIO is, of course, reading and writing pin values.
+
+When we want to read a pin's value and return that value immediately,
+without blocking the current thread, we say that we are /sampling/ the
+pin. Using the 'samplePin' DSL action, we can sample a pin's value
+whether it's configured for input or output:
+
+  >>> :{
+  -- Pin 16 is hard-wired for input.
+  -- Its physical signal level is 'High'.
+  runTutorial $ withPin (Pin 16) samplePin
+  :}
+  High
+
+  >>> :{
+  -- Pin 9's initial direction is 'Out'.
+  -- Its initial physical signal level is 'Low'.
+  runTutorial $ withPin (Pin 9) samplePin
+  :}
+  Low
+
+The value returned by 'samplePin' is relative to the pin's current
+active level. Using the same pins as the previous two examples, but
+this time changing their active levels before sampling them, we get:
+
+  >>> :{
+  runTutorial $
+    withPin (Pin 16) $ \h ->
+      do setPinActiveLevel h Low
+         samplePin h
+  :}
+  Low
+
+   >>> :{
+   runTutorial $
+     withPin (Pin 9) $ \h ->
+       do setPinActiveLevel h Low
+          samplePin h
+   :}
+   High
+
+When a pin is configured for output, we can set its value using
+'writePin':
+
+  >>> :{
+  runTutorial $
+    withPin (Pin 9) $ \h ->
+      do setPinDirection h Out
+         writePin h High
+         samplePin h
+  :}
+  High
+
+We can also toggle its value using 'togglePinValue', which returns the
+new value:
+
+  >>> :{
+  runTutorial $
+    withPin (Pin 9) $ \h ->
+      do setPinDirection h Out
+         v1 <- togglePinValue h
+         v2 <- togglePinValue h
+         return (v1,v2)
+  :}
+  (High,Low)
+
+The value we write on an output pin is relative to its current active
+level; e.g., if the output pin's active level is 'Low' and we write a
+'High' value, then the /physical/ signal level that the system drives
+on that pin is /low/. In the mock GPIO system there is no physical
+signal level, per se, but the mock interpreter does keep track of the
+"actual" value:
+
+  >>> :{
+  runTutorial $
+    withPin (Pin 9) $ \h ->
+      do setPinDirection h Out
+         setPinActiveLevel h Low
+         writePin h High
+         v1 <- samplePin h
+         setPinActiveLevel h High
+         v2 <- samplePin h
+         return (v1,v2)
+  :}
+  (High,Low)
+
+  >>> :{
+  runTutorial $
+    withPin (Pin 9) $ \h ->
+      do setPinDirection h Out
+         writePin h Low
+         setPinActiveLevel h Low
+         v1 <- togglePinValue h
+         setPinActiveLevel h High
+         v2 <- togglePinValue h
+         return (v1,v2)
+  :}
+  (Low,Low)
+
+(Note that in a real circuit, the signal level seen on an output pin
+may be different than the value your program writes to it, depending
+on what type of output pin it is, what other elements are attached to
+the pin, etc. A discussion of these factors is outside the scope of
+this tutorial.)
+
+== Blocking reads
+
+As described above, 'samplePin' reads a pin's current value and
+returns that value immediately. 'readPin' and 'readPinTimeout', like
+'samplePin', also return a given input pin's value. However, unlike
+'samplePin', these actions do not return the value immediately, but
+instead block the current thread until a particular event occurs.
+Given a handle to an input pin, 'readPin' will block the current
+thread until the pin's read trigger event occurs, at which point
+'readPin' unblocks and returns the value that triggered the event.
+'readPinTimeout' is like 'readPin', except that it also takes a
+timeout argument. If the timeout expires before the read trigger event
+occurs, 'readPinTimeout' returns 'Nothing'.
+
+The current implementation of the mock @sysfs@ GPIO interpreter does
+not support blocking reads, so we do not provide a runnable example
+here. However, here is an example from an actual Linux system which
+demonstrates the use of 'readPinTimeout' (a
+<https://github.com/dhess/gpio/blob/master/examples/Gpio.hs similar program>
+is included in @gpio@'s source distribution):
+
+> -- toggle.hs
+>
+> import Control.Concurrent (threadDelay)
+> import Control.Concurrent.Async (concurrently)
+> import Control.Monad (forever, void)
+> import Control.Monad.Catch (MonadMask)
+> import Control.Monad.IO.Class (MonadIO, liftIO)
+> import System.GPIO.Linux.Sysfs (runSysfsGpioIO)
+> import System.GPIO.Monad
+> import System.GPIO.Types
+>
+> -- | Given a pin, a read trigger event, and a timeout (in microseconds),
+> -- configure the pin for input, then repeatedly wait for either the
+> -- given event, or a timeout.
+> readLoop :: (MonadMask m, MonadIO m, MonadGpio h m) => Pin -> PinReadTrigger -> Int -> m ()
+> readLoop p trigger to =
+>   withPin p $ \h ->
+>     do setPinDirection h In
+>        setPinReadTrigger h trigger
+>        forever $
+>          do result <- readPinTimeout h to
+>             case result of
+>               Nothing -> output ("readPin timed out after " ++ show to ++ " microseconds")
+>               Just v -> output ("Input: " ++ show v)
+>
+> -- | Given a pin and a 'delay' (in microseconds), configure the pin for output and
+> -- repeatedly toggle its value, pausing for 'delay' microseconds inbetween
+> -- successive toggles.
+> driveOutput :: (MonadMask m, MonadIO m, MonadGpio h m) => Pin -> Int -> m ()
+> driveOutput p delay =
+>   withPin p $ \h ->
+>     do setPinDirection h Out
+>        forever $
+>          do liftIO $ threadDelay delay
+>             v <- togglePinValue h
+>             output ("Output: " ++ show v)
+>
+>
+
+Given these two looping actions, we can launch two threads, one for
+each loop, to drive the input pin from the output pin, assuming the
+two pins are connected. For example, to wait for the signal's rising
+edge using @gpio47@ for input and @gpio48@ for output with a 1-second
+read timeout and a 1/4-second delay between toggles:
+
+> -- toggle.hs
+> main =
+>   void $
+>     concurrently
+>       (void $ runSysfsGpioIO $ edgeRead (Pin 47) RisingEdge 1000000)
+>       (runSysfsGpioIO $ driveOutput (Pin 48) 250000)
+
+> $ ./toggle
+> Output: High
+> Input: High
+> Output: Low
+> Output: High
+> Input: High
+> Output: Low
+> Output: High
+> Input: High
+> Output: Low
+> Output: High
+> Input: High
+> ^C $
+
+Note that the @Input@ lines only appear when the output signal goes
+from 'Low' to 'High', as @readLoop@ is waiting for 'RisingEdge' events
+on the input pin.
+
+If we now flip the read timeout and toggle delay values, we can see
+that @readLoop@ times out every 1/4-second until the event is
+triggered again:
+
+> -- toggle.hs
+> main =
+>   void $
+>     concurrently
+>       (void $ runSysfsGpioIO $ edgeRead (Pin 47) RisingEdge 250000)
+>       (runSysfsGpioIO $ driveOutput (Pin 48) 1000000)
+
+> $ ./toggle
+> readPin timed out after 250000 microseconds
+> readPin timed out after 250000 microseconds
+> readPin timed out after 250000 microseconds
+> Output: High
+> Input: High
+> readPin timed out after 250000 microseconds
+> readPin timed out after 250000 microseconds
+> readPin timed out after 250000 microseconds
+> Output: Low
+> readPin timed out after 250000 microseconds
+> readPin timed out after 250000 microseconds
+> readPin timed out after 250000 microseconds
+> readPin timed out after 250000 microseconds
+> Output: High
+> Input: High
+> readPin timed out after 250000 microseconds
+> readPin timed out after 250000 microseconds
+> readPin timed out after 250000 microseconds
+> Output: Low
+> readPin timed out after 250000 microseconds
+> readPin timed out after 250000 microseconds
+> readPin timed out after 250000 microseconds
+> readPin timed out after 250000 microseconds
+> Output: High
+> Input: High
+> readPin timed out after 250000 microseconds
+> ^C $
+
+Because they block the current thread, in order to use 'readPin' and
+'readPinTimeout', you must compile your program such that the Haskell
+runtime supports multiple threads. On GHC, use the @-threaded@
+compile-time flag. Other Haskell compilers have not been tested with
+@gpio@, so we cannot provide guidance for them; consult your
+compiler's documentation. Also, if you're using a compiler other than
+GHC on Linux, see the documentation for the
+'System.GPIO.Linux.Sysfs.IO.SysfsIOT' monad transformer for details on
+how it uses the C FFI, and its implications for multi-threading.
 
 -}
 
