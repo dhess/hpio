@@ -667,6 +667,50 @@ on what type of output pin it is, what other elements are attached to
 the pin, etc. A discussion of these factors is outside the scope of
 this tutorial.)
 
+== Glitch-free output
+
+Suppose that you want to configure a pin for output and ensure that,
+as soon as the pin enters output mode, its value is 'Low'. Because
+'setPinDirection' and 'writePin' are two separate actions, it's
+possible that the output pin's value will briefly be set to 'High'
+between the execution of those two actions:
+
+  >>> :{
+  runTutorial $
+    withPin (Pin 9) $ \h ->
+      do setPinDirection h Out
+         -- What is the pin's value here?
+         writePin h Low
+  :}
+
+If, in the time between the moment a pin switches to output mode and
+the moment that the desired output value is driven onto that pin, the
+pin briefly drives the opposite value, we say that the pin has
+/glitched/.
+
+Some GPIO platforms provide an atomic operation that ensures a
+/glitch-free/ signal, setting both the pin's output mode and its value
+simultaneously. The @gpio@ cross-platform DSL supports this operation
+via the 'writePin'' action:
+
+  >>> :{
+  runTutorial $
+    withPin (Pin 10) $ \h ->
+      do setPinDirection h In
+         writePin' h Low
+         d <- getPinDirection h
+         v <- samplePin h
+         return (d,v)
+  :}
+  (Just Out,Low)
+
+(While all currently-supported GPIO platforms support this operation,
+it is possible that some future platforms will not. The interpreters
+for those implementations will simply implement 'writePin'' as two
+separate steps ('setPinDirection' followed by 'writePin'), which will
+produce the same final state, though it will not guarantee glitch-free
+output, of course.)
+
 == Blocking reads
 
 As described above, 'samplePin' reads a pin's current value and
