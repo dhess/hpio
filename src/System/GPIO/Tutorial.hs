@@ -1,4 +1,4 @@
-{-# OPTIONS_GHC -fno-warn-unused-imports #-}
+{-# OPTIONS_GHC -fno-warn-unused-imports -fno-warn-unused-binds #-}
 
 module System.GPIO.Tutorial (
     -- * Introduction
@@ -21,6 +21,7 @@ module System.GPIO.Tutorial (
 
     -- * A mock interpreter
     -- $mock_interpreter
+    , runTutorial
 
     -- * Basic pin operations
     -- $basic_pin_operations
@@ -29,11 +30,17 @@ module System.GPIO.Tutorial (
     -- $copyright
     ) where
 
+import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Trans.Class (lift)
-import System.GPIO.Monad
-import System.GPIO.Linux.Sysfs.Mock (MockPinState(..), defaultMockPinState, runSysfsGpioMock)
-import System.GPIO.Linux.Sysfs (runSysfsIOT, runSysfsGpioT, runSysfsGpioIO)
+import System.GPIO.Monad (MonadGpio(..), withPin)
+import System.GPIO.Linux.Sysfs.Mock
+       (MockGpioChip(..), MockPinState(..), SysfsGpioMockIO,
+        defaultMockPinState, initialMockWorld, evalSysfsGpioMockIO)
+import System.GPIO.Linux.Sysfs.Types (SysfsException(..))
 import System.GPIO.Types (Pin(..), PinDirection(..), PinValue(..), PinReadTrigger(..))
+
+-- $setup
+-- >>> import System.GPIO.Monad
 
 {- $introduction
 
@@ -252,7 +259,7 @@ Let's start by briefly describing how this mock interpreter is
 implemented. You don't need to know this in order to use @gpio@, and
 you quite possibly will never use the mock interpreter outside of this
 tutorial anyway, but understanding how it's implemented helps explain
-why using the mock interpreter is a bit tricky.
+why using the Linux @sysfs@ GPIO interpreter is a bit complicated.
 
 In Linux @sysfs@ GPIO, userspace GPIO operations are performed on
 virtual files in the @sysfs@ filesystem. See the
@@ -300,14 +307,15 @@ system, the composition is relatively straightforward. Assuming that
 
 > runSysfsIOT $ runSysfsGpioT action
 
-Here the 'runSysfsGpioT' interpreter translates GPIO actions in
-@action@ to abstract @sysfs@ filesystem operations, and the
-'runSysfsIOT' interpreter translates abstract @sysfs@ filesystem
-operations to their native filesystem equivalents.
+Here the 'System.GPIO.Linux.Sysfs.runSysfsGpioT' interpreter
+translates GPIO actions in @action@ to abstract @sysfs@ filesystem
+operations, and the 'System.GPIO.Linux.Sysfs.runSysfsIOT' interpreter
+translates abstract @sysfs@ filesystem operations to their native
+filesystem equivalents.
 
-(Note that if @action@ runs directly in 'IO' and not a transformer
-stack, then you can use the 'runSysfsGpioIO' action, which
-conveniently composes these two interpreters for you.)
+(Note that if @action@ runs directly in 'IO' and not in a transformer
+stack, then you can use the 'System.GPIO.Linux.Sysfs.runSysfsGpioIO'
+action, which conveniently composes these two interpreters for you.)
 
 On the other hand, if you want to run GPIO programs in a mock Linux
 @sysfs@ GPIO environment, you need to do a bit more work, as you need
@@ -315,12 +323,232 @@ to provide the description of the mock environment itself: which pins
 are available, how they're numbered, their initial state, etc. For
 this purpose, @gpio@ provides the "System.GPIO.Linux.Sysfs.Mock"
 module, which defines a number of mock types. See the module
-documentation for details, but in this tutorial, we'll use a mock
-system with 16 GPIO pins, each in their default initial state.
+documentation for details on how to configure a mock GPIO system, but
+for the purposes of this tutorial, we provide a 'runTutorial' wrapper
+which composes the two @sysfs@ GPIO interpreters and takes care of all
+of the mock setup for you. It defines a mock GPIO system with 17 pins,
+numbered 0 through 16. Pins 0-15 are initially configured in their
+default mock state (see
+'System.GPIO.Linux.Sysfs.Mock.defaultMockPinState'). Pin 16 is special
+so that we can demonstrate some exceptional cases.
+
+__Note__: in our examples, each time we use 'runTutorial' we are
+creating a new mock environment from scratch, so any changes made to
+the mock environment are not persistent from one example to the next.
 
 -}
 
+-- | Run a @gpio@ program on a mock system with 16 GPIO pins.
+runTutorial :: SysfsGpioMockIO a -> IO a
+runTutorial program =
+  let chip0 :: MockGpioChip
+      chip0 = MockGpioChip "chip0" 0 (replicate 16 defaultMockPinState)
+      chip1 :: MockGpioChip
+      chip1 = MockGpioChip "chip1" 16 [defaultMockPinState {_direction = In, _userVisibleDirection = False, _edge = Nothing}]
+  in
+    evalSysfsGpioMockIO program initialMockWorld [chip0, chip1]
+
 {- $basic_pin_operations
+
+== Which pins are available?
+
+To get the list of all pins available on the system, use the 'pins' command:
+
+>>> runTutorial pins
+[Pin 0,Pin 1,Pin 2,Pin 3,Pin 4,Pin 5,Pin 6,Pin 7,Pin 8,Pin 9,Pin 10,Pin 11,Pin 12,Pin 13,Pin 14,Pin 15,Pin 16]
+
+== Pin resource management
+
+Before you can operate on a GPIO pin, you must signal your intention
+to the system by /opening/ it. Opening the pin returns a /handle/,
+which you then use to operate on that pin. Then, when you're finished
+with a GPIO pin, you should allow the system to clean up any
+pin-related resources by /closing/ it.
+
+(Note that, because our interpreter is an instance of 'MonadIO', we
+can interleave 'IO' actions into our GPIO computations.)
+
+>>> :{
+runTutorial $
+  do h <- openPin (Pin 5)
+     liftIO $ putStrLn "Opened pin 5"
+     closePin h
+     liftIO $ putStrLn "Closed pin 5"
+:}
+Opened pin 5
+Closed pin 5
+
+As with file handles, when an exception occurs in a computation, we
+should clean up any open pin handles. We could wrap each 'openPin' /
+'closePin' pair with 'Control.Monad.Catch.bracket', or we could just
+use the provided 'withPin' wrapper, which does this for us:
+
+>>> :{
+runTutorial $
+  withPin (Pin 5) $ \h ->
+    do liftIO $ putStrLn "Opened pin 5"
+       fail "Oops"
+:}
+Opened pin 5
+*** Exception: user error (Oops)
+
+Using 'withPin' is good hygiene, so we'll use it throughout this
+tutorial.
+
+== Pin configuration
+
+Every pin has an active level:
+
+>>> runTutorial $ withPin (Pin 8) getPinActiveLevel
+High
+
+You can change it:
+
+>>> :{
+runTutorial $
+  withPin (Pin 5) $ \h ->
+    do setPinActiveLevel h Low
+       getPinActiveLevel h
+:}
+Low
+
+or toggle it:
+
+>>> runTutorial $ withPin (Pin 8) togglePinActiveLevel
+Low
+
+While all GPIO pins by definition have a direction (/in/ or /out/), on
+some platforms you may not be able to modify, or even query, a
+particular pin's direction in a portable way. Therefore, when querying
+a pin's direction using the cross-platform DSL, the returned value is
+wrapped in a 'Maybe':
+
+>>> runTutorial $ withPin (Pin 10) getPinDirection
+Just Out
+
+>>> runTutorial $ withPin (Pin 16) getPinDirection -- Pin 16's direction is not settable
+Nothing
+
+If 'getPinDirection' returns 'Nothing', as it does for 'Pin' @16@ in
+our example, then the pin's direction is not settable, and you'll need
+another (platform-specific) method for determining its hard-wired
+value. Conversely, if 'getPinDirection' returns a 'Just', the pin's
+direction is configurable via the 'setPinDirection' action:
+
+>>> :{
+runTutorial $
+  withPin (Pin 5) $ \h ->
+    do setPinDirection h In
+       getPinDirection h
+:}
+Just In
+
+You can also toggle it:
+
+>>> :{
+runTutorial $
+  withPin (Pin 5) togglePinDirection
+:}
+Just In
+
+Obviously, it's an error to try to set the direction of a pin whose
+direction is not settable:
+
+>>> :{
+-- Pin 16's direction is not settable
+runTutorial $
+  withPin (Pin 16) $ \h ->
+    do setPinDirection h In
+       getPinDirection h
+:}
+*** Exception: NoDirectionAttribute (Pin 16)
+
+However, 'togglePinDirection' signals the error by returning 'Nothing':
+
+>>> :{
+runTutorial $
+  withPin (Pin 16) togglePinDirection
+:}
+Nothing
+
+(This is a good time to mention exceptions. Like any other 'IO'
+computation, GPIO computations throw exceptions when an error occurs.
+The @gpio@ exception system is hierarchical; the top level exception
+type is 'System.GPIO.Types.SomeGpioException'. Each GPIO platform
+interpreter then defines its own exception type whose set of values
+are specific to the errors that can occur on that particular platform.
+Because we're using the mock Linux @sysfs@ GPIO interpreter in this
+tutorial, all of the exceptions shown here are of type
+'SysfsException'.)
+
+Finally, some pins, /when configured for input/, may support edge- or
+level-triggered interrupts. As with the pin's direction, you can
+discover whether a pin supports this functionality by asking for its
+read trigger value, though this action is generally only valid when
+the pin is configured for input:
+
+ >>> :{
+ runTutorial $
+   withPin (Pin 5) $ \h ->
+     do setPinDirection h In
+        getPinReadTrigger h
+ :}
+ Just Disabled
+
+  >>> runTutorial $ withPin (Pin 16) $ getPinReadTrigger -- Note: Pin 16's direction is hard-wired to 'In'
+  Nothing
+
+If 'getPinReadTrigger' returns 'Nothing', as it does for 'Pin' @16@ in
+our example, then the pin does not support interrupts.
+
+You might be wondering, what is the difference between 'Just'
+'Disabled' and 'Nothing'? As explained above, 'Nothing' means the pin
+does not support interrupts at all, whereas a read trigger value of
+'Disabled' means that the pin supports interrupts, but that they're
+currently disabled.
+
+If the pin supports interrupts, you can change its read trigger. In
+this example, we configure 'Pin' @5@ for level-triggered interrupts.
+Note that we must configure the pin for input before we do so:
+
+ >>> :{
+ runTutorial $
+   withPin (Pin 5) $ \h ->
+     do setPinDirection h In
+        setPinReadTrigger h Level
+        getPinReadTrigger h
+ :}
+ Just Level
+
+If the pin does not support interrupts, or if the pin is configured
+for output, it is an error to attempt to set its read trigger:
+
+  >>> :{
+  -- Here we have tried to set an output pin's read trigger
+  runTutorial $
+    withPin (Pin 5) $ \h ->
+      do setPinDirection h Out
+         setPinReadTrigger h Level
+         getPinReadTrigger h
+  :}
+  *** Exception: InvalidOperation (Pin 5)
+
+   >>> :{
+   -- Pin 16 does not support interrupts
+   runTutorial $
+     withPin (Pin 16) $ \h ->
+       do setPinReadTrigger h Level
+          getPinReadTrigger h
+   :}
+   *** Exception: NoEdgeAttribute (Pin 16)
+
+Note that the exception value thrown in each case is different, to
+better help you identify what you did wrong. (The 'NoEdgeAttribute'
+exception value refers to the Linux @sysfs@ GPIO per-pin @edge@
+attribute, which is used to configure the pin's read trigger.)
+
+See below for examples of how to make use of pin interrupts and a
+pin's read trigger setting.
 
 -}
 
@@ -330,4 +558,3 @@ This tutorial is copyright Drew Hess, 2016, and is licensed under the
 <http://creativecommons.org/licenses/by/4.0/ Creative Commons Attribution 4.0 International License>.
 
 -}
-

@@ -10,6 +10,7 @@ testFiles :: [FilePath]
 testFiles =
   map addPrefix
       [ "Monad.hs"
+      , "Tutorial.hs"
       , "Types.hs"
       , "Linux" </> "Sysfs" </> "Mock.hs"
       , "Linux" </> "Sysfs" </> "Mock" </> "Internal.hs"
@@ -19,4 +20,4 @@ testFiles =
       ]
 
 main :: IO ()
-main = doctest testFiles
+main = doctest (mappend ["-isrc"] testFiles)
