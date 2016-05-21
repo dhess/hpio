@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# OPTIONS_GHC -fno-warn-unused-imports -fno-warn-unused-binds #-}
 
 module System.GPIO.Tutorial (
@@ -29,20 +30,31 @@ module System.GPIO.Tutorial (
     -- * Reading and writing pins
     -- $reading_and_writing
 
+    -- * Advanced topics
+    -- $advanced_topics
+    , TutorialEnv
+    , TutorialReaderGpioIO
+
     -- * Copyright
     -- $copyright
     ) where
 
+import Control.Concurrent (threadDelay)
+import Control.Monad (forM_)
+import Control.Monad.Catch (MonadMask, MonadThrow, MonadCatch)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Trans.Class (lift)
+import Control.Monad.Reader (MonadReader(..), ReaderT(..), asks)
 import System.GPIO.Monad (MonadGpio(..), withPin)
+import System.GPIO.Linux.Sysfs.Monad (SysfsGpioT(..))
 import System.GPIO.Linux.Sysfs.Mock
-       (MockGpioChip(..), MockPinState(..), SysfsGpioMockIO,
-        defaultMockPinState, initialMockWorld, evalSysfsGpioMockIO)
+       (MockGpioChip(..), MockPinState(..), SysfsMockT, SysfsGpioMock, SysfsGpioMockIO,
+        defaultMockPinState, initialMockWorld, evalSysfsGpioMockIO, evalSysfsMockT)
 import System.GPIO.Linux.Sysfs.Types (SysfsException(..))
 import System.GPIO.Types (Pin(..), PinDirection(..), PinValue(..), PinReadTrigger(..))
 
 -- $setup
+-- >>> :set -XFlexibleContexts
 -- >>> import System.GPIO.Monad
 
 {- $introduction
@@ -219,20 +231,6 @@ You can therefore think of each 'MonadGpio' instance as a
 platform-specific interpreter for the cross-platform DSL. Each
 interpreter provides a "run" action which, given a 'MonadGpio'
 program, will execute the program on its GPIO platform.
-
-== @mtl@ compatibility
-
-Each @gpio@ interpreter is implemented as a monad transformer, and
-each is also an instance of the monad type classes defined in the
-<https://hackage.haskell.org/package/mtl mtl> package, so long as its
-implementation satisfies the laws of that particular @mtl@ type class.
-This makes it easy to integrate @gpio@ interpreters into @mtl@-style
-monad transformer stacks.
-
-Additionally, the 'MonadGpio' type class provides instances of itself
-for all the @mtl@ monad type classes for which it can satisfy the
-laws, meaning that you don't need to 'lift' 'MonadGpio' operations out
-of these monads manually.
 
 -}
 
@@ -853,6 +851,280 @@ GHC on Linux, see the documentation for the
 how it uses the C FFI, and its implications for multi-threading.
 
 -}
+
+{- $advanced_topics
+
+== @mtl@ compatibility and use with transformer stacks
+
+Most of the examples shown up to this point in the tutorial have run
+directly on top of the 'IO' monad (via 'MonadIO'). However, in the
+event that you want to integrate GPIO computations into more
+complicated monad transformer stacks, @gpio@ has you covered!
+
+Each @gpio@ interpreter is implemented as a monad transformer, and
+each is also an instance of the monad type classes defined in the
+<https://hackage.haskell.org/package/mtl mtl> package, so long as its
+implementation satisfies the laws of that particular @mtl@ type class.
+This makes it easy to integrate @gpio@ interpreters into @mtl@-style
+monad transformer stacks.
+
+Additionally, the 'MonadGpio' type class provides instances of itself
+for all the @mtl@ monad type classes for which it can satisfy the
+laws, meaning that you don't need to 'lift' 'MonadGpio' operations out
+of these monads manually.
+
+Here's an example of using a 'MonadGpio' program with the reader
+monad. (A
+<https://github.com/dhess/gpio/blob/master/examples/GpioReader.hs more sophisticated example>
+of using 'MonadGpio' with a reader transformer
+stack and a real (as opposed to mock) GPIO platform is provided in the
+@gpio@ source distribution.)
+
+First, let's define the reader environment and give our transformer
+stack a type alias:
+
+> data TutorialEnv =
+>   TutorialEnv {_pin :: Pin
+>               ,_initialValue :: PinValue
+>               ,_delay :: Int
+>               ,_iterations :: Int}
+>
+> -- | Our transformer stack:
+> -- * A reader monad.
+> -- * The Linux @sysfs@ GPIO interpreter
+> -- * The (mock) Linux @sysfs@ back-end.
+> -- * 'IO'
+> type TutorialReaderGpioIO a = ReaderT TutorialEnv (SysfsGpioT (SysfsMockT IO)) a
+
+Next, let's define the interpreter for our stack. Up to this point,
+we've used 'runTutorial' as our interpreter, and it has handled all
+the nitty-gritty details of composing the sub-interpreters layers and
+configuring the mock GPIO environment. Now, however, it's time to
+expose those layers and talk about them in detail, as that's where
+most of the complexity comes when using transformer stacks.
+
+> -- | The interpreter for our transformer stack.
+> runTutorialReaderGpioIO :: TutorialReaderGpioIO a -> TutorialEnv -> IO a
+> runTutorialReaderGpioIO program config =
+>   let chip0 :: MockGpioChip
+>       chip0 = MockGpioChip "chip0" 0 (replicate 16 defaultMockPinState)
+>       -- Define a "weirdo" pin, too
+>       chip1 :: MockGpioChip
+>       chip1 = MockGpioChip "chip1" 16 [defaultMockPinState {_direction = In, _userVisibleDirection = False, _value = High, _edge = Nothing}]
+>   in evalSysfsMockT
+>        (runSysfsGpioT $ runReaderT program config)
+>        initialMockWorld
+>        [chip0, chip1]
+
+Don't worry too much about the 'MockGpioChip' definitions or the
+'initialMockWorld' ; those exist only to set up the mock GPIO
+environment so that we can run some examples in this tutorial. In a
+real Linux GPIO environment, the definition for the interpreter would
+be quite a bit simpler, as we wouldn't need to supply this mock
+environment. An analogous transformer stack for a real Linux @sysfs@
+GPIO system would look something like this:
+
+> -- | Our 'IO' transformer stack:
+> -- * A reader monad.
+> -- * The Linux @sysfs@ GPIO interpreter
+> -- * The (real) Linux @sysfs@ back-end.
+> -- * 'IO'
+> type TutorialReaderGpioIO a = ReaderT TutorialEnv (SysfsGpioT (SysfsIOT IO)) a
+>
+> -- | The interpreter for our IO transformer stack.
+> runTutorialReaderGpioIO :: TutorialReaderGpioIO a -> Config -> IO a
+> runTutorialReaderGpioIO program config = runSysfsIOT $ runSysfsGpioT $ runReaderT program config
+
+(The earlier cited
+<https://github.com/dhess/gpio/blob/master/examples/GpioReader.hs example program>
+uses this very stack.)
+
+The part that's the same in both the mock transformer stack and the
+"real" transformer stack is this bit:
+
+> runSysfsGpioT $ runReaderT program config
+
+Here we see 2 layers of the transformer stack: at the core is
+'ReaderT' transformer, which we execute via the 'runReaderT'
+"interpreter". This layer provides us with the ability to use reader
+monad actions such as 'asks' inside our @program@.
+
+The next layer up is the 'SysfsGpioT' transformer, which we execute
+via the 'runSysfsGpioT' interpreter. This layer makes the @gpio@
+cross-platform DSL actions available to our @program@ -- actions such
+as 'samplePin' and 'setPinDirection'.
+
+However, as explained earlier in the tutorial, the 'SysfsGpioT'
+transformer is only one half of the @gpio@ story. The 'runSysfsGpioT'
+interpreter translates GPIO actions such as 'samplePin' to Linux
+@sysfs@ GPIO operations, but it does not provide the /implementation/
+of those @sysfs@ GPIO operations: it depends on yet another layer of
+the transformer stack to provide that functionality.
+
+This is where 'SysfsMockT' and 'evalSysfsMockT' come in (or, in the
+case of a "real" GPIO program that runs on an actual Linux system,
+'System.GPIO.Linux.Sysfs.SyfsIOT' and
+'System.GPIO.Linux.Sysfs.runSysfsIOT'). The 'SysfsMockT' transformer
+maps @sysfs@ GPIO operations in the 'runSysfsGpioT' interpreter onto
+mock @sysfs@ filesystem actions; and the 'runSysfsMockT' interpreter
+provides the in-memory implementation of those mock @sysfs@ filesystem
+actions.
+
+Likewise, as you probably guess from the definition of our "real" GPIO
+transformer stack, the 'System.GPIO.Linux.Sysfs.SyfsIOT' transformer
+maps @sysfs@ GPIO operations in the 'runSysfsGpioT' interpreter onto
+/actual/ @sysfs@ filesystem actions; and the
+'System.GPIO.Linux.Sysfs.runSysfsIOT' interpreter provides the
+implementation of those /actual/ filesystem actions using Haskell's
+standard filesystem actions ('readFile', 'writeFile', etc.)
+
+(If you're curious about this API, see the
+'System.GPIO.Linux.Sysfs.Monad.MonadSysfs' type class. You can even
+use it directly, if you want to implement your own @sysfs@-specific
+GPIO DSL.)
+
+Returning to our mock transformer stack, the 'SysfsMockT' transformer
+is just a @newtype@ wrapper around the
+'Control.Monad.State.Strict.StateT' transformer. The state that the
+'SysfsMockT' transformer provides to its interpreter is the state of
+all mock pins defined by the mock GPIO system, and the state of the
+in-memory mock filesystem (the directory structure, the contents of
+the various files, etc.).
+
+For testing purposes, it's often useful to retrieve the final mock
+state along with the final result of a mock @gpio@ computation, so
+just as 'Control.Monad.State.Strict.StateT' does, the 'SysfsMockT'
+transformer provides three different interpreters. Which interpreter
+you choose depends on whether you want the final mock state of the
+computation, the final result of the computation, or a tuple
+containing the pair of them. For our purposes in this tutorial, we
+only want the final result of the computation, so we use the
+'evalSysfsMockT' interpreter here.
+
+The mock state of the mock @sysfs@ interpreter is completely
+configurable. We won't go into the details in this tutorial, but in a
+nutshell, you provide the mock interpreter a list of mock pins along
+with their initial state; and the initial state of the mock @sysfs@
+GPIO filesystem. The @[chip0, chip1]@ and 'initialMockWorld' values
+passed to the 'evalSysfsMockT' interpreter provide the initial state
+that we'll use in our transformer stack examples. (These parameters
+are not needed for the "real" @sysfs@ interpreter, of course, since
+the actual hardware and the Linux kernel determine the visible GPIO
+state on a real system.)
+
+By composing the 'runSysfsGpioT' and 'evalSysfsMockT' interpreters
+(or, in the case of a real Linux system, the 'runSysfsGpioT' and
+'System.GPIO.Linux.Sysfs.runSysfsIOT' interpreters), we create a
+complete @gpio@ cross-platform DSL interpreter.
+
+The final, outer-most layer of our transformer stack is 'IO'. You may
+be wondering why, as we're using the mock @sysfs@ interpreter here, we
+need the 'IO' monad? As it turns out, we do not! Both the 'SysfsMockT'
+transformer and the 'SysfsGpioT' transformer are pure, and neither
+need be stacked on top of the 'IO' monad to function.
+
+They /do/, however, need to be stacked on top of a monad which is an
+instance of 'MonadThrow'. Additionally, 'SysfsGpioT' requires its
+inner monad to be an instance of 'MonadCatch'. GPIO computations --
+even mock ones -- can throw exceptions, and we need a way to express
+them "out of band." @gpio@ uses the excellent @exceptions@ package,
+which provides the 'MonadThrow' and 'MonadCatch' abstractions and
+makes it possible for the mock @sysfs@ GPIO interpreter to run in a
+pure environment, without 'IO', so long as the inner monad is an
+instance of both 'MonadThrow' and 'MonadCatch'.
+
+In fact, the @exceptions@ package provides the
+'Control.Monad.Catch.Pure.Catch' monad for just such occasions, and
+@gpio@'s mock @sysfs@ implementation provides a convenient type alias
+which uses it, if you want to run mock @gpio@ computations in a pure
+environment without 'IO' and express GPIO errors as 'Left' values
+rather than throwing exceptions in 'IO': see 'SysfsGpioMock' and its
+interpreters for details.
+
+However, in this tutorial, we're only using the mock @sysfs@ GPIO
+interpreter out of necessity, and we prefer to keep the examples as
+close to "real world" behavior as we can. Therefore, we use 'IO' here
+and express errors in GPIO computations as actual thrown exceptions,
+rather than pure 'Left' values.
+
+== A reader monad example
+
+Now that we've defined (and explained to death) an example transformer
+stack, let's put it to use. We define the following trivial program,
+which runs in our transformer stack and makes use of the reader monad
+context to retrieve its configuration:
+
+>>> :{
+let toggleOutput :: (MonadMask m, MonadIO m, MonadGpio h m, MonadReader TutorialEnv m) => m ()
+    toggleOutput =
+      do p <- asks _pin
+         delay <- asks _delay
+         iv <- asks _initialValue
+         it <- asks _iterations
+         withPin p $ \h ->
+           do writePin' h iv
+              forM_ [1..it] $ const $
+                do liftIO $ threadDelay delay
+                   v <- togglePinValue h
+                   liftIO $ putStrLn ("Output: " ++ show v)
+:}
+
+>>> runTutorialReaderGpioIO toggleOutput (TutorialEnv (Pin 4) High 100000 5)
+Output: Low
+Output: High
+Output: Low
+Output: High
+Output: Low
+
+>>> runTutorialReaderGpioIO toggleOutput (TutorialEnv (Pin 16) High 100000 5)
+*** Exception: NoDirectionAttribute (Pin 16)
+
+>>> runTutorialReaderGpioIO toggleOutput (TutorialEnv (Pin 99) High 100000 5)
+*** Exception: InvalidPin (Pin 99)
+
+More important than what this program does, is its type signature. It
+runs in a monad @m@ and returns a void result, but note the following
+about monad @m@:
+
+* It must be an instance of 'MonadMask' because it calls 'withPin'.
+
+* It must be an instance of 'MonadIO' because it calls 'putStrLn'
+and 'threadDelay'.
+
+* It must be an instance of 'MonadGpio' because it uses actions from
+the @gpio@ cross-platform DSL. (By the way, the @h@ parameter to
+'MonadGpio' represents a pin handle, which may be different from
+platform to platform.)
+
+* It must be an instance of 'MonadReader' 'TutorialEnv' because it
+uses 'asks' to extract its configuration from a 'TutorialEnv'.
+
+Our mock transformer stack satisfies all of these requirements, so
+it's capable of running this program. The "real" transformer stack we
+defined earlier is also capable of running this program, and as future
+GPIO platforms are added to @gpio@, any of those interpreters will be
+able to run this program, as well!
+
+-}
+
+data TutorialEnv =
+  TutorialEnv {_pin :: Pin
+              ,_initialValue :: PinValue
+              ,_delay :: Int
+              ,_iterations :: Int}
+
+type TutorialReaderGpioIO a = ReaderT TutorialEnv (SysfsGpioT (SysfsMockT IO)) a
+
+runTutorialReaderGpioIO :: TutorialReaderGpioIO a -> TutorialEnv -> IO a
+runTutorialReaderGpioIO program config =
+  let chip0 :: MockGpioChip
+      chip0 = MockGpioChip "chip0" 0 (replicate 16 defaultMockPinState)
+      chip1 :: MockGpioChip
+      chip1 = MockGpioChip "chip1" 16 [defaultMockPinState {_direction = In, _userVisibleDirection = False, _value = High, _edge = Nothing}]
+  in evalSysfsMockT
+       (runSysfsGpioT $ runReaderT program config)
+       initialMockWorld
+       [chip0, chip1]
 
 {- $copyright
 
