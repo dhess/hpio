@@ -154,12 +154,11 @@ In @gpio@, the 'PinDirection' type represents a pin's direction.
 
 == Pin (signal) value
 
-In digital design, the flavor of logic design used with GPIO pins (as
-opposed to analog design), a pin's /value/ (sometimes called its
-/signal level/) is either /high/ or /low/. When we say that a pin's
-value or signal level is /high/, we mean the general notion of the pin
-being "on" or /active/; and when we say the pin's value or signal
-level /low/, we mean the pin is "off" or /inactive/.
+In digital design, a pin's /value/ (sometimes called its /signal level/)
+is either /high/ or /low/. When we say that a pin's value or
+signal level is /high/, we mean the general notion of the pin being
+"on" or /active/; and when we say the pin's value or signal level
+is /low/, we mean the pin is "off" or /inactive/.
 
 Complicating matters is the concept of /active-low/ logic. Digital
 electronic components are built using either positive (/active-high/)
@@ -173,7 +172,7 @@ easier to think of a signal as being active or inactive, rather than
 worrying about its physical voltage. Therefore, the @gpio@
 cross-platform DSL supports, on a pin-by-pin basis, both types of
 logic: active-high and active-low. When writing your programs, you can
-simply use the values @High@ and @Low@, and then set a per-pin active
+simply use the values 'High' and 'Low', and then set a per-pin active
 level before running your program, depending on whether you're
 interfacing with active-high or active-low logic.
 
@@ -181,7 +180,7 @@ In the @gpio@ documentation, and in this tutorial, whenever you see a
 reference to a "pin value" or "signal level," unless otherwise noted,
 we mean the abstract notion of the pin being "on" or "off,"
 independent of the voltage level seen on the physical pin. We refer to
-this notion as the pin's (or signal's) /logical value/, as opposed to
+this notion as the pin's /logical value/, as opposed to
 its /physical value/.
 
 In @gpio@, the 'PinValue' type represents a pin's value.
@@ -200,9 +199,9 @@ from low to high (its /rising edge/), or from high to low (its
 
 The @gpio@ cross-platform DSL supports this functionality, allowing
 you to block the current Haskell thread on a GPIO input pin until its
-rising edge, falling edge, or either edge (/level-triggered/). We call
-this the pin's /read trigger/, but it may be helpful to think of it as
-an interrupt.
+rising edge, falling edge, or either edge (/level-triggered/), is
+visible on the pin. We call this the pin's /read trigger/, but it may
+be helpful to think of it as an interrupt mode.
 
 If you want to mask interrupts for some period of time without needing
 to stop and re-start the blocking thread, you can also disable the
@@ -237,10 +236,11 @@ program, will execute the program on its GPIO platform.
 {- $mock_interpreter
 
 Testing GPIO programs is inconvenient. The target system is often
-under-powered compared to our development environment, and is probably
-a completely different architecture; cross-compiling Haskell programs
-is, circa 2016, still somewhat problematic. It's also not uncommon for
-our development environments not to have any GPIO capabilities at all.
+under-powered compared to our development environment, and is possibly
+a completely different architecture (and cross-compiling Haskell
+programs is, circa 2016, still somewhat problematic). It's also not
+uncommon for our development environments not to have any GPIO
+capabilities at all.
 
 For your convenience, @gpio@ provides a reasonably complete, entirely
 software-based "mock" GPIO implementation that can run on any system
