@@ -51,7 +51,9 @@ import System.GPIO.Linux.Sysfs.Mock
        (MockGpioChip(..), MockPinState(..), SysfsMockT, SysfsGpioMock, SysfsGpioMockIO,
         defaultMockPinState, initialMockWorld, evalSysfsGpioMockIO, evalSysfsMockT)
 import System.GPIO.Linux.Sysfs.Types (SysfsException(..))
-import System.GPIO.Types (Pin(..), PinDirection(..), PinValue(..), PinInterruptMode(..))
+import System.GPIO.Types
+       (Pin(..), PinDirection(..), PinValue(..), PinInterruptMode(..),
+        SomeGpioException)
 
 -- $setup
 -- >>> :set -XFlexibleContexts
@@ -255,82 +257,20 @@ any Haskell-capable system. In a few cases, we'll discuss
 functionality that the mock implementation does not handle. These
 cases will be called out.
 
-Let's start by briefly describing how this mock interpreter is
-implemented. You don't need to know this in order to use @gpio@, and
-you quite possibly will never use the mock interpreter outside of this
-tutorial anyway, but understanding how it's implemented helps explain
-why using the Linux @sysfs@ GPIO interpreter is a bit complicated.
+To use the mock interpreter, you must supply its mock GPIO state, and
+this is a bit complicated, not to mention irrelevant to understanding
+how to use the @gpio@ cross-platform DSL. (Using an interpreter for a
+real GPIO platform is much simpler.) To avoid getting bogged down in
+the details, we'll supply a wrapper, named 'runTutorial', which sets
+up a mock GPIO environment with 17 pins and runs a @gpio@ program in
+that environment. The first 16 pins, numbered 0-15, support all the
+functionality that the @gpio@ cross-platform DSL does (save
+interrupts, see note above). Pin 17 is a special-case pin that we'll
+use to demonstrate failure modes and other quirks.
 
-In Linux @sysfs@ GPIO, userspace GPIO operations are performed on
-virtual files in the @sysfs@ filesystem. See the
-<https://www.kernel.org/doc/Documentation/gpio/sysfs.txt Linux kernel documentation>
-for details, but in a nutshell:
-
-* Pins are /exported/ (akin to opening a file) by writing their pin
-number to the @\/sys\/class\/gpio\/export@ file.
-
-* Once a pin is exported, the Linux kernel creates a subdirectory for
-that pin number (e.g., @\/sys\/class\/gpio\/gpio7@), along with several
-pseudo-files, called /attributes/, for controlling the pin's
-direction, reading and writing its pin value, etc.
-
-* Pins are /unexported/ (akin to closing a file) by writing their pin
-number to the @\/sys\/class\/gpio\/unexport@ file. When the pin is
-unexported, the kernel removes the pin's @sysfs@ subdirectory.
-
-The @gpio@ interpreter for the Linux @sysfs@ GPIO system translates
-actions in the cross-platform DSL to @sysfs@ filesystem operations.
-The most straightforward way to implement this interpreter is to use
-filesystem actions such as 'readFile' and 'writeFile' directly.
-However, by adding a level of abstraction at the filesystem layer, we
-can substitute a @sysfs@ filesystem emulator for the real thing, and
-the interpreter's none the wiser. Because we're only implementing the
-subset of filesystem functionality required by the Linux @sysfs@ GPIO
-interpreter (and certainly not an entire real filesystem!), there are
-only a handful of actions we need to emulate.
-
-So that is the approach used by @gpio@'s @sysfs@ interprefer. It
-breaks the Linux @sysfs@ GPIO interpreter into two pieces: a
-high-level piece which maps cross-platform GPIO operations to abstract
-filesystem actions, and a low-level piece which implements those
-filesystem actions. It then provides two low-level implementations:
-one which maps the abstract filesystem actions onto real filesystem
-operations, and one which implements a subset of the @sysfs@
-filesystem as an in-memory "filesystem" for mocking the Linux kernel's
-@sysfs@ GPIO behavior.
-
-To use this implementation, you don't need to worry about these
-details; you just need to know how to compose the two interpreters. If
-you want to run real GPIO programs on a real Linux GPIO-capable
-system, the composition is relatively straightforward. Assuming that
-@action@ is your program:
-
-> runSysfsIOT $ runSysfsGpioT action
-
-Here the 'System.GPIO.Linux.Sysfs.runSysfsGpioT' interpreter
-translates GPIO actions in @action@ to abstract @sysfs@ filesystem
-operations, and the 'System.GPIO.Linux.Sysfs.runSysfsIOT' interpreter
-translates abstract @sysfs@ filesystem operations to their native
-filesystem equivalents.
-
-(Note that if @action@ runs directly in 'IO' and not in a transformer
-stack, then you can use the 'System.GPIO.Linux.Sysfs.runSysfsGpioIO'
-action, which conveniently composes these two interpreters for you.)
-
-On the other hand, if you want to run GPIO programs in a mock Linux
-@sysfs@ GPIO environment, you need to do a bit more work, as you need
-to provide the description of the mock environment itself: which pins
-are available, how they're numbered, their initial state, etc. For
-this purpose, @gpio@ provides the "System.GPIO.Linux.Sysfs.Mock"
-module, which defines a number of mock types. See the module
-documentation for details on how to configure a mock GPIO system, but
-for the purposes of this tutorial, we provide a 'runTutorial' wrapper
-which composes the two @sysfs@ GPIO interpreters and takes care of all
-of the mock setup for you. It defines a mock GPIO system with 17 pins,
-numbered 0 through 16. Pins 0-15 are initially configured in their
-default mock state (see
-'System.GPIO.Linux.Sysfs.Mock.defaultMockPinState'). Pin 16 is special
-so that we can demonstrate some exceptional cases.
+(Don't worry about the 'SysfsGpioMockIO' type for now. We'll explain
+it later. For now, suffice it to say that it's the type of our @gpio@
+programs when run in this particular mock interpreter.)
 
 __Note__: in our examples, each time we use 'runTutorial' we are
 creating a new mock environment from scratch, so any changes made to
@@ -338,7 +278,7 @@ the mock environment are not persistent from one example to the next.
 
 -}
 
--- | Run a @gpio@ program on a mock system with 16 GPIO pins.
+-- | Run a @gpio@ program on a mock system with 17 GPIO pins.
 runTutorial :: SysfsGpioMockIO a -> IO a
 runTutorial program =
   let chip0 :: MockGpioChip
@@ -397,6 +337,22 @@ Opened pin 5
 
 Using 'withPin' is good hygiene, so we'll use it throughout this
 tutorial.
+
+You can, of course, nest uses of 'withPin':
+
+>>> :{
+runTutorial $
+  do withPin (Pin 5) $ \h1 ->
+      do liftIO $ putStrLn "Opened pin 5"
+         withPin (Pin 6) $ \h2 ->
+           liftIO $ putStrLn "Opened pin 6"
+         liftIO $ putStrLn "Closed pin 6"
+     liftIO $ putStrLn "Closed pin 5"
+:}
+Opened pin 5
+Opened pin 6
+Closed pin 6
+Closed pin 5
 
 == Pin configuration
 
@@ -469,9 +425,11 @@ runTutorial $
 
 The 'NoDirectionAttribute' exception value refers to the Linux @sysfs@
 GPIO per-pin @direction@ attribute, which is used to configure the
-pin's direction. Exception types in @gpio@ are platform-specific and
-vary based on which particular interpreter you're using, but all of
-them are instances of the 'SomeGpioException' type class.
+pin's direction. Exception types in @gpio@ are platform-specific -- in
+this case, specific to Linux @sysfs@ GPIO, as we're using the mock
+@sysfs@ GPIO interpreter -- and vary based on which particular
+interpreter you're using, but all @gpio@ exception types are instances
+of the 'SomeGpioException' type class.
 
 Using 'togglePinDirection' on a fixed-direction pin is also an error,
 but as the whole point of using 'togglePinDirection' is to avoid
@@ -607,8 +565,20 @@ When a pin is configured for output, we can set its value using
   :}
   High
 
-We can also toggle its value using 'togglePinValue', which returns the
-new value:
+It is an error to attempt to set the value of a pin that is configured
+for input:
+
+ >>> :{
+ runTutorial $
+   withPin (Pin 9) $ \h ->
+     do setPinDirection h In
+        writePin h High
+        readPin h
+ :}
+ *** Exception: PermissionDenied (Pin 9)
+
+We can also toggle an output pin's value using 'togglePinValue', which
+returns the new value:
 
   >>> :{
   runTutorial $
@@ -696,12 +666,12 @@ via the 'writePin'' action:
   :}
   (Just Out,Low)
 
-(While all currently-supported GPIO platforms support this operation,
+While all currently-supported GPIO platforms support this operation,
 it is possible that some future platforms will not. The interpreters
 for those implementations will simply implement 'writePin'' as two
 separate steps ('setPinDirection' followed by 'writePin'), which will
 produce the same final state, though it will not guarantee glitch-free
-output, of course.)
+output, of course.
 
 == Waiting for interrupts
 
@@ -714,14 +684,14 @@ Given a handle to an input pin, 'pollPin' will block the current
 thread on that pin's value until an event corresponding to the the
 pin's interrupt mode event occurs, at which point 'pollPin' unblocks
 and returns the value that triggered the event. 'pollPinTimeout' is
-like 'pollPin', except that it also takes a timeout argument. If the
-timeout expires before the event occurs, 'pollPinTimeout' returns
-'Nothing'.
+like 'pollPin', except that it also takes a timeout argument and
+returns the pin's value wrapped in a 'Just' value. If the timeout
+expires before the event occurs, 'pollPinTimeout' returns 'Nothing'.
 
 The current implementation of the mock @sysfs@ GPIO interpreter does
-not support interrupts, so we do not provide a runnable example
-here. However, here is an example from an actual Linux system which
-demonstrates the use of 'pollPinTimeout' (a
+not support interrupts, so we do not provide a runnable example in
+this tutorial. However, here is an example from an actual Linux system
+which demonstrates the use of 'pollPinTimeout' (a
 <https://github.com/dhess/gpio/blob/master/examples/Gpio.hs similar program>
 is included in @gpio@'s source distribution):
 
@@ -739,15 +709,15 @@ is included in @gpio@'s source distribution):
 > -- | Given a pin, an interrupt mode, and a timeout (in microseconds),
 > -- configure the pin for input, then repeatedly wait for either the
 > -- given event, or a timeout.
-> pollPin :: (MonadMask m, MonadIO m, MonadGpio h m) => Pin -> PinInterruptMode -> Int -> m ()
-> pollPin p mode to =
+> pollInput :: (MonadMask m, MonadIO m, MonadGpio h m) => Pin -> PinInterruptMode -> Int -> m ()
+> pollInput p mode to =
 >   withPin p $ \h ->
 >     do setPinDirection h In
 >        setPinInterruptMode h mode
 >        forever $
 >          do result <- pollPinTimeout h to
 >             case result of
->               Nothing -> output ("pollPin timed out after " ++ show to ++ " microseconds")
+>               Nothing -> output ("pollInput timed out after " ++ show to ++ " microseconds")
 >               Just v -> output ("Input: " ++ show v)
 >
 > -- | Given a pin and a 'delay' (in microseconds), configure the pin for output and
@@ -774,7 +744,7 @@ read timeout and a 1/4-second delay between output value toggles:
 > main =
 >   void $
 >     concurrently
->       (void $ runSysfsGpioIO $ pollPin (Pin 47) RisingEdge 1000000)
+>       (void $ runSysfsGpioIO $ pollInput (Pin 47) RisingEdge 1000000)
 >       (runSysfsGpioIO $ driveOutput (Pin 48) 250000)
 
 > $ ./interrupt
@@ -792,47 +762,47 @@ read timeout and a 1/4-second delay between output value toggles:
 > ^C $
 
 Note that the @Input@ lines only appear when the output signal goes
-from 'Low' to 'High', as @pollPin@ is waiting for 'RisingEdge' events
+from 'Low' to 'High', as @pollInput@ is waiting for 'RisingEdge' events
 on the input pin.
 
 If we now flip the read timeout and toggle delay values, we can see
-that @pollPin@ times out every 1/4-second until the event is
+that @pollInput@ times out every 1/4-second until the event is
 triggered again:
 
 > -- interrupt.hs
 > main =
 >   void $
 >     concurrently
->       (void $ runSysfsGpioIO $ pollPin (Pin 47) RisingEdge 250000)
+>       (void $ runSysfsGpioIO $ pollInput (Pin 47) RisingEdge 250000)
 >       (runSysfsGpioIO $ driveOutput (Pin 48) 1000000)
 
 > $ ./interrupt
-> pollPin timed out after 250000 microseconds
-> pollPin timed out after 250000 microseconds
-> pollPin timed out after 250000 microseconds
+> pollInput timed out after 250000 microseconds
+> pollInput timed out after 250000 microseconds
+> pollInput timed out after 250000 microseconds
 > Output: High
 > Input: High
-> pollPin timed out after 250000 microseconds
-> pollPin timed out after 250000 microseconds
-> pollPin timed out after 250000 microseconds
+> pollInput timed out after 250000 microseconds
+> pollInput timed out after 250000 microseconds
+> pollInput timed out after 250000 microseconds
 > Output: Low
-> pollPin timed out after 250000 microseconds
-> pollPin timed out after 250000 microseconds
-> pollPin timed out after 250000 microseconds
-> pollPin timed out after 250000 microseconds
+> pollInput timed out after 250000 microseconds
+> pollInput timed out after 250000 microseconds
+> pollInput timed out after 250000 microseconds
+> pollInput timed out after 250000 microseconds
 > Output: High
 > Input: High
-> pollPin timed out after 250000 microseconds
-> pollPin timed out after 250000 microseconds
-> pollPin timed out after 250000 microseconds
+> pollInput timed out after 250000 microseconds
+> pollInput timed out after 250000 microseconds
+> pollInput timed out after 250000 microseconds
 > Output: Low
-> pollPin timed out after 250000 microseconds
-> pollPin timed out after 250000 microseconds
-> pollPin timed out after 250000 microseconds
-> pollPin timed out after 250000 microseconds
+> pollInput timed out after 250000 microseconds
+> pollInput timed out after 250000 microseconds
+> pollInput timed out after 250000 microseconds
+> pollInput timed out after 250000 microseconds
 > Output: High
 > Input: High
-> pollPin timed out after 250000 microseconds
+> pollInput timed out after 250000 microseconds
 > ^C $
 
 Because they block the current thread, in order to use 'pollPin' and
@@ -848,6 +818,71 @@ how it uses the C FFI, and its implications for multi-threading.
 -}
 
 {- $advanced_topics
+
+== The Linux @sysfs@ GPIO interpreter
+
+Using the Linux @sysfs@ GPIO interpreter is complicated by the fact
+that it supports both actual Linux systems, and the mock environment
+that we've used throughout most of this tutorial.
+
+Strictly speaking, you don't need to understand how it's implemented,
+but understanding helps motivate why using seems a bit convoluted.
+
+In Linux @sysfs@ GPIO, userspace GPIO operations are performed on
+virtual files in the @sysfs@ filesystem. See the
+<https://www.kernel.org/doc/Documentation/gpio/sysfs.txt Linux kernel documentation>
+for details, but in a nutshell:
+
+* Pins are /exported/ (akin to opening a file) by writing their pin
+number to the @\/sys\/class\/gpio\/export@ file.
+
+* Once a pin is exported, the Linux kernel creates a subdirectory for
+that pin number (e.g., @\/sys\/class\/gpio\/gpio7@), along with several
+pseudo-files, called /attributes/, for controlling the pin's
+direction, reading and writing its pin value, etc.
+
+* Pins are /unexported/ (akin to closing a file) by writing their pin
+number to the @\/sys\/class\/gpio\/unexport@ file. When the pin is
+unexported, the kernel removes the pin's @sysfs@ subdirectory.
+
+The @gpio@ interpreter for the Linux @sysfs@ GPIO system translates
+actions in the cross-platform DSL to @sysfs@ filesystem operations.
+The most straightforward way to implement this interpreter is to use
+filesystem actions such as 'readFile' and 'writeFile' directly.
+However, by adding a level of abstraction at the filesystem layer, we
+can substitute a @sysfs@ filesystem emulator for the real thing, and
+the interpreter's none the wiser. Because we're only implementing the
+subset of filesystem functionality required by the Linux @sysfs@ GPIO
+interpreter (and certainly not an entire real filesystem!), there are
+only a handful of actions we need to emulate.
+
+So that is the approach used by @gpio@'s @sysfs@ interprefer. It
+breaks the Linux @sysfs@ GPIO interpreter into two pieces: a
+high-level piece which maps cross-platform GPIO operations to abstract
+filesystem actions, and a low-level piece which implements those
+filesystem actions. It then provides two low-level implementations:
+one which maps the abstract filesystem actions onto real filesystem
+operations, and one which implements a subset of the @sysfs@
+filesystem as an in-memory "filesystem" for mocking the Linux kernel's
+@sysfs@ GPIO behavior.
+
+To use this implementation, you don't need to worry about these
+details; you just need to know how to compose the two interpreters. If
+you want to run real GPIO programs on a real Linux GPIO-capable
+system, the composition is relatively straightforward. Assuming that
+@program@ is your program:
+
+> runSysfsIOT $ runSysfsGpioT program
+
+Here the 'System.GPIO.Linux.Sysfs.runSysfsGpioT' interpreter
+translates GPIO actions in @program@ to abstract @sysfs@ filesystem
+operations, and the 'System.GPIO.Linux.Sysfs.runSysfsIOT' interpreter
+translates abstract @sysfs@ filesystem operations to their native
+filesystem equivalents.
+
+(Note that if @program@ runs directly in 'IO' and not in a transformer
+stack, then you can use the 'System.GPIO.Linux.Sysfs.runSysfsGpioIO'
+action, which conveniently composes these two interpreters for you.)
 
 == @mtl@ compatibility and use with transformer stacks
 
@@ -869,7 +904,7 @@ laws, meaning that you don't need to 'lift' 'MonadGpio' operations out
 of these monads manually.
 
 Here's an example of using a 'MonadGpio' program with the reader
-monad. (A
+monad and the mock @sysfs@ GPIO interpreter. (A
 <https://github.com/dhess/gpio/blob/master/examples/GpioReader.hs more sophisticated example>
 of using 'MonadGpio' with a reader transformer
 stack and a real (as opposed to mock) GPIO platform is provided in the
@@ -893,10 +928,11 @@ stack a type alias:
 
 Next, let's define the interpreter for our stack. Up to this point,
 we've used 'runTutorial' as our interpreter, and it has handled all
-the nitty-gritty details of composing the sub-interpreters layers and
-configuring the mock GPIO environment. Now, however, it's time to
-expose those layers and talk about them in detail, as that's where
-most of the complexity comes when using transformer stacks.
+the nitty-gritty details of composing the @sysfs@ GPIO
+sub-interpreters and configuring the mock GPIO environment. Now,
+however, it's time to expose those layers and talk about them in
+detail, as that's where most of the complexity comes when using
+transformer stacks.
 
 > -- | The interpreter for our transformer stack.
 > runTutorialReaderGpioIO :: TutorialReaderGpioIO a -> TutorialEnv -> IO a
@@ -932,16 +968,16 @@ GPIO system would look something like this:
 
 (The earlier cited
 <https://github.com/dhess/gpio/blob/master/examples/GpioReader.hs example program>
-uses this very stack.)
+uses this very stack, albeit with a different reader environment.)
 
 The part that's the same in both the mock transformer stack and the
 "real" transformer stack is this bit:
 
 > runSysfsGpioT $ runReaderT program config
 
-Here we see 2 layers of the transformer stack: at the core is
+Here we see 2 layers of the transformer stack: at the core is the
 'ReaderT' transformer, which we execute via the 'runReaderT'
-"interpreter". This layer provides us with the ability to use reader
+"interpreter." This layer provides us with the ability to use reader
 monad actions such as 'asks' inside our @program@.
 
 The next layer up is the 'SysfsGpioT' transformer, which we execute
@@ -950,11 +986,11 @@ cross-platform DSL actions available to our @program@ -- actions such
 as 'readPin' and 'setPinDirection'.
 
 However, as explained earlier in the tutorial, the 'SysfsGpioT'
-transformer is only one half of the @gpio@ story. The 'runSysfsGpioT'
-interpreter translates GPIO actions such as 'readPin' to Linux
-@sysfs@ GPIO operations, but it does not provide the /implementation/
-of those @sysfs@ GPIO operations: it depends on yet another layer of
-the transformer stack to provide that functionality.
+transformer is only one half of the @sysfs@ GPIO story. The
+'runSysfsGpioT' interpreter translates GPIO actions such as 'readPin'
+to Linux @sysfs@ GPIO operations, but it does not provide the
+/implementation/ of those @sysfs@ GPIO operations: it depends on yet
+another layer of the transformer stack to provide that functionality.
 
 This is where 'SysfsMockT' and 'evalSysfsMockT' come in (or, in the
 case of a "real" GPIO program that runs on an actual Linux system,
@@ -965,18 +1001,17 @@ mock @sysfs@ filesystem actions; and the 'runSysfsMockT' interpreter
 provides the in-memory implementation of those mock @sysfs@ filesystem
 actions.
 
-Likewise, as you probably guess from the definition of our "real" GPIO
-transformer stack, the 'System.GPIO.Linux.Sysfs.SyfsIOT' transformer
-maps @sysfs@ GPIO operations in the 'runSysfsGpioT' interpreter onto
-/actual/ @sysfs@ filesystem actions; and the
-'System.GPIO.Linux.Sysfs.runSysfsIOT' interpreter provides the
-implementation of those /actual/ filesystem actions using Haskell's
+Likewise, as you can probably guess from the definition of our "real"
+GPIO transformer stack, the 'System.GPIO.Linux.Sysfs.SyfsIOT'
+transformer and its 'System.GPIO.Linux.Sysfs.runSysfsIOT' interpreter
+map abstract @sysfs@ GPIO operations in the 'runSysfsGpioT'
+interpreter onto /actual/ @sysfs@ filesystem actions using Haskell's
 standard filesystem actions ('readFile', 'writeFile', etc.)
 
-(If you're curious about this API, see the
-'System.GPIO.Linux.Sysfs.Monad.MonadSysfs' type class. You can even
-use it directly, if you want to implement your own @sysfs@-specific
-GPIO DSL.)
+(If you're curious about the interface between the two @sysfs@
+interpreter layers, see the 'System.GPIO.Linux.Sysfs.Monad.MonadSysfs'
+type class. You can even use it directly, if you want to implement
+your own @sysfs@-specific GPIO DSL.)
 
 Returning to our mock transformer stack, the 'SysfsMockT' transformer
 is just a @newtype@ wrapper around the
@@ -1013,16 +1048,18 @@ By composing the 'runSysfsGpioT' and 'evalSysfsMockT' interpreters
 complete @gpio@ cross-platform DSL interpreter.
 
 The final, outer-most layer of our transformer stack is 'IO'. You may
-be wondering why, as we're using the mock @sysfs@ interpreter here, we
-need the 'IO' monad? As it turns out, we do not! Both the 'SysfsMockT'
-transformer and the 'SysfsGpioT' transformer are pure, and neither
-need be stacked on top of the 'IO' monad to function.
+be wondering why, as we're using the mock @sysfs@ interpreter here
+(which does not perform any 'IO' actions), we need the 'IO' monad. As
+it turns out, we do not! Both the 'SysfsMockT' transformer and the
+'SysfsGpioT' transformer are pure, and neither requires the 'IO' monad
+in order to function.
 
 They /do/, however, need to be stacked on top of a monad which is an
 instance of 'MonadThrow'. Additionally, 'SysfsGpioT' requires its
 inner monad to be an instance of 'MonadCatch'. GPIO computations --
 even mock ones -- can throw exceptions, and we need a way to express
-them "out of band." @gpio@ uses the excellent @exceptions@ package,
+them "out of band." @gpio@ uses the excellent
+<https://hackage.haskell.org/package/exceptions exceptions> package,
 which provides the 'MonadThrow' and 'MonadCatch' abstractions and
 makes it possible for the mock @sysfs@ GPIO interpreter to run in a
 pure environment, without 'IO', so long as the inner monad is an
@@ -1031,9 +1068,9 @@ instance of both 'MonadThrow' and 'MonadCatch'.
 In fact, the @exceptions@ package provides the
 'Control.Monad.Catch.Pure.Catch' monad for just such occasions, and
 @gpio@'s mock @sysfs@ implementation provides a convenient type alias
-which uses it, if you want to run mock @gpio@ computations in a pure
-environment without 'IO' and express GPIO errors as 'Left' values
-rather than throwing exceptions in 'IO': see 'SysfsGpioMock' and its
+for an interpreter which runs @gpio@ computations in a pure mock GPIO
+environment. That interpreter expresses GPIO errors as 'Left' values
+rather than throwing exceptions in 'IO'. See 'SysfsGpioMock' and its
 interpreters for details.
 
 However, in this tutorial, we're only using the mock @sysfs@ GPIO
