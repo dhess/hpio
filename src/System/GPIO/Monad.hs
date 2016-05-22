@@ -48,7 +48,7 @@ import qualified Control.Monad.Trans.State.Strict as StrictState (StateT)
 import qualified Control.Monad.Trans.Writer.Lazy as LazyWriter (WriterT)
 import qualified Control.Monad.Trans.Writer.Strict as StrictWriter (WriterT)
 
-import System.GPIO.Types (Pin, PinDirection, PinReadTrigger, PinValue)
+import System.GPIO.Types (Pin, PinDirection, PinInterruptMode, PinValue)
 
 -- | A monad type class for GPIO computations. The type class
 -- specifies a DSL for writing portable GPIO programs, and instances
@@ -186,43 +186,44 @@ class Monad m => MonadGpio h m | m -> h where
   -- 'Nothing'. Otherwise, it returns the new direction.
   togglePinDirection :: h -> m (Maybe PinDirection)
 
-  -- | Sample the pin's signal level, where "sample" means, "read the
-  -- value without blocking."
-  samplePin :: h -> m PinValue
-
-  -- | Read the pin's signal level, potentially blocking the current
-  -- thread until an event corresponding to the pin's 'PinReadTrigger'
-  -- occurs.
+  -- | Read the pin's value.
   --
-  -- If the pin does not support blocking reads, then this action's
-  -- behavior is plaform-dependent. To determine whether the pin
-  -- supports blocking reads, see 'getPinReadTrigger'.
-  --
-  -- Note: due to its interaction with the threading system, this
-  -- action may behave differently across different implementations of
-  -- Haskell. It has only been tested with GHC. (On GHC, you should
-  -- compile any program that uses this action with the @-threaded@
-  -- option.)
+  -- Note that this action never blocks.
   readPin :: h -> m PinValue
 
-  -- | Same as 'readPin', except with a timeout, specified in
-  -- microseconds. If no event occurs before the timeout expires, this
-  -- action returns 'Nothing'; otherwise, it returns the pin's
-  -- signal level wrapped in a 'Just'.
+  -- | Block the current thread until an event occurs on the pin which
+  -- corresponds to the pin's current interrupt mode. Upon detection
+  -- of the event, return the pin's value.
   --
-  -- If the timeout value is negative, this action behaves just like
-  -- 'readPin'.
-  --
-  -- If the pin does not support blocking reads, then this action's
-  -- behavior is platform-dependent. To determine whether the pin
-  -- supports blocking reads, see 'getPinReadTrigger'.
+  -- If the pin does not support interrupts, then this action's
+  -- behavior is plaform-dependent. To determine whether the pin
+  -- supports interrupts, see 'getPinInterruptMode'.
   --
   -- Note: due to its interaction with the threading system, this
   -- action may behave differently across different implementations of
   -- Haskell. It has only been tested with GHC. (On GHC, you should
   -- compile any program that uses this action with the @-threaded@
   -- option.)
-  readPinTimeout :: h -> Int -> m (Maybe PinValue)
+  pollPin :: h -> m PinValue
+
+  -- | Same as 'pollPin', except with a timeout, specified in
+  -- microseconds. If no event occurs before the timeout expires, this
+  -- action returns 'Nothing'; otherwise, it returns the pin's signal
+  -- level wrapped in a 'Just'.
+  --
+  -- If the timeout value is negative, this action behaves just like
+  -- 'pollPin'.
+  --
+  -- If the pin does not support interrupts, then this action's
+  -- behavior is platform-dependent. To determine whether the pin
+  -- supports interrupts, see 'getPinInterruptMode'.
+  --
+  -- Note: due to its interaction with the threading system, this
+  -- action may behave differently across different implementations of
+  -- Haskell. It has only been tested with GHC. (On GHC, you should
+  -- compile any program that uses this action with the @-threaded@
+  -- option.)
+  pollPinTimeout :: h -> Int -> m (Maybe PinValue)
 
   -- | Set the pin's signal level. It is an error to call this
   -- action when the pin is not configured for output.
@@ -256,20 +257,7 @@ class Monad m => MonadGpio h m | m -> h where
   -- Returns the pin's new signal level.
   togglePinValue :: h -> m PinValue
 
-  -- | Get the pin's 'PinReadTrigger' mode.
-  --
-  -- Think of a 'PinReadTrigger' as an interrupt mode. Combined with
-  -- the 'readPin' and 'readPinTimeout' actions, you can block the
-  -- current thread on an input pin until a particular event occurs: a
-  -- leading signal edge ('RisingEdge'), a trailing signal edge
-  -- ('FallingEdge'), or any change of level ('Level').
-  --
-  -- You can also disable interrupts on the pin so that reads will
-  -- block indefinitely (or until they time out, in the case of
-  -- 'readPinTimeout') until the trigger is set to a different value
-  -- again. This functionality is useful when, for example, one thread
-  -- is dedicated to servicing interrupts on a pin, and another thread
-  -- wants to mask interrupts on that pin for some period of time.
+  -- | Get the pin's interrupt mode.
   --
   -- Some pins may not support edge- or level-triggered blocking
   -- reads. In such cases, this action returns 'Nothing'.
@@ -277,27 +265,32 @@ class Monad m => MonadGpio h m | m -> h where
   -- (Note that 'RisingEdge' and 'FallingEdge' are relative to the
   -- pin's active level; i.e., they refer to the pin's /logical/
   -- signal edges, not its physical signal edges.)
-  getPinReadTrigger :: h -> m (Maybe PinReadTrigger)
+  getPinInterruptMode :: h -> m (Maybe PinInterruptMode)
 
-  -- | Set the pin's 'PinReadTrigger' mode.
+  -- | Set the pin's interrupt mode (only when the pin is configured
+  -- for input).
   --
-  -- Some pins and/or pin configurations (e.g., a pin configured for
-  -- output) may not support edge- or level-triggered blocking reads.
-  -- In such cases, it is an error to call this action. To determine
-  -- whether an pin supports blocking reads in input mode, call
-  -- 'getPinReadTrigger' on the pin.
+  -- A pin's interrupt mode determines the behavior of the 'pollPin'
+  -- and 'pollPinTimeout' actions. Those actions will block the
+  -- current thread on an input pin until a particular event occurs on
+  -- that pin's signal waveform: a low-to-high transition
+  -- ('RisingEdge'), a high-to-low transition ('FallingEdge'), or any
+  -- change of level ('Level').
   --
-  -- In general, there is no portable way to determine whether a pin
-  -- in output mode supports blocking reads. (With Linux @sysfs@ GPIO,
-  -- at least, this operation will always fail when the pin is
-  -- configured for output.) If you want to perform a blocking read on
-  -- a pin in output mode for some reason, you can attempt to set its
-  -- read trigger using this action, but be prepared for it to fail.
-  -- Probably the safest and most portable way to achieve this effect
-  -- is to connect the output pin to a spare high-impedance input pin,
-  -- so that the input pin's signal level will track the output pin's
-  -- signal level; and then perform blocking reads on that input pin.
-  setPinReadTrigger :: h -> PinReadTrigger -> m ()
+  -- You can also disable interrupts on the pin so that 'pollPin' will
+  -- block the current thread indefinitely (or until a timer expires,
+  -- in the case of 'pollPinTimeout'). This functionality is useful
+  -- when, for example, one thread is dedicated to servicing
+  -- interrupts on a pin, and another thread wants to mask interrupts
+  -- on that pin for some period of time.
+  --
+  -- Some pins (or even some GPIO platforms) may not support
+  -- interrupts. In such cases, it is an error to call this action. To
+  -- determine whether an pin supports interrupts, call
+  -- 'getPinInterruptMode' on the pin.
+  --
+  -- It is an error to use this action on a pin configured for output.
+  setPinInterruptMode :: h -> PinInterruptMode -> m ()
 
   -- | Get the pin's active level: 'Low' means the pin is configured
   -- for active-low logic, and 'High' means the pin is configured as
@@ -317,14 +310,14 @@ instance (MonadGpio h m) => MonadGpio h (IdentityT m) where
   getPinDirection = lift . getPinDirection
   setPinDirection h dir = lift $ setPinDirection h dir
   togglePinDirection = lift . togglePinDirection
-  samplePin = lift . samplePin
-  readPin = lift . samplePin
-  readPinTimeout h to = lift $ readPinTimeout h to
+  readPin = lift . readPin
+  pollPin = lift . readPin
+  pollPinTimeout h to = lift $ pollPinTimeout h to
   writePin h v = lift $ writePin h v
   writePin' h v = lift $ writePin' h v
   togglePinValue = lift . togglePinValue
-  getPinReadTrigger = lift . getPinReadTrigger
-  setPinReadTrigger h trigger = lift $ setPinReadTrigger h trigger
+  getPinInterruptMode = lift . getPinInterruptMode
+  setPinInterruptMode h mode = lift $ setPinInterruptMode h mode
   getPinActiveLevel = lift . getPinActiveLevel
   setPinActiveLevel h v = lift $ setPinActiveLevel h v
   togglePinActiveLevel = lift . togglePinActiveLevel
@@ -336,14 +329,14 @@ instance (MonadGpio h m) => MonadGpio h (ContT r m) where
   getPinDirection = lift . getPinDirection
   setPinDirection h dir = lift $ setPinDirection h dir
   togglePinDirection = lift . togglePinDirection
-  samplePin = lift . samplePin
-  readPin = lift . samplePin
-  readPinTimeout h to = lift $ readPinTimeout h to
+  readPin = lift . readPin
+  pollPin = lift . readPin
+  pollPinTimeout h to = lift $ pollPinTimeout h to
   writePin h v = lift $ writePin h v
   writePin' h v = lift $ writePin' h v
   togglePinValue = lift . togglePinValue
-  getPinReadTrigger = lift . getPinReadTrigger
-  setPinReadTrigger h trigger = lift $ setPinReadTrigger h trigger
+  getPinInterruptMode = lift . getPinInterruptMode
+  setPinInterruptMode h mode = lift $ setPinInterruptMode h mode
   getPinActiveLevel = lift . getPinActiveLevel
   setPinActiveLevel h v = lift $ setPinActiveLevel h v
   togglePinActiveLevel = lift . togglePinActiveLevel
@@ -355,14 +348,14 @@ instance (MonadGpio h m) => MonadGpio h (CatchT m) where
   getPinDirection = lift . getPinDirection
   setPinDirection h dir = lift $ setPinDirection h dir
   togglePinDirection = lift . togglePinDirection
-  samplePin = lift . samplePin
-  readPin = lift . samplePin
-  readPinTimeout h to = lift $ readPinTimeout h to
+  readPin = lift . readPin
+  pollPin = lift . readPin
+  pollPinTimeout h to = lift $ pollPinTimeout h to
   writePin h v = lift $ writePin h v
   writePin' h v = lift $ writePin' h v
   togglePinValue = lift . togglePinValue
-  getPinReadTrigger = lift . getPinReadTrigger
-  setPinReadTrigger h trigger = lift $ setPinReadTrigger h trigger
+  getPinInterruptMode = lift . getPinInterruptMode
+  setPinInterruptMode h mode = lift $ setPinInterruptMode h mode
   getPinActiveLevel = lift . getPinActiveLevel
   setPinActiveLevel h v = lift $ setPinActiveLevel h v
   togglePinActiveLevel = lift . togglePinActiveLevel
@@ -374,14 +367,14 @@ instance (MonadGpio h m) => MonadGpio h (ExceptT e m) where
   getPinDirection = lift . getPinDirection
   setPinDirection h dir = lift $ setPinDirection h dir
   togglePinDirection = lift . togglePinDirection
-  samplePin = lift . samplePin
-  readPin = lift . samplePin
-  readPinTimeout h to = lift $ readPinTimeout h to
+  readPin = lift . readPin
+  pollPin = lift . readPin
+  pollPinTimeout h to = lift $ pollPinTimeout h to
   writePin h v = lift $ writePin h v
   writePin' h v = lift $ writePin' h v
   togglePinValue = lift . togglePinValue
-  getPinReadTrigger = lift . getPinReadTrigger
-  setPinReadTrigger h trigger = lift $ setPinReadTrigger h trigger
+  getPinInterruptMode = lift . getPinInterruptMode
+  setPinInterruptMode h mode = lift $ setPinInterruptMode h mode
   getPinActiveLevel = lift . getPinActiveLevel
   setPinActiveLevel h v = lift $ setPinActiveLevel h v
   togglePinActiveLevel = lift . togglePinActiveLevel
@@ -393,14 +386,14 @@ instance (MonadGpio h m) => MonadGpio h (ListT m) where
   getPinDirection = lift . getPinDirection
   setPinDirection h dir = lift $ setPinDirection h dir
   togglePinDirection = lift . togglePinDirection
-  samplePin = lift . samplePin
-  readPin = lift . samplePin
-  readPinTimeout h to = lift $ readPinTimeout h to
+  readPin = lift . readPin
+  pollPin = lift . readPin
+  pollPinTimeout h to = lift $ pollPinTimeout h to
   writePin h v = lift $ writePin h v
   writePin' h v = lift $ writePin' h v
   togglePinValue = lift . togglePinValue
-  getPinReadTrigger = lift . getPinReadTrigger
-  setPinReadTrigger h trigger = lift $ setPinReadTrigger h trigger
+  getPinInterruptMode = lift . getPinInterruptMode
+  setPinInterruptMode h mode = lift $ setPinInterruptMode h mode
   getPinActiveLevel = lift . getPinActiveLevel
   setPinActiveLevel h v = lift $ setPinActiveLevel h v
   togglePinActiveLevel = lift . togglePinActiveLevel
@@ -412,14 +405,14 @@ instance (MonadGpio h m) => MonadGpio h (MaybeT m) where
   getPinDirection = lift . getPinDirection
   setPinDirection h dir = lift $ setPinDirection h dir
   togglePinDirection = lift . togglePinDirection
-  samplePin = lift . samplePin
-  readPin = lift . samplePin
-  readPinTimeout h to = lift $ readPinTimeout h to
+  readPin = lift . readPin
+  pollPin = lift . readPin
+  pollPinTimeout h to = lift $ pollPinTimeout h to
   writePin h v = lift $ writePin h v
   writePin' h v = lift $ writePin' h v
   togglePinValue = lift . togglePinValue
-  getPinReadTrigger = lift . getPinReadTrigger
-  setPinReadTrigger h trigger = lift $ setPinReadTrigger h trigger
+  getPinInterruptMode = lift . getPinInterruptMode
+  setPinInterruptMode h mode = lift $ setPinInterruptMode h mode
   getPinActiveLevel = lift . getPinActiveLevel
   setPinActiveLevel h v = lift $ setPinActiveLevel h v
   togglePinActiveLevel = lift . togglePinActiveLevel
@@ -431,14 +424,14 @@ instance (MonadGpio h m) => MonadGpio h (ReaderT r m) where
   getPinDirection = lift . getPinDirection
   setPinDirection h dir = lift $ setPinDirection h dir
   togglePinDirection = lift . togglePinDirection
-  samplePin = lift . samplePin
-  readPin = lift . samplePin
-  readPinTimeout h to = lift $ readPinTimeout h to
+  readPin = lift . readPin
+  pollPin = lift . readPin
+  pollPinTimeout h to = lift $ pollPinTimeout h to
   writePin h v = lift $ writePin h v
   writePin' h v = lift $ writePin' h v
   togglePinValue = lift . togglePinValue
-  getPinReadTrigger = lift . getPinReadTrigger
-  setPinReadTrigger h trigger = lift $ setPinReadTrigger h trigger
+  getPinInterruptMode = lift . getPinInterruptMode
+  setPinInterruptMode h mode = lift $ setPinInterruptMode h mode
   getPinActiveLevel = lift . getPinActiveLevel
   setPinActiveLevel h v = lift $ setPinActiveLevel h v
   togglePinActiveLevel = lift . togglePinActiveLevel
@@ -450,14 +443,14 @@ instance (MonadGpio h m, Monoid w) => MonadGpio h (LazyRWS.RWST r w s m) where
   getPinDirection = lift . getPinDirection
   setPinDirection h dir = lift $ setPinDirection h dir
   togglePinDirection = lift . togglePinDirection
-  samplePin = lift . samplePin
-  readPin = lift . samplePin
-  readPinTimeout h to = lift $ readPinTimeout h to
+  readPin = lift . readPin
+  pollPin = lift . readPin
+  pollPinTimeout h to = lift $ pollPinTimeout h to
   writePin h v = lift $ writePin h v
   writePin' h v = lift $ writePin' h v
   togglePinValue = lift . togglePinValue
-  getPinReadTrigger = lift . getPinReadTrigger
-  setPinReadTrigger h trigger = lift $ setPinReadTrigger h trigger
+  getPinInterruptMode = lift . getPinInterruptMode
+  setPinInterruptMode h mode = lift $ setPinInterruptMode h mode
   getPinActiveLevel = lift . getPinActiveLevel
   setPinActiveLevel h v = lift $ setPinActiveLevel h v
   togglePinActiveLevel = lift . togglePinActiveLevel
@@ -469,14 +462,14 @@ instance (MonadGpio h m, Monoid w) => MonadGpio h (StrictRWS.RWST r w s m) where
   getPinDirection = lift . getPinDirection
   setPinDirection h dir = lift $ setPinDirection h dir
   togglePinDirection = lift . togglePinDirection
-  samplePin = lift . samplePin
-  readPin = lift . samplePin
-  readPinTimeout h to = lift $ readPinTimeout h to
+  readPin = lift . readPin
+  pollPin = lift . readPin
+  pollPinTimeout h to = lift $ pollPinTimeout h to
   writePin h v = lift $ writePin h v
   writePin' h v = lift $ writePin' h v
   togglePinValue = lift . togglePinValue
-  getPinReadTrigger = lift . getPinReadTrigger
-  setPinReadTrigger h trigger = lift $ setPinReadTrigger h trigger
+  getPinInterruptMode = lift . getPinInterruptMode
+  setPinInterruptMode h mode = lift $ setPinInterruptMode h mode
   getPinActiveLevel = lift . getPinActiveLevel
   setPinActiveLevel h v = lift $ setPinActiveLevel h v
   togglePinActiveLevel = lift . togglePinActiveLevel
@@ -488,14 +481,14 @@ instance (MonadGpio h m) => MonadGpio h (LazyState.StateT s m) where
   getPinDirection = lift . getPinDirection
   setPinDirection h dir = lift $ setPinDirection h dir
   togglePinDirection = lift . togglePinDirection
-  samplePin = lift . samplePin
-  readPin = lift . samplePin
-  readPinTimeout h to = lift $ readPinTimeout h to
+  readPin = lift . readPin
+  pollPin = lift . readPin
+  pollPinTimeout h to = lift $ pollPinTimeout h to
   writePin h v = lift $ writePin h v
   writePin' h v = lift $ writePin' h v
   togglePinValue = lift . togglePinValue
-  getPinReadTrigger = lift . getPinReadTrigger
-  setPinReadTrigger h trigger = lift $ setPinReadTrigger h trigger
+  getPinInterruptMode = lift . getPinInterruptMode
+  setPinInterruptMode h mode = lift $ setPinInterruptMode h mode
   getPinActiveLevel = lift . getPinActiveLevel
   setPinActiveLevel h v = lift $ setPinActiveLevel h v
   togglePinActiveLevel = lift . togglePinActiveLevel
@@ -507,14 +500,14 @@ instance (MonadGpio h m) => MonadGpio h (StrictState.StateT s m) where
   getPinDirection = lift . getPinDirection
   setPinDirection h dir = lift $ setPinDirection h dir
   togglePinDirection = lift . togglePinDirection
-  samplePin = lift . samplePin
-  readPin = lift . samplePin
-  readPinTimeout h to = lift $ readPinTimeout h to
+  readPin = lift . readPin
+  pollPin = lift . readPin
+  pollPinTimeout h to = lift $ pollPinTimeout h to
   writePin h v = lift $ writePin h v
   writePin' h v = lift $ writePin' h v
   togglePinValue = lift . togglePinValue
-  getPinReadTrigger = lift . getPinReadTrigger
-  setPinReadTrigger h trigger = lift $ setPinReadTrigger h trigger
+  getPinInterruptMode = lift . getPinInterruptMode
+  setPinInterruptMode h mode = lift $ setPinInterruptMode h mode
   getPinActiveLevel = lift . getPinActiveLevel
   setPinActiveLevel h v = lift $ setPinActiveLevel h v
   togglePinActiveLevel = lift . togglePinActiveLevel
@@ -526,14 +519,14 @@ instance (MonadGpio h m, Monoid w) => MonadGpio h (LazyWriter.WriterT w m) where
   getPinDirection = lift . getPinDirection
   setPinDirection h dir = lift $ setPinDirection h dir
   togglePinDirection = lift . togglePinDirection
-  samplePin = lift . samplePin
-  readPin = lift . samplePin
-  readPinTimeout h to = lift $ readPinTimeout h to
+  readPin = lift . readPin
+  pollPin = lift . readPin
+  pollPinTimeout h to = lift $ pollPinTimeout h to
   writePin h v = lift $ writePin h v
   writePin' h v = lift $ writePin' h v
   togglePinValue = lift . togglePinValue
-  getPinReadTrigger = lift . getPinReadTrigger
-  setPinReadTrigger h trigger = lift $ setPinReadTrigger h trigger
+  getPinInterruptMode = lift . getPinInterruptMode
+  setPinInterruptMode h mode = lift $ setPinInterruptMode h mode
   getPinActiveLevel = lift . getPinActiveLevel
   setPinActiveLevel h v = lift $ setPinActiveLevel h v
   togglePinActiveLevel = lift . togglePinActiveLevel
@@ -545,14 +538,14 @@ instance (MonadGpio h m, Monoid w) => MonadGpio h (StrictWriter.WriterT w m) whe
   getPinDirection = lift . getPinDirection
   setPinDirection h dir = lift $ setPinDirection h dir
   togglePinDirection = lift . togglePinDirection
-  samplePin = lift . samplePin
-  readPin = lift . samplePin
-  readPinTimeout h to = lift $ readPinTimeout h to
+  readPin = lift . readPin
+  pollPin = lift . readPin
+  pollPinTimeout h to = lift $ pollPinTimeout h to
   writePin h v = lift $ writePin h v
   writePin' h v = lift $ writePin' h v
   togglePinValue = lift . togglePinValue
-  getPinReadTrigger = lift . getPinReadTrigger
-  setPinReadTrigger h trigger = lift $ setPinReadTrigger h trigger
+  getPinInterruptMode = lift . getPinInterruptMode
+  setPinInterruptMode h mode = lift $ setPinInterruptMode h mode
   getPinActiveLevel = lift . getPinActiveLevel
   setPinActiveLevel h v = lift $ setPinActiveLevel h v
   togglePinActiveLevel = lift . togglePinActiveLevel

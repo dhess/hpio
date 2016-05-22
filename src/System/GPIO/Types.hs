@@ -27,7 +27,7 @@ module System.GPIO.Types
          Pin(..)
        , PinDirection(..)
        , PinValue(..)
-       , PinReadTrigger(..)
+       , PinInterruptMode(..)
          -- * Convenience functions
        , pinNumber
        , invertDirection
@@ -68,7 +68,7 @@ instance Arbitrary Pin where
 pinNumber :: Pin -> Int
 pinNumber (Pin n) = n
 
--- | Pin direction (input/output).
+-- | A pin's direction (input/output).
 data PinDirection
   = In
   | Out
@@ -133,21 +133,14 @@ instance Arbitrary PinValue where
   arbitrary = arbitraryBoundedEnum
   shrink = genericShrink
 
--- | On some platforms, pins may be configured so that reading the
--- pin's value blocks until an edge- or level-triggered event is
--- detected. In this way, a GPIO pin can be used as an edge- or
--- level-triggered interrupt.
+-- | A pin's interrupt mode.
 --
--- When the pin's read trigger is set to 'Disabled', reading the pin's
--- value will block indefinitely. (This is equivalent to
--- masking/disabling interrupts on the pin.)
---
--- Note that the pin's read trigger is defined in terms of the pin's
+-- Note that the pin's interrupt mode is defined in terms of the pin's
 -- /logical/ signal value; i.e., when the pin is configured for
 -- active-low logic, 'RisingEdge' refers to the physical signal's
 -- trailing edge, and 'FallingEdge' refers to the physical signal's
 -- rising edge.
-data PinReadTrigger
+data PinInterruptMode
   = Disabled
   -- ^ Interrupts are disabled
   | RisingEdge
@@ -158,7 +151,7 @@ data PinReadTrigger
   -- ^ Interrupt on any change to the pin's signal level
   deriving (Bounded,Enum,Eq,Data,Ord,Read,Show,Generic,Typeable)
 
-instance Arbitrary PinReadTrigger where
+instance Arbitrary PinInterruptMode where
   arbitrary = arbitraryBoundedEnum
   shrink = genericShrink
 

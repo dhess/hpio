@@ -18,7 +18,7 @@ Types used by the various Linux @sysfs@ GPIO implementations.
 module System.GPIO.Linux.Sysfs.Types
        ( -- * @sysfs@-specific types
         SysfsEdge(..)
-       , toPinReadTrigger
+       , toPinInterruptMode
        , toSysfsEdge
          -- * Exceptions
        , SysfsException(..)
@@ -38,8 +38,8 @@ import Test.QuickCheck (Arbitrary(..), arbitraryBoundedEnum, genericShrink)
 -- @edge@ attribute refers to the signal's /logical/ value; i.e., it
 -- takes into account the value of the pin's @active_low@ attribute.
 --
--- This type is isomorphic to the 'PinReadTrigger' type. See
--- 'toPinReadTrigger' and 'toSysfsEdge'.
+-- This type is isomorphic to the 'PinInterruptMode' type. See
+-- 'toPinInterruptMode' and 'toSysfsEdge'.
 data SysfsEdge
   = None
   -- ^ Interrupts disabled
@@ -55,24 +55,24 @@ instance Arbitrary SysfsEdge where
   arbitrary = arbitraryBoundedEnum
   shrink = genericShrink
 
--- | Convert a 'SysfsEdge' value to its equivalent 'PinReadTrigger'
+-- | Convert a 'SysfsEdge' value to its equivalent 'PinInterruptMode'
 -- value.
 --
--- >>> toPinReadTrigger None
+-- >>> toPinInterruptMode None
 -- Disabled
--- >>> toPinReadTrigger Rising
+-- >>> toPinInterruptMode Rising
 -- RisingEdge
--- >>> toPinReadTrigger Falling
+-- >>> toPinInterruptMode Falling
 -- FallingEdge
--- >>> toPinReadTrigger Both
+-- >>> toPinInterruptMode Both
 -- Level
-toPinReadTrigger :: SysfsEdge -> PinReadTrigger
-toPinReadTrigger None = Disabled
-toPinReadTrigger Rising = RisingEdge
-toPinReadTrigger Falling = FallingEdge
-toPinReadTrigger Both = Level
+toPinInterruptMode :: SysfsEdge -> PinInterruptMode
+toPinInterruptMode None = Disabled
+toPinInterruptMode Rising = RisingEdge
+toPinInterruptMode Falling = FallingEdge
+toPinInterruptMode Both = Level
 
--- | Convert a 'PinReadTrigger' value to its equivalent 'SysfsEdge'
+-- | Convert a 'PinInterruptMode' value to its equivalent 'SysfsEdge'
 -- value.
 --
 -- >>> toSysfsEdge Disabled
@@ -83,7 +83,7 @@ toPinReadTrigger Both = Level
 -- Falling
 -- >>> toSysfsEdge Level
 -- Both
-toSysfsEdge :: PinReadTrigger -> SysfsEdge
+toSysfsEdge :: PinInterruptMode -> SysfsEdge
 toSysfsEdge Disabled = None
 toSysfsEdge RisingEdge = Rising
 toSysfsEdge FallingEdge = Falling

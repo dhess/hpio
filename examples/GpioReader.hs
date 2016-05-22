@@ -34,27 +34,27 @@ data GlobalOptions =
 
 data Command
   = ListPins
-  | ReadTrigger ReadTriggerOptions
+  | PollPin PollPinOptions
 
 listPinsCmd :: Parser Command
 listPinsCmd = pure ListPins
 
-data ReadTriggerOptions =
-  ReadTriggerOptions {_period :: !Int
-                     ,_trigger :: !PinReadTrigger
-                     ,_timeout :: !Int
-                     ,_outputPin :: !Pin
-                     ,_inputPin :: !Pin}
+data PollPinOptions =
+  PollPinOptions {_period :: !Int
+                 ,_trigger :: !PinInterruptMode
+                 ,_timeout :: !Int
+                 ,_outputPin :: !Pin
+                 ,_inputPin :: !Pin}
 
-readTriggerCmd :: Parser Command
-readTriggerCmd = ReadTrigger <$> readTriggerOptions
+pollPinCmd :: Parser Command
+pollPinCmd = PollPin <$> pollPinOptions
 
 oneSecond :: Int
 oneSecond = 1 * 1000000
 
-readTriggerOptions :: Parser ReadTriggerOptions
-readTriggerOptions =
-  ReadTriggerOptions <$>
+pollPinOptions :: Parser PollPinOptions
+pollPinOptions =
+  PollPinOptions <$>
     option auto (long "period" <>
                  short 'p' <>
                  metavar "INT" <>
@@ -71,7 +71,7 @@ readTriggerOptions =
                  short 'T' <>
                  metavar "INT" <>
                  value (-1) <>
-                 help "Use a timeout for readPin (in microseconds)") <*>
+                 help "Poll timeout (in microseconds)") <*>
     argument auto (metavar "INPIN")  <*>
     argument auto (metavar "OUTPIN")
 
@@ -86,11 +86,11 @@ cmds =
                  help "Choose the GPIO interpreter (system) to use") <*>
     hsubparser
       (command "listPins" (info listPinsCmd (progDesc "List the GPIO pins available on the system")) <>
-       command "readTrigger" (info readTriggerCmd (progDesc "Drive INPIN using OUTPIN. (Make sure the pins are connected!")))
+       command "pollPin" (info pollPinCmd (progDesc "Drive INPIN using OUTPIN. (Make sure the pins are connected!")))
 
 data Config =
   Config {pin :: Pin
-         ,readTrigger :: PinReadTrigger
+         ,trigger :: PinInterruptMode
          ,wait :: Int}
   deriving ((Show))
 
@@ -106,10 +106,10 @@ runSysfsGpioReaderIO :: SysfsGpioReaderIO a -> Config -> IO a
 runSysfsGpioReaderIO act config = runSysfsIOT $ runSysfsGpioT $ runReaderT act config
 
 run :: GlobalOptions -> IO ()
-run (GlobalOptions SysfsIO (ReadTrigger (ReadTriggerOptions period trigger to inputPin outputPin))) =
+run (GlobalOptions SysfsIO (PollPin (PollPinOptions period mode to inputPin outputPin))) =
   void $
     concurrently
-      (runSysfsGpioReaderIO edgeRead (Config inputPin trigger to))
+      (runSysfsGpioReaderIO pollInput (Config inputPin mode to))
       (runSysfsGpioReaderIO driveOutput (Config outputPin Disabled period))
 -- The 'listPins' program takes no arguments, so we don't need our
 -- custom 'IO' transformer stack here.
@@ -124,16 +124,16 @@ listPins =
     [] -> output "No GPIO pins found on this system"
     ps -> for_ ps $ liftIO . print
 
-edgeRead :: (MonadMask m, MonadIO m, MonadGpio h m, MonadReader Config m) => m ()
-edgeRead =
+pollInput :: (MonadMask m, MonadIO m, MonadGpio h m, MonadReader Config m) => m ()
+pollInput =
   do p <- asks pin
-     trigger <- asks readTrigger
+     mode <- asks trigger
      timeout <- asks wait
      withPin p $ \h ->
        do setPinDirection h In
-          setPinReadTrigger h trigger
+          setPinInterruptMode h mode
           forever $
-            do result <- readPinTimeout h timeout
+            do result <- pollPinTimeout h timeout
                case result of
                  Nothing -> output ("readPin timed out after " ++ show timeout ++ " microseconds")
                  Just v -> output ("Input: " ++ show v)

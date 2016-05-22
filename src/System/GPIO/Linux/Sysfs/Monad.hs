@@ -49,8 +49,8 @@ module System.GPIO.Linux.Sysfs.Monad
        , writePinDirection
        , writePinDirectionWithValue
        , readPinValue
-       , threadWaitReadPinValue
-       , threadWaitReadPinValueTimeout
+       , pollPinValue
+       , pollPinValueTimeout
        , writePinValue
        , pinHasEdge
        , readPinEdge
@@ -93,7 +93,7 @@ import Foreign.C.Types (CInt(..))
 import qualified GHC.IO.Exception as IO (IOErrorType(..))
 import System.FilePath ((</>), takeFileName)
 
-import System.GPIO.Linux.Sysfs.Types (SysfsEdge(..), SysfsException(..), toPinReadTrigger, toSysfsEdge)
+import System.GPIO.Linux.Sysfs.Types (SysfsEdge(..), SysfsException(..), toPinInterruptMode, toSysfsEdge)
 import System.GPIO.Linux.Sysfs.Util
 import System.GPIO.Monad (MonadGpio(..))
 import System.GPIO.Types
@@ -294,12 +294,12 @@ instance (Functor m, MonadCatch m, MonadThrow m, MonadSysfs m) => MonadGpio PinD
            void $ setPinDirection h newDir
            return $ Just newDir
 
-  samplePin (PinDescriptor p) = lift $ readPinValue p
+  readPin (PinDescriptor p) = lift $ readPinValue p
 
-  readPin (PinDescriptor p) = lift $ threadWaitReadPinValue p
+  pollPin (PinDescriptor p) = lift $ pollPinValue p
 
-  readPinTimeout (PinDescriptor p) timeout =
-    lift $ threadWaitReadPinValueTimeout p timeout
+  pollPinTimeout (PinDescriptor p) timeout =
+    lift $ pollPinValueTimeout p timeout
 
   writePin (PinDescriptor p) v =
     lift $ writePinValue p v
@@ -308,17 +308,17 @@ instance (Functor m, MonadCatch m, MonadThrow m, MonadSysfs m) => MonadGpio PinD
     lift $ writePinDirectionWithValue p v
 
   togglePinValue h =
-    do val <- samplePin h
+    do val <- readPin h
        let newVal = invertValue val
        void $ writePin h newVal
        return newVal
 
-  getPinReadTrigger (PinDescriptor p) =
+  getPinInterruptMode (PinDescriptor p) =
     do edge <- lift $ getPinEdge p
-       return $ toPinReadTrigger <$> edge
+       return $ toPinInterruptMode <$> edge
 
-  setPinReadTrigger (PinDescriptor p) trigger =
-    lift $ writePinEdge p $ toSysfsEdge trigger
+  setPinInterruptMode (PinDescriptor p) mode =
+    lift $ writePinEdge p $ toSysfsEdge mode
 
   -- N.B.: @sysfs@'s @active_low@ attribute is the opposite of
   -- 'MonadGpio''s "active level"!
@@ -555,23 +555,23 @@ readPinValue p =
 --
 -- If the pin has no @edge@ attribute, then this action's behavior is
 -- undefined. (Most likely, it will block indefinitely.)
-threadWaitReadPinValue :: (Functor m, MonadSysfs m, MonadThrow m, MonadCatch m) => Pin -> m PinValue
-threadWaitReadPinValue p =
-  threadWaitReadPinValueTimeout p (-1) >>= \case
+pollPinValue :: (Functor m, MonadSysfs m, MonadThrow m, MonadCatch m) => Pin -> m PinValue
+pollPinValue p =
+  pollPinValueTimeout p (-1) >>= \case
      Just v -> return v
      -- 'Nothing' can only occur when the poll has timed out, but the
      -- (-1) timeout value above means the poll must either wait
      -- forever or fail; so this indicates a major problem.
      Nothing -> throwM $
-       InternalError "threadWaitReadPinValue timed out, and it should not have. Please file a bug at https://github.com/dhess/gpio"
+       InternalError "pollPinValue timed out, and it should not have. Please file a bug at https://github.com/dhess/gpio"
 
--- | Same as 'threadWaitReadPinValue', except that a timeout value,
+-- | Same as 'pollPinValue', except that a timeout value,
 -- specified in microseconds, is provided. If no event occurs before
 -- the timeout expires, this action returns 'Nothing'; otherwise, it
 -- returns the pin's value wrapped in a 'Just'.
 --
 -- If the timeout value is negative, this action behaves just like
--- 'threadWaitReadPinValue'.
+-- 'pollPinValue'.
 --
 -- When specifying a timeout value, be careful not to exceed
 -- 'maxBound'.
@@ -583,8 +583,8 @@ threadWaitReadPinValue p =
 -- NB: the curent implementation of this action limits the timeout
 -- precision to 1 millisecond, rather than 1 microsecond as the
 -- interface promises.
-threadWaitReadPinValueTimeout :: (Functor m, MonadSysfs m, MonadThrow m, MonadCatch m) => Pin -> Int -> m (Maybe PinValue)
-threadWaitReadPinValueTimeout p timeout =
+pollPinValueTimeout :: (Functor m, MonadSysfs m, MonadThrow m, MonadCatch m) => Pin -> Int -> m (Maybe PinValue)
+pollPinValueTimeout p timeout =
   catchIOError
     (do pollResult <- pollFile (pinValueFileName p) timeout
         if pollResult > 0

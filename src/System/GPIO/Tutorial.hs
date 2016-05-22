@@ -14,8 +14,8 @@ module System.GPIO.Tutorial (
     , PinDirection(..)
     -- $pin_value
     , PinValue (..)
-    -- $pin_read_trigger
-    , PinReadTrigger(..)
+    -- $pin_interrupt_mode
+    , PinInterruptMode(..)
 
     -- * Interpreters
     -- $interpreters
@@ -51,7 +51,7 @@ import System.GPIO.Linux.Sysfs.Mock
        (MockGpioChip(..), MockPinState(..), SysfsMockT, SysfsGpioMock, SysfsGpioMockIO,
         defaultMockPinState, initialMockWorld, evalSysfsGpioMockIO, evalSysfsMockT)
 import System.GPIO.Linux.Sysfs.Types (SysfsException(..))
-import System.GPIO.Types (Pin(..), PinDirection(..), PinValue(..), PinReadTrigger(..))
+import System.GPIO.Types (Pin(..), PinDirection(..), PinValue(..), PinInterruptMode(..))
 
 -- $setup
 -- >>> :set -XFlexibleContexts
@@ -187,9 +187,9 @@ In @gpio@, the 'PinValue' type represents a pin's value.
 
 -}
 
-{- $pin_read_trigger
+{- $pin_interrupt_mode
 
-== Pin triggers (interrupts)
+== Interrupts
 
 In logic programming, it's often useful to block the program's
 execution on an input pin until its value changes. Furthermore, you
@@ -197,22 +197,21 @@ may want to wait for a particular change: when the signal transitions
 from low to high (its /rising edge/), or from high to low (its
 /falling edge/).
 
-The @gpio@ cross-platform DSL supports this functionality, allowing
-you to block the current Haskell thread on a GPIO input pin until its
-rising edge, falling edge, or either edge (/level-triggered/), is
-visible on the pin. We call this the pin's /read trigger/, but it may
-be helpful to think of it as an interrupt mode.
+The @gpio@ cross-platform DSL supports this functionality. You can
+block the current Haskell thread on a GPIO input pin until a rising
+edge, falling edge, or either edge (a /level trigger/), is visible on
+the pin -- effectively, a programmable interrupt. Which type event of
+triggers the interrupt is determined by the pin's /interrupt mode/.
 
 If you want to mask interrupts for some period of time without needing
-to stop and re-start the blocking thread, you can also disable the
-trigger entirely from another thread.
+to stop and re-start the blocking thread, you can also disable
+interrupts on a given pin.
 
-Some pins (and indeed, some platforms) may not support this
-functionality, but the cross-platform DSL provides a mechanism to
-query a pin to see whether it's supported.
+Some pins may not support this functionality, but the cross-platform
+DSL provides a mechanism to query a pin to see whether it's supported.
 
-In @gpio@, the 'PinReadTrigger' type represents the type of event to
-wait for.
+The 'PinInterruptMode' type represents the type of event which
+triggers an interrupt.
 
 -}
 
@@ -248,7 +247,7 @@ where Haskell programs can run, irrespective of that system's GPIO
 capabilities or operating system. This particular implementation mocks
 the Linux @sysfs@ GPIO filesystem and is capable of emulating much of
 that platform's functionality. (The most significant unimplemented
-functionality is the ability to wait for input pin read triggers.)
+functionality is the ability to wait for input pin interrupts.)
 
 In this tutorial, we will make use of this mock GPIO implementation in
 many of the code examples, meaning that those examples can be run on
@@ -468,7 +467,16 @@ runTutorial $
 :}
 *** Exception: NoDirectionAttribute (Pin 16)
 
-However, 'togglePinDirection' signals the error by returning 'Nothing':
+The 'NoDirectionAttribute' exception value refers to the Linux @sysfs@
+GPIO per-pin @direction@ attribute, which is used to configure the
+pin's direction. Exception types in @gpio@ are platform-specific and
+vary based on which particular interpreter you're using, but all of
+them are instances of the 'SomeGpioException' type class.
+
+Using 'togglePinDirection' on a fixed-direction pin is also an error,
+but as the whole point of using 'togglePinDirection' is to avoid
+querying the pin's direction in the first place, 'togglePinDirection'
+handles this error by returning 'Nothing':
 
 >>> :{
 runTutorial $
@@ -476,66 +484,54 @@ runTutorial $
 :}
 Nothing
 
-(This is a good time to mention exceptions. Like any other 'IO'
-computation, GPIO computations throw exceptions when an error occurs.
-The @gpio@ exception system is hierarchical; the top level exception
-type is 'System.GPIO.Types.SomeGpioException'. Each GPIO platform
-interpreter then defines its own exception type whose set of values
-are specific to the errors that can occur on that particular platform.
-Because we're using the mock Linux @sysfs@ GPIO interpreter in this
-tutorial, all of the exceptions shown here are of type
-'SysfsException'.)
-
 Finally, some pins, /when configured for input/, may support edge- or
 level-triggered interrupts. As with the pin's direction, you can
 discover whether a pin supports this functionality by asking for its
-read trigger value via the 'getPinReadTrigger' action, though this
-action is generally only valid when the pin is configured for input:
+interrupt mode via the 'getPinInterruptMode' action:
 
  >>> :{
  runTutorial $
    withPin (Pin 5) $ \h ->
      do setPinDirection h In
-        getPinReadTrigger h
+        getPinInterruptMode h
  :}
  Just Disabled
 
-  >>> runTutorial $ withPin (Pin 16) $ getPinReadTrigger -- Note: Pin 16's direction is hard-wired to 'In'
-  Nothing
+>>> runTutorial $ withPin (Pin 16) $ getPinInterruptMode
+Nothing
 
-If 'getPinReadTrigger' returns 'Nothing', as it does for 'Pin' @16@ in
+If 'getPinInterruptMode' returns 'Nothing', as it does for 'Pin' @16@ in
 our example, then the pin does not support interrupts.
 
 You might be wondering, what is the difference between 'Just'
 'Disabled' and 'Nothing'? As explained above, 'Nothing' means the pin
-does not support interrupts at all, whereas a read trigger value of
-'Disabled' means that the pin supports interrupts, but that they're
-currently disabled.
+does not support interrupts at all, whereas 'Just' 'Disabled' means
+that, while the pin supports interrupts, they're currently disabled.
 
-If the pin supports interrupts, you can change its read trigger using
-'setPinReadtrigger'. In this example, we configure 'Pin' @5@ for
-level-triggered interrupts. Note that we must configure the pin for
-input before we do so:
+If the pin supports interrupts, you can change its interrupt mode
+using 'setPinInterruptMode'. In this example, we configure 'Pin' @5@
+for level-triggered interrupts. Note that we must configure the pin
+for input before we do so:
 
  >>> :{
  runTutorial $
    withPin (Pin 5) $ \h ->
      do setPinDirection h In
-        setPinReadTrigger h Level
-        getPinReadTrigger h
+        setPinInterruptMode h Level
+        getPinInterruptMode h
  :}
  Just Level
 
 If the pin does not support interrupts, or if the pin is configured
-for output, it is an error to attempt to set its read trigger:
+for output, it is an error to attempt to set its interrupt mode:
 
   >>> :{
-  -- Here we have tried to set an output pin's read trigger
+  -- Here we have tried to set an output pin's interrupt mode
   runTutorial $
     withPin (Pin 5) $ \h ->
       do setPinDirection h Out
-         setPinReadTrigger h Level
-         getPinReadTrigger h
+         setPinInterruptMode h Level
+         getPinInterruptMode h
   :}
   *** Exception: InvalidOperation (Pin 5)
 
@@ -543,18 +539,16 @@ for output, it is an error to attempt to set its read trigger:
    -- Pin 16 does not support interrupts
    runTutorial $
      withPin (Pin 16) $ \h ->
-       do setPinReadTrigger h Level
-          getPinReadTrigger h
+       do setPinInterruptMode h Level
+          getPinInterruptMode h
    :}
    *** Exception: NoEdgeAttribute (Pin 16)
 
 Note that the exception value thrown in each case is different, to
-better help you identify what you did wrong. (The 'NoEdgeAttribute'
-exception value refers to the Linux @sysfs@ GPIO per-pin @edge@
-attribute, which is used to configure the pin's read trigger.)
+better help you identify what you did wrong.
 
 See below for examples of how to make use of pin interrupts and a
-pin's read trigger setting.
+pin's interrupt mode.
 
 -}
 
@@ -562,34 +556,34 @@ pin's read trigger setting.
 
 The core operation of GPIO is, of course, reading and writing pin values.
 
-When we want to read a pin's value and return that value immediately,
-without blocking the current thread, we say that we are /sampling/ the
-pin. Using the 'samplePin' DSL action, we can sample a pin's value
-whether it's configured for input or output:
+To read a pin's value and return that value immediately, without
+blocking the current thread, use the 'readPin' action:
 
   >>> :{
   -- Pin 16 is hard-wired for input.
   -- Its physical signal level is 'High'.
-  runTutorial $ withPin (Pin 16) samplePin
+  runTutorial $ withPin (Pin 16) readPin
   :}
   High
 
   >>> :{
   -- Pin 9's initial direction is 'Out'.
   -- Its initial physical signal level is 'Low'.
-  runTutorial $ withPin (Pin 9) samplePin
+  runTutorial $ withPin (Pin 9) readPin
   :}
   Low
 
-The value returned by 'samplePin' is relative to the pin's current
+Note that we can use 'readPin' on a pin regardless of its direction.
+
+The value returned by 'readPin' is relative to the pin's current
 active level. Using the same pins as the previous two examples, but
-this time changing their active levels before sampling them, we get:
+this time changing their active levels before reading them, we get:
 
   >>> :{
   runTutorial $
     withPin (Pin 16) $ \h ->
       do setPinActiveLevel h Low
-         samplePin h
+         readPin h
   :}
   Low
 
@@ -597,7 +591,7 @@ this time changing their active levels before sampling them, we get:
    runTutorial $
      withPin (Pin 9) $ \h ->
        do setPinActiveLevel h Low
-          samplePin h
+          readPin h
    :}
    High
 
@@ -609,7 +603,7 @@ When a pin is configured for output, we can set its value using
     withPin (Pin 9) $ \h ->
       do setPinDirection h Out
          writePin h High
-         samplePin h
+         readPin h
   :}
   High
 
@@ -639,9 +633,9 @@ signal level, per se, but the mock interpreter does keep track of the
       do setPinDirection h Out
          setPinActiveLevel h Low
          writePin h High
-         v1 <- samplePin h
+         v1 <- readPin h
          setPinActiveLevel h High
-         v2 <- samplePin h
+         v2 <- readPin h
          return (v1,v2)
   :}
   (High,Low)
@@ -697,7 +691,7 @@ via the 'writePin'' action:
       do setPinDirection h In
          writePin' h Low
          d <- getPinDirection h
-         v <- samplePin h
+         v <- readPin h
          return (d,v)
   :}
   (Just Out,Low)
@@ -709,28 +703,29 @@ separate steps ('setPinDirection' followed by 'writePin'), which will
 produce the same final state, though it will not guarantee glitch-free
 output, of course.)
 
-== Blocking reads
+== Waiting for interrupts
 
-As described above, 'samplePin' reads a pin's current value and
-returns that value immediately. 'readPin' and 'readPinTimeout', like
-'samplePin', also return a given input pin's value. However, unlike
-'samplePin', these actions do not return the value immediately, but
+As described above, 'readPin' reads a pin's current value and returns
+that value immediately. 'pollPin' and 'pollPinTimeout', like
+'readPin', also return a given input pin's value. However, unlike
+'readPin', these actions do not return the value immediately, but
 instead block the current thread until a particular event occurs.
-Given a handle to an input pin, 'readPin' will block the current
-thread until the pin's read trigger event occurs, at which point
-'readPin' unblocks and returns the value that triggered the event.
-'readPinTimeout' is like 'readPin', except that it also takes a
-timeout argument. If the timeout expires before the read trigger event
-occurs, 'readPinTimeout' returns 'Nothing'.
+Given a handle to an input pin, 'pollPin' will block the current
+thread on that pin's value until an event corresponding to the the
+pin's interrupt mode event occurs, at which point 'pollPin' unblocks
+and returns the value that triggered the event. 'pollPinTimeout' is
+like 'pollPin', except that it also takes a timeout argument. If the
+timeout expires before the event occurs, 'pollPinTimeout' returns
+'Nothing'.
 
 The current implementation of the mock @sysfs@ GPIO interpreter does
-not support blocking reads, so we do not provide a runnable example
+not support interrupts, so we do not provide a runnable example
 here. However, here is an example from an actual Linux system which
-demonstrates the use of 'readPinTimeout' (a
+demonstrates the use of 'pollPinTimeout' (a
 <https://github.com/dhess/gpio/blob/master/examples/Gpio.hs similar program>
 is included in @gpio@'s source distribution):
 
-> -- toggle.hs
+> -- interrupt.hs
 >
 > import Control.Concurrent (threadDelay)
 > import Control.Concurrent.Async (concurrently)
@@ -741,18 +736,18 @@ is included in @gpio@'s source distribution):
 > import System.GPIO.Monad
 > import System.GPIO.Types
 >
-> -- | Given a pin, a read trigger event, and a timeout (in microseconds),
+> -- | Given a pin, an interrupt mode, and a timeout (in microseconds),
 > -- configure the pin for input, then repeatedly wait for either the
 > -- given event, or a timeout.
-> readLoop :: (MonadMask m, MonadIO m, MonadGpio h m) => Pin -> PinReadTrigger -> Int -> m ()
-> readLoop p trigger to =
+> pollPin :: (MonadMask m, MonadIO m, MonadGpio h m) => Pin -> PinInterruptMode -> Int -> m ()
+> pollPin p mode to =
 >   withPin p $ \h ->
 >     do setPinDirection h In
->        setPinReadTrigger h trigger
+>        setPinInterruptMode h mode
 >        forever $
->          do result <- readPinTimeout h to
+>          do result <- pollPinTimeout h to
 >             case result of
->               Nothing -> output ("readPin timed out after " ++ show to ++ " microseconds")
+>               Nothing -> output ("pollPin timed out after " ++ show to ++ " microseconds")
 >               Just v -> output ("Input: " ++ show v)
 >
 > -- | Given a pin and a 'delay' (in microseconds), configure the pin for output and
@@ -773,16 +768,16 @@ Given these two looping actions, we can launch two threads, one for
 each loop, to drive the input pin from the output pin, assuming the
 two pins are connected. For example, to wait for the signal's rising
 edge using @gpio47@ for input and @gpio48@ for output with a 1-second
-read timeout and a 1/4-second delay between toggles:
+read timeout and a 1/4-second delay between output value toggles:
 
-> -- toggle.hs
+> -- interrupt.hs
 > main =
 >   void $
 >     concurrently
->       (void $ runSysfsGpioIO $ edgeRead (Pin 47) RisingEdge 1000000)
+>       (void $ runSysfsGpioIO $ pollPin (Pin 47) RisingEdge 1000000)
 >       (runSysfsGpioIO $ driveOutput (Pin 48) 250000)
 
-> $ ./toggle
+> $ ./interrupt
 > Output: High
 > Input: High
 > Output: Low
@@ -797,51 +792,51 @@ read timeout and a 1/4-second delay between toggles:
 > ^C $
 
 Note that the @Input@ lines only appear when the output signal goes
-from 'Low' to 'High', as @readLoop@ is waiting for 'RisingEdge' events
+from 'Low' to 'High', as @pollPin@ is waiting for 'RisingEdge' events
 on the input pin.
 
 If we now flip the read timeout and toggle delay values, we can see
-that @readLoop@ times out every 1/4-second until the event is
+that @pollPin@ times out every 1/4-second until the event is
 triggered again:
 
-> -- toggle.hs
+> -- interrupt.hs
 > main =
 >   void $
 >     concurrently
->       (void $ runSysfsGpioIO $ edgeRead (Pin 47) RisingEdge 250000)
+>       (void $ runSysfsGpioIO $ pollPin (Pin 47) RisingEdge 250000)
 >       (runSysfsGpioIO $ driveOutput (Pin 48) 1000000)
 
-> $ ./toggle
-> readPin timed out after 250000 microseconds
-> readPin timed out after 250000 microseconds
-> readPin timed out after 250000 microseconds
+> $ ./interrupt
+> pollPin timed out after 250000 microseconds
+> pollPin timed out after 250000 microseconds
+> pollPin timed out after 250000 microseconds
 > Output: High
 > Input: High
-> readPin timed out after 250000 microseconds
-> readPin timed out after 250000 microseconds
-> readPin timed out after 250000 microseconds
+> pollPin timed out after 250000 microseconds
+> pollPin timed out after 250000 microseconds
+> pollPin timed out after 250000 microseconds
 > Output: Low
-> readPin timed out after 250000 microseconds
-> readPin timed out after 250000 microseconds
-> readPin timed out after 250000 microseconds
-> readPin timed out after 250000 microseconds
+> pollPin timed out after 250000 microseconds
+> pollPin timed out after 250000 microseconds
+> pollPin timed out after 250000 microseconds
+> pollPin timed out after 250000 microseconds
 > Output: High
 > Input: High
-> readPin timed out after 250000 microseconds
-> readPin timed out after 250000 microseconds
-> readPin timed out after 250000 microseconds
+> pollPin timed out after 250000 microseconds
+> pollPin timed out after 250000 microseconds
+> pollPin timed out after 250000 microseconds
 > Output: Low
-> readPin timed out after 250000 microseconds
-> readPin timed out after 250000 microseconds
-> readPin timed out after 250000 microseconds
-> readPin timed out after 250000 microseconds
+> pollPin timed out after 250000 microseconds
+> pollPin timed out after 250000 microseconds
+> pollPin timed out after 250000 microseconds
+> pollPin timed out after 250000 microseconds
 > Output: High
 > Input: High
-> readPin timed out after 250000 microseconds
+> pollPin timed out after 250000 microseconds
 > ^C $
 
-Because they block the current thread, in order to use 'readPin' and
-'readPinTimeout', you must compile your program such that the Haskell
+Because they block the current thread, in order to use 'pollPin' and
+'pollPinTimeout', you must compile your program such that the Haskell
 runtime supports multiple threads. On GHC, use the @-threaded@
 compile-time flag. Other Haskell compilers have not been tested with
 @gpio@, so we cannot provide guidance for them; consult your
@@ -952,11 +947,11 @@ monad actions such as 'asks' inside our @program@.
 The next layer up is the 'SysfsGpioT' transformer, which we execute
 via the 'runSysfsGpioT' interpreter. This layer makes the @gpio@
 cross-platform DSL actions available to our @program@ -- actions such
-as 'samplePin' and 'setPinDirection'.
+as 'readPin' and 'setPinDirection'.
 
 However, as explained earlier in the tutorial, the 'SysfsGpioT'
 transformer is only one half of the @gpio@ story. The 'runSysfsGpioT'
-interpreter translates GPIO actions such as 'samplePin' to Linux
+interpreter translates GPIO actions such as 'readPin' to Linux
 @sysfs@ GPIO operations, but it does not provide the /implementation/
 of those @sysfs@ GPIO operations: it depends on yet another layer of
 the transformer stack to provide that functionality.

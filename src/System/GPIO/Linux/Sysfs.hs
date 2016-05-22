@@ -88,8 +88,8 @@ module System.GPIO.Linux.Sysfs
        , writePinDirection
        , writePinDirectionWithValue
        , readPinValue
-       , threadWaitReadPinValue
-       , threadWaitReadPinValueTimeout
+       , pollPinValue
+       , pollPinValueTimeout
        , writePinValue
        , pinHasEdge
        , readPinEdge
@@ -98,7 +98,7 @@ module System.GPIO.Linux.Sysfs
        , writePinActiveLow
          -- * @sysfs@-specific types
        , SysfsEdge(..)
-       , toPinReadTrigger
+       , toPinInterruptMode
        , toSysfsEdge
          -- * @sysfs@-specific Exceptions
        , SysfsException(..)

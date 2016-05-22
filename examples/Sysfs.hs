@@ -105,7 +105,7 @@ edgeRead p edge to =
     do writePinDirection p In
        writePinEdge p edge
        forever $
-         do result <- threadWaitReadPinValueTimeout p to
+         do result <- pollPinValueTimeout p to
             case result of
               Nothing -> liftIO $ putStrLn ("readPin timed out after " ++ show to ++ " microseconds")
               Just v -> liftIO $ putStrLn ("Input: " ++ show v)
