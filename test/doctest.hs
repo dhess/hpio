@@ -1,5 +1,6 @@
 module Main where
 
+import Data.Monoid ((<>))
 import System.FilePath ((</>))
 import Test.DocTest
 
@@ -20,4 +21,4 @@ testFiles =
       ]
 
 main :: IO ()
-main = doctest (mappend ["-isrc"] testFiles)
+main = doctest (["-isrc"] <> testFiles)
