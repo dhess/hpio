@@ -42,6 +42,10 @@ Flag linux-bbone-tests
   Default: False
   Manual: True
 
+Flag test-doctests
+  Default: True
+  Manual: True
+
 Library
   Default-Language:     Haskell2010
   HS-Source-Dirs:       src
@@ -152,7 +156,11 @@ Test-Suite doctest
   Hs-Source-Dirs:       test
   Ghc-Options:          -Wall -threaded
   Main-Is:              doctest.hs
-  Build-Depends:        base
+  -- Disabled on GHC 7.8.x and earlier due to missing Data.Bits bits.
+  If !flag(test-doctests) || impl(ghc < 7.10)
+    Buildable: False
+  Else
+    Build-Depends:      base
                       , doctest
                       , filepath
 
