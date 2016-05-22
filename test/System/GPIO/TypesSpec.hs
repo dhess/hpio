@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fno-warn-warnings-deprecations #-}
 {-# LANGUAGE CPP #-}
 
 #ifndef MIN_VERSION_base
