@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fno-warn-incomplete-patterns -fno-warn-incomplete-uni-patterns #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module System.GPIO.Linux.Sysfs.SysfsGpioMockSpec (spec) where
@@ -7,9 +8,8 @@ import Control.Monad (void)
 import Control.Monad.Catch (MonadCatch, MonadMask, handle)
 import qualified Data.Map.Strict as Map (lookup)
 
-import System.GPIO.Linux.Sysfs.Types (SysfsEdge(..))
-import System.GPIO.Linux.Sysfs.Types (SysfsException(..))
 import System.GPIO.Linux.Sysfs.Mock
+import System.GPIO.Linux.Sysfs.Types (SysfsEdge(..), SysfsException(..))
 import System.GPIO.Monad (MonadGpio(..), withPin)
 import System.GPIO.Types (Pin (..), PinDirection(..), PinInterruptMode(..), PinValue (..), SomeGpioException)
 

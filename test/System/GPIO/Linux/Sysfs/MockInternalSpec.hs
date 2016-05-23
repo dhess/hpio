@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fno-warn-incomplete-patterns -fno-warn-incomplete-uni-patterns #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module System.GPIO.Linux.Sysfs.MockInternalSpec (spec) where
