@@ -28,6 +28,7 @@ Description:
   module, which explains how to use the cross-platform DSL.
 Extra-Doc-Files:        README.md
 Extra-Source-Files:     .travis.yml
+                      , Hlint.hs
                       , default.nix
                       , shell.nix
                       , stack.yaml
@@ -43,6 +44,10 @@ Flag linux-bbone-tests
   Manual: True
 
 Flag test-doctests
+  Default: True
+  Manual: True
+
+Flag test-hlint
   Default: True
   Manual: True
 
@@ -149,6 +154,18 @@ Executable gpio-reader-example
 
   Default-Language:     Haskell2010
   Ghc-Options:          -Wall -threaded
+
+Test-Suite hlint
+  Type:                 exitcode-stdio-1.0
+  Default-Language:     Haskell2010
+  Hs-Source-Dirs:       test
+  Ghc-Options: -w -threaded
+  Main-Is:              hlint.hs
+  If !flag(test-hlint)
+    Buildable: False
+  Else
+    Build-Depends:      base
+                      , hlint
 
 Test-Suite doctest
   Type:                 exitcode-stdio-1.0

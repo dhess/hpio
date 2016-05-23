@@ -278,15 +278,15 @@ the mock environment are not persistent from one example to the next.
 
 -}
 
+chip0 :: MockGpioChip
+chip0 = MockGpioChip "chip0" 0 (replicate 16 defaultMockPinState)
+chip1 :: MockGpioChip
+chip1 = MockGpioChip "chip1" 16 [defaultMockPinState {_direction = In, _userVisibleDirection = False, _value = High, _edge = Nothing}]
+
 -- | Run a @gpio@ program on a mock system with 17 GPIO pins.
 runTutorial :: SysfsGpioMockIO a -> IO a
 runTutorial program =
-  let chip0 :: MockGpioChip
-      chip0 = MockGpioChip "chip0" 0 (replicate 16 defaultMockPinState)
-      chip1 :: MockGpioChip
-      chip1 = MockGpioChip "chip1" 16 [defaultMockPinState {_direction = In, _userVisibleDirection = False, _value = High, _edge = Nothing}]
-  in
-    evalSysfsGpioMockIO program initialMockWorld [chip0, chip1]
+  evalSysfsGpioMockIO program initialMockWorld [chip0, chip1]
 
 {- $basic_pin_operations
 
@@ -934,18 +934,19 @@ however, it's time to expose those layers and talk about them in
 detail, as that's where most of the complexity comes when using
 transformer stacks.
 
+> -- | Mock GPIO chips
+> chip0 :: MockGpioChip
+> chip0 = MockGpioChip "chip0" 0 (replicate 16 defaultMockPinState)
+> chip1 :: MockGpioChip
+> chip1 = MockGpioChip "chip1" 16 [defaultMockPinState {_direction = In, _userVisibleDirection = False, _value = High, _edge = Nothing}]
+>
 > -- | The interpreter for our transformer stack.
 > runTutorialReaderGpioIO :: TutorialReaderGpioIO a -> TutorialEnv -> IO a
 > runTutorialReaderGpioIO program config =
->   let chip0 :: MockGpioChip
->       chip0 = MockGpioChip "chip0" 0 (replicate 16 defaultMockPinState)
->       -- Define a "weirdo" pin, too
->       chip1 :: MockGpioChip
->       chip1 = MockGpioChip "chip1" 16 [defaultMockPinState {_direction = In, _userVisibleDirection = False, _value = High, _edge = Nothing}]
->   in evalSysfsMockT
->        (runSysfsGpioT $ runReaderT program config)
->        initialMockWorld
->        [chip0, chip1]
+>   evalSysfsMockT
+>     (runSysfsGpioT $ runReaderT program config)
+>     initialMockWorld
+>     [chip0, chip1]
 
 Don't worry too much about the 'MockGpioChip' definitions or the
 'initialMockWorld' ; those exist only to set up the mock GPIO
@@ -1149,14 +1150,10 @@ type TutorialReaderGpioIO a = ReaderT TutorialEnv (SysfsGpioT (SysfsMockT IO)) a
 
 runTutorialReaderGpioIO :: TutorialReaderGpioIO a -> TutorialEnv -> IO a
 runTutorialReaderGpioIO program config =
-  let chip0 :: MockGpioChip
-      chip0 = MockGpioChip "chip0" 0 (replicate 16 defaultMockPinState)
-      chip1 :: MockGpioChip
-      chip1 = MockGpioChip "chip1" 16 [defaultMockPinState {_direction = In, _userVisibleDirection = False, _value = High, _edge = Nothing}]
-  in evalSysfsMockT
-       (runSysfsGpioT $ runReaderT program config)
-       initialMockWorld
-       [chip0, chip1]
+  evalSysfsMockT
+    (runSysfsGpioT $ runReaderT program config)
+    initialMockWorld
+    [chip0, chip1]
 
 {- $copyright
 

@@ -3,3 +3,6 @@ pvp-bounds: both
 resolver: lts-5.1
 packages:
 - .
+flags:
+  gpio:
+    test-hlint: false
