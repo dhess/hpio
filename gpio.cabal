@@ -49,7 +49,7 @@ Flag test-doctests
 Library
   Default-Language:     Haskell2010
   HS-Source-Dirs:       src
-  GHC-Options:          -Wall
+  GHC-Options:          -Wall -fwarn-incomplete-uni-patterns -fwarn-incomplete-record-updates
   Exposed-Modules:      System.GPIO
                       , System.GPIO.Linux
                       , System.GPIO.Linux.Sysfs
