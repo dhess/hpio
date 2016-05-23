@@ -13,7 +13,6 @@ obviously.
 
 -}
 
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -22,19 +21,13 @@ obviously.
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE Trustworthy #-}
 
-#ifndef MIN_VERSION_base
-#define MIN_VERSION_base(x,y,z) 1
-#endif
-
 module System.GPIO.Linux.Sysfs.IO
          ( -- * SysfsIOT transformer
            SysfsIOT(..)
          ) where
 
-#if ! MIN_VERSION_base(4,8,0)
-import Prelude.Compat (Applicative)
-#endif
-
+import Prelude ()
+import Prelude.Compat
 import Control.Applicative (Alternative)
 import Control.Monad (MonadPlus, void)
 import Control.Monad.Catch (MonadCatch, MonadMask, MonadThrow, bracket)

@@ -11,16 +11,11 @@ Monad type classes and instances for Linux @sysfs@ GPIO operations.
 
 -}
 
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE Trustworthy #-}
-
-#ifndef MIN_VERSION_base
-#define MIN_VERSION_base(x,y,z) 1
-#endif
 
 module System.GPIO.Linux.Sysfs.Monad
        ( -- * MonadSysfs class
@@ -59,11 +54,8 @@ module System.GPIO.Linux.Sysfs.Monad
        , writePinActiveLow
        ) where
 
-#if ! MIN_VERSION_base(4,8,0)
-import Prelude.Compat ((<$>), Applicative, Monoid)
-#endif
-
-import Prelude hiding (readFile, writeFile)
+import Prelude ()
+import Prelude.Compat hiding (readFile, writeFile)
 import Control.Applicative (Alternative)
 import Control.Monad (MonadPlus, filterM, void)
 import Control.Monad.Catch (MonadCatch, MonadMask, MonadThrow, catchIOError, throwM)

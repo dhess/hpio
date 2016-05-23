@@ -15,16 +15,11 @@ filesystem.
 
 -}
 
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE Trustworthy #-}
-
-#ifndef MIN_VERSION_base
-#define MIN_VERSION_base(x,y,z) 1
-#endif
 
 module System.GPIO.Linux.Sysfs.Mock
        ( -- * SysfsMock types
@@ -84,11 +79,8 @@ module System.GPIO.Linux.Sysfs.Mock
        , pollFile
        ) where
 
-#if ! MIN_VERSION_base(4,8,0)
-import Prelude.Compat ((<$>), Applicative)
-#endif
-
-import Prelude hiding (readFile, writeFile)
+import Prelude ()
+import Prelude.Compat hiding (readFile, writeFile)
 import Control.Applicative (Alternative)
 import Control.Exception (Exception(..), SomeException)
 import Control.Monad (MonadPlus, when)
