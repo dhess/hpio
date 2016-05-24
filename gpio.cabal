@@ -10,7 +10,7 @@ Stability:              experimental
 License:                BSD3
 License-File:           LICENSE
 Copyright:              Copyright (c) 2016, Drew Hess
-Tested-With:            GHC == 7.8.4, GHC == 7.10.2, GHC == 7.10.3
+Tested-With:            GHC == 7.8.4, GHC == 7.10.2, GHC == 7.10.3, GHC == 8.0.1
 Category:               System
 Synopsis:               Monads for GPIO in Haskell
 Description:
@@ -55,6 +55,8 @@ Library
   Default-Language:     Haskell2010
   HS-Source-Dirs:       src
   GHC-Options:          -Wall -fwarn-incomplete-uni-patterns -fwarn-incomplete-record-updates
+  If impl(ghc > 8)
+    GHC-Options:        -fno-warn-redundant-constraints
   Exposed-Modules:      System.GPIO
                       , System.GPIO.Linux
                       , System.GPIO.Linux.Sysfs
@@ -137,6 +139,8 @@ Executable gpio-example
 
   Default-Language:     Haskell2010
   Ghc-Options:          -Wall -threaded
+  If impl(ghc > 8)
+    GHC-Options:        -fno-warn-redundant-constraints
 
 Executable gpio-reader-example
   Main-Is:              GpioReader.hs
@@ -154,12 +158,14 @@ Executable gpio-reader-example
 
   Default-Language:     Haskell2010
   Ghc-Options:          -Wall -threaded
+  If impl(ghc > 8)
+    GHC-Options:        -fno-warn-redundant-constraints
 
 Test-Suite hlint
   Type:                 exitcode-stdio-1.0
   Default-Language:     Haskell2010
   Hs-Source-Dirs:       test
-  Ghc-Options: -w -threaded
+  Ghc-Options:          -w -threaded
   Main-Is:              hlint.hs
   If !flag(test-hlint)
     Buildable: False
@@ -187,6 +193,8 @@ Test-Suite spec
   Hs-Source-Dirs:       src
                       , test
   Ghc-Options:          -Wall -threaded
+  If impl(ghc > 8)
+    GHC-Options:        -fno-warn-redundant-constraints
   Main-Is:              Main.hs
   Build-Depends:        QuickCheck
                       , base
