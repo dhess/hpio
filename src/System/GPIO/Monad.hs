@@ -11,8 +11,10 @@ A monadic context for GPIO computations.
 
 -}
 
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE Safe #-}
@@ -21,11 +23,35 @@ module System.GPIO.Monad
        ( -- * MonadGpio class
          MonadGpio(..)
        , withPin
+       , InputPin
+       , withInputPin
+       , readInputPin
+       , getInputPinActiveLevel
+       , setInputPinActiveLevel
+       , toggleInputPinActiveLevel
+       , InterruptPin
+       , withInterruptPin
+       , readInterruptPin
+       , pollInterruptPin
+       , pollInterruptPinTimeout
+       , getInterruptPinInterruptMode
+       , setInterruptPinInterruptMode
+       , getInterruptPinActiveLevel
+       , setInterruptPinActiveLevel
+       , toggleInterruptPinActiveLevel
+       , OutputPin
+       , withOutputPin
+       , writeOutputPin
+       , toggleOutputPin
+       , readOutputPin
+       , getOutputPinActiveLevel
+       , setOutputPinActiveLevel
+       , toggleOutputPinActiveLevel
        ) where
 
 import Prelude ()
 import Prelude.Compat
-import Control.Monad.Catch (MonadMask, bracket)
+import Control.Monad.Catch (Exception(..), MonadMask, MonadThrow, bracket, throwM)
 import Control.Monad.Catch.Pure (CatchT)
 import Control.Monad.Trans.Cont (ContT)
 import Control.Monad.Trans.Except (ExceptT)
@@ -40,8 +66,11 @@ import qualified Control.Monad.Trans.State.Lazy as LazyState (StateT)
 import qualified Control.Monad.Trans.State.Strict as StrictState (StateT)
 import qualified Control.Monad.Trans.Writer.Lazy as LazyWriter (WriterT)
 import qualified Control.Monad.Trans.Writer.Strict as StrictWriter (WriterT)
+import Data.Data
 
-import System.GPIO.Types (Pin, PinDirection, PinInterruptMode, PinValue)
+import System.GPIO.Types
+       (Pin, PinDirection(..), PinInterruptMode, PinValue,
+        gpioExceptionToException, gpioExceptionFromException)
 
 -- | A monad type class for GPIO computations. The type class
 -- specifies a DSL for writing portable GPIO programs, and instances
@@ -553,3 +582,119 @@ instance (MonadGpio h m, Monoid w) => MonadGpio h (StrictWriter.WriterT w m) whe
 -- exception.
 withPin :: (MonadMask m, MonadGpio h m) => Pin -> (h -> m a) -> m a
 withPin p = bracket (openPin p) closePin
+
+newtype InputPin h =
+  InputPin {_inputHandle :: h}
+  deriving (Eq,Show)
+
+withInputPin :: (MonadMask m, MonadGpio h m) => Pin -> (InputPin h -> m a) -> m a
+withInputPin p action =
+  withPin p $ \h ->
+    do setPinDirection h In
+       action $ InputPin h
+
+readInputPin :: (MonadGpio h m) => InputPin h -> m PinValue
+readInputPin p =
+  readPin (_inputHandle p)
+
+getInputPinActiveLevel :: (MonadGpio h m) => InputPin h -> m PinValue
+getInputPinActiveLevel p =
+  getPinActiveLevel (_inputHandle p)
+
+setInputPinActiveLevel :: (MonadGpio h m) => InputPin h -> PinValue -> m ()
+setInputPinActiveLevel p =
+  setPinActiveLevel (_inputHandle p)
+
+toggleInputPinActiveLevel :: (MonadGpio h m) => InputPin h -> m PinValue
+toggleInputPinActiveLevel p =
+  togglePinActiveLevel (_inputHandle p)
+
+newtype InterruptPin h =
+  InterruptPin {_interruptHandle :: h}
+  deriving (Eq,Show)
+
+withInterruptPin :: (MonadMask m, MonadGpio h m) => Pin -> PinInterruptMode -> (InterruptPin h -> m a) -> m a
+withInterruptPin p mode action =
+  withPin p $ \h ->
+    do setPinDirection h In
+       setPinInterruptMode h mode
+       action $ InterruptPin h
+
+readInterruptPin :: (MonadGpio h m) => InterruptPin h -> m PinValue
+readInterruptPin p =
+  readPin (_interruptHandle p)
+
+pollInterruptPin :: (MonadGpio h m) => InterruptPin h -> m PinValue
+pollInterruptPin p =
+  pollPin (_interruptHandle p)
+
+pollInterruptPinTimeout :: (MonadGpio h m) => InterruptPin h -> Int -> m (Maybe PinValue)
+pollInterruptPinTimeout p =
+  pollPinTimeout (_interruptHandle p)
+
+getInterruptPinInterruptMode :: (MonadThrow m, MonadGpio h m) => InterruptPin h -> m PinInterruptMode
+getInterruptPinInterruptMode p =
+  getPinInterruptMode (_interruptHandle p) >>= \case
+    Just mode -> return mode
+    Nothing -> throwM $ InternalError "The specified InterruptPin does not support interrupts"
+
+setInterruptPinInterruptMode :: (MonadGpio h m) => InterruptPin h -> PinInterruptMode -> m ()
+setInterruptPinInterruptMode p =
+  setPinInterruptMode (_interruptHandle p)
+
+getInterruptPinActiveLevel :: (MonadGpio h m) => InterruptPin h -> m PinValue
+getInterruptPinActiveLevel p =
+  getPinActiveLevel (_interruptHandle p)
+
+setInterruptPinActiveLevel :: (MonadGpio h m) => InterruptPin h -> PinValue -> m ()
+setInterruptPinActiveLevel p =
+  setPinActiveLevel (_interruptHandle p)
+
+toggleInterruptPinActiveLevel :: (MonadGpio h m) => InterruptPin h -> m PinValue
+toggleInterruptPinActiveLevel p =
+  togglePinActiveLevel (_interruptHandle p)
+
+newtype OutputPin h =
+  OutputPin {_outputHandle :: h}
+  deriving (Eq,Show)
+
+withOutputPin :: (MonadMask m, MonadGpio h m) => Pin -> PinValue -> (OutputPin h -> m a) -> m a
+withOutputPin p v action =
+  withPin p $ \h ->
+    do writePin' h v
+       action $ OutputPin h
+
+writeOutputPin :: (MonadGpio h m) => OutputPin h -> PinValue -> m ()
+writeOutputPin p =
+  writePin (_outputHandle p)
+
+toggleOutputPin :: (MonadGpio h m) => OutputPin h -> m PinValue
+toggleOutputPin p =
+  togglePinValue (_outputHandle p)
+
+readOutputPin :: (MonadGpio h m) => OutputPin h -> m PinValue
+readOutputPin p =
+  readPin (_outputHandle p)
+
+getOutputPinActiveLevel :: (MonadGpio h m) => OutputPin h -> m PinValue
+getOutputPinActiveLevel p =
+  getPinActiveLevel (_outputHandle p)
+
+setOutputPinActiveLevel :: (MonadGpio h m) => OutputPin h -> PinValue -> m ()
+setOutputPinActiveLevel p =
+  setPinActiveLevel (_outputHandle p)
+
+toggleOutputPinActiveLevel :: (MonadGpio h m) => OutputPin h -> m PinValue
+toggleOutputPinActiveLevel p =
+  togglePinActiveLevel (_outputHandle p)
+
+data GpioException
+  = InternalError String
+    -- ^ An internal error has occurred in the 'MonadGpio' DSL,
+    -- something which should "never happen" and should be reported to
+    -- the package maintainer.
+  deriving (Eq,Show,Typeable)
+
+instance Exception GpioException where
+    toException = gpioExceptionToException
+    fromException = gpioExceptionFromException
