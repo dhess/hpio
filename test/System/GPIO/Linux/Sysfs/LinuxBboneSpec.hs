@@ -479,6 +479,7 @@ runTests =
                                setPinDirection h Out
                                setPinActiveLevel h High
                                writePin h High
+                               liftIO $ threadDelay 250000
                                liftIO $ void $ takeMVar mvar
                                liftIO $ threadDelay 250000
                                void $ togglePinValue h
@@ -510,6 +511,7 @@ runTests =
                                setPinDirection h Out
                                setPinActiveLevel h High
                                writePin h Low
+                               liftIO $ threadDelay 250000
                                liftIO $ void $ takeMVar mvar
                                liftIO $ threadDelay 250000
                                void $ togglePinValue h
@@ -541,6 +543,7 @@ runTests =
                                setPinDirection h Out
                                setPinActiveLevel h High
                                writePin h High
+                               liftIO $ threadDelay 250000
                                liftIO $ void $ takeMVar mvar
                                liftIO $ threadDelay 250000
                                void $ togglePinValue h -- trigger
@@ -603,6 +606,7 @@ runTests =
                                setPinDirection h Out
                                setPinActiveLevel h High
                                writePin h Low
+                               liftIO $ threadDelay 250000
                                liftIO $ void $ takeMVar mvar
                                liftIO $ threadDelay 250000
                                void $ togglePinValue h
@@ -634,6 +638,7 @@ runTests =
                                setPinDirection h Out
                                setPinActiveLevel h High
                                writePin h High
+                               liftIO $ threadDelay 250000
                                liftIO $ void $ takeMVar mvar
                                liftIO $ threadDelay 250000
                                void $ togglePinValue h
@@ -665,6 +670,7 @@ runTests =
                                setPinDirection h Out
                                setPinActiveLevel h High
                                writePin h Low
+                               liftIO $ threadDelay 250000
                                liftIO $ void $ takeMVar mvar
                                liftIO $ threadDelay 250000
                                void $ togglePinValue h -- trigger
@@ -727,6 +733,7 @@ runTests =
                                setPinDirection h Out
                                setPinActiveLevel h High
                                writePin h High
+                               liftIO $ threadDelay 250000
                                liftIO $ void $ takeMVar mvar
                                liftIO $ threadDelay 250000
                                void $ togglePinValue h
@@ -758,6 +765,7 @@ runTests =
                                setPinDirection h Out
                                setPinActiveLevel h High
                                writePin h Low
+                               liftIO $ threadDelay 250000
                                liftIO $ void $ takeMVar mvar
                                liftIO $ threadDelay 250000
                                void $ togglePinValue h
@@ -789,6 +797,7 @@ runTests =
                                setPinDirection h Out
                                setPinActiveLevel h High
                                writePin h High
+                               liftIO $ threadDelay 250000
                                liftIO $ void $ takeMVar mvar
                                liftIO $ threadDelay 250000
                                void $ togglePinValue h -- trigger
@@ -885,6 +894,7 @@ runTests =
                                setPinDirection h Out
                                setPinActiveLevel h High
                                writePin h Low
+                               liftIO $ threadDelay 250000
                                liftIO $ void $ takeMVar mvar
                                liftIO $ threadDelay 250000
                                void $ togglePinValue h
@@ -916,6 +926,7 @@ runTests =
                                setPinDirection h Out
                                setPinActiveLevel h High
                                writePin h High
+                               liftIO $ threadDelay 250000
                                liftIO $ void $ takeMVar mvar
                                liftIO $ threadDelay 250000
                                void $ togglePinValue h
@@ -947,6 +958,7 @@ runTests =
                                setPinDirection h Out
                                setPinActiveLevel h High
                                writePin h Low
+                               liftIO $ threadDelay 250000
                                liftIO $ void $ takeMVar mvar
                                liftIO $ threadDelay 250000
                                void $ togglePinValue h -- trigger
