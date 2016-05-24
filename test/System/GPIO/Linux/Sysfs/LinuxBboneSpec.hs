@@ -479,15 +479,14 @@ runTests =
                                setPinDirection h Out
                                setPinActiveLevel h High
                                writePin h High
-                               liftIO $ threadDelay 250000
                                liftIO $ void $ takeMVar mvar
-                               liftIO $ threadDelay 250000
+                               liftIO $ threadDelay 500000
                                void $ togglePinValue h
-                               liftIO $ threadDelay 250000
+                               liftIO $ threadDelay 500000
                                void $ togglePinValue h -- trigger
-                               liftIO $ threadDelay 250000
+                               liftIO $ threadDelay 500000
                                void $ togglePinValue h
-                               liftIO $ threadDelay 250000
+                               liftIO $ threadDelay 500000
                                void $ togglePinValue h -- trigger
                         putMVar mvar () -- synchronize finish
                    runSysfsGpioIO
@@ -511,15 +510,14 @@ runTests =
                                setPinDirection h Out
                                setPinActiveLevel h High
                                writePin h Low
-                               liftIO $ threadDelay 250000
                                liftIO $ void $ takeMVar mvar
-                               liftIO $ threadDelay 250000
+                               liftIO $ threadDelay 500000
                                void $ togglePinValue h
-                               liftIO $ threadDelay 250000
+                               liftIO $ threadDelay 500000
                                void $ togglePinValue h -- trigger
-                               liftIO $ threadDelay 250000
+                               liftIO $ threadDelay 500000
                                void $ togglePinValue h
-                               liftIO $ threadDelay 250000
+                               liftIO $ threadDelay 500000
                                void $ togglePinValue h -- trigger
                         putMVar mvar () -- synchronize finish
                    runSysfsGpioIO
@@ -543,15 +541,14 @@ runTests =
                                setPinDirection h Out
                                setPinActiveLevel h High
                                writePin h High
-                               liftIO $ threadDelay 250000
                                liftIO $ void $ takeMVar mvar
-                               liftIO $ threadDelay 250000
+                               liftIO $ threadDelay 500000
                                void $ togglePinValue h -- trigger
-                               liftIO $ threadDelay 250000
+                               liftIO $ threadDelay 500000
                                void $ togglePinValue h -- trigger
-                               liftIO $ threadDelay 250000
+                               liftIO $ threadDelay 500000
                                void $ togglePinValue h -- trigger
-                               liftIO $ threadDelay 250000
+                               liftIO $ threadDelay 500000
                                void $ togglePinValue h -- trigger
                         putMVar mvar () -- synchronize finish
                    runSysfsGpioIO
@@ -583,9 +580,9 @@ runTests =
                              void $ liftIO $ forkIO $
                                do runSysfsGpioIO $
                                     do liftIO $ void $ takeMVar mvar
-                                       liftIO $ threadDelay 250000
+                                       liftIO $ threadDelay 500000
                                        void $ togglePinValue outPin -- ignored
-                                       liftIO $ threadDelay 250000
+                                       liftIO $ threadDelay 500000
                                        setPinInterruptMode inPin Level
                                        void $ togglePinValue outPin -- trigger
                                   putMVar mvar () -- synchronize finish
@@ -606,15 +603,14 @@ runTests =
                                setPinDirection h Out
                                setPinActiveLevel h High
                                writePin h Low
-                               liftIO $ threadDelay 250000
                                liftIO $ void $ takeMVar mvar
-                               liftIO $ threadDelay 250000
+                               liftIO $ threadDelay 500000
                                void $ togglePinValue h
-                               liftIO $ threadDelay 250000
+                               liftIO $ threadDelay 500000
                                void $ togglePinValue h -- trigger
-                               liftIO $ threadDelay 250000
+                               liftIO $ threadDelay 500000
                                void $ togglePinValue h
-                               liftIO $ threadDelay 250000
+                               liftIO $ threadDelay 500000
                                void $ togglePinValue h -- trigger
                         putMVar mvar () -- synchronize finish
                    runSysfsGpioIO
@@ -638,15 +634,14 @@ runTests =
                                setPinDirection h Out
                                setPinActiveLevel h High
                                writePin h High
-                               liftIO $ threadDelay 250000
                                liftIO $ void $ takeMVar mvar
-                               liftIO $ threadDelay 250000
+                               liftIO $ threadDelay 500000
                                void $ togglePinValue h
-                               liftIO $ threadDelay 250000
+                               liftIO $ threadDelay 500000
                                void $ togglePinValue h -- trigger
-                               liftIO $ threadDelay 250000
+                               liftIO $ threadDelay 500000
                                void $ togglePinValue h
-                               liftIO $ threadDelay 250000
+                               liftIO $ threadDelay 500000
                                void $ togglePinValue h -- trigger
                         putMVar mvar () -- synchronize finish
                    runSysfsGpioIO
@@ -670,15 +665,14 @@ runTests =
                                setPinDirection h Out
                                setPinActiveLevel h High
                                writePin h Low
-                               liftIO $ threadDelay 250000
                                liftIO $ void $ takeMVar mvar
-                               liftIO $ threadDelay 250000
+                               liftIO $ threadDelay 500000
                                void $ togglePinValue h -- trigger
-                               liftIO $ threadDelay 250000
+                               liftIO $ threadDelay 500000
                                void $ togglePinValue h -- trigger
-                               liftIO $ threadDelay 250000
+                               liftIO $ threadDelay 500000
                                void $ togglePinValue h -- trigger
-                               liftIO $ threadDelay 250000
+                               liftIO $ threadDelay 500000
                                void $ togglePinValue h -- trigger
                         putMVar mvar () -- synchronize finish
                    runSysfsGpioIO
@@ -710,9 +704,9 @@ runTests =
                              void $ liftIO $ forkIO $
                                do runSysfsGpioIO $
                                     do liftIO $ void $ takeMVar mvar
-                                       liftIO $ threadDelay 250000
+                                       liftIO $ threadDelay 500000
                                        void $ togglePinValue outPin -- ignored
-                                       liftIO $ threadDelay 250000
+                                       liftIO $ threadDelay 500000
                                        setPinInterruptMode inPin Level
                                        void $ togglePinValue outPin -- trigger
                                   putMVar mvar () -- synchronize finish
@@ -733,15 +727,14 @@ runTests =
                                setPinDirection h Out
                                setPinActiveLevel h High
                                writePin h High
-                               liftIO $ threadDelay 250000
                                liftIO $ void $ takeMVar mvar
-                               liftIO $ threadDelay 250000
+                               liftIO $ threadDelay 500000
                                void $ togglePinValue h
-                               liftIO $ threadDelay 250000
+                               liftIO $ threadDelay 500000
                                void $ togglePinValue h -- trigger
-                               liftIO $ threadDelay 250000
+                               liftIO $ threadDelay 500000
                                void $ togglePinValue h
-                               liftIO $ threadDelay 250000
+                               liftIO $ threadDelay 500000
                                void $ togglePinValue h -- trigger
                         putMVar mvar () -- synchronize finish
                    runSysfsGpioIO
@@ -765,15 +758,14 @@ runTests =
                                setPinDirection h Out
                                setPinActiveLevel h High
                                writePin h Low
-                               liftIO $ threadDelay 250000
                                liftIO $ void $ takeMVar mvar
-                               liftIO $ threadDelay 250000
+                               liftIO $ threadDelay 500000
                                void $ togglePinValue h
-                               liftIO $ threadDelay 250000
+                               liftIO $ threadDelay 500000
                                void $ togglePinValue h -- trigger
-                               liftIO $ threadDelay 250000
+                               liftIO $ threadDelay 500000
                                void $ togglePinValue h
-                               liftIO $ threadDelay 250000
+                               liftIO $ threadDelay 500000
                                void $ togglePinValue h -- trigger
                         putMVar mvar () -- synchronize finish
                    runSysfsGpioIO
@@ -797,15 +789,14 @@ runTests =
                                setPinDirection h Out
                                setPinActiveLevel h High
                                writePin h High
-                               liftIO $ threadDelay 250000
                                liftIO $ void $ takeMVar mvar
-                               liftIO $ threadDelay 250000
+                               liftIO $ threadDelay 500000
                                void $ togglePinValue h -- trigger
-                               liftIO $ threadDelay 250000
+                               liftIO $ threadDelay 500000
                                void $ togglePinValue h -- trigger
-                               liftIO $ threadDelay 250000
+                               liftIO $ threadDelay 500000
                                void $ togglePinValue h -- trigger
-                               liftIO $ threadDelay 250000
+                               liftIO $ threadDelay 500000
                                void $ togglePinValue h -- trigger
                         putMVar mvar () -- synchronize finish
                    runSysfsGpioIO
@@ -837,9 +828,9 @@ runTests =
                              void $ liftIO $ forkIO $
                                do runSysfsGpioIO $
                                     do liftIO $ void $ takeMVar mvar
-                                       liftIO $ threadDelay 250000
+                                       liftIO $ threadDelay 500000
                                        void $ togglePinValue outPin -- ignored
-                                       liftIO $ threadDelay 250000
+                                       liftIO $ threadDelay 500000
                                        setPinInterruptMode inPin Level
                                        void $ togglePinValue outPin -- trigger
                                   putMVar mvar () -- synchronize finish
@@ -863,9 +854,9 @@ runTests =
                               void $ liftIO $ forkIO $
                                 do runSysfsGpioIO $
                                      do liftIO $ void $ takeMVar mvar
-                                        liftIO $ threadDelay 250000
+                                        liftIO $ threadDelay 500000
                                         void $ togglePinValue outPin -- ignored
-                                        liftIO $ threadDelay 250000
+                                        liftIO $ threadDelay 500000
                                         void $ togglePinValue outPin -- ignored
                                    putMVar mvar () -- synchronize finish
                               liftIO $ putMVar mvar ()
@@ -894,15 +885,14 @@ runTests =
                                setPinDirection h Out
                                setPinActiveLevel h High
                                writePin h Low
-                               liftIO $ threadDelay 250000
                                liftIO $ void $ takeMVar mvar
-                               liftIO $ threadDelay 250000
+                               liftIO $ threadDelay 500000
                                void $ togglePinValue h
-                               liftIO $ threadDelay 250000
+                               liftIO $ threadDelay 500000
                                void $ togglePinValue h -- trigger
-                               liftIO $ threadDelay 250000
+                               liftIO $ threadDelay 500000
                                void $ togglePinValue h
-                               liftIO $ threadDelay 250000
+                               liftIO $ threadDelay 500000
                                void $ togglePinValue h -- trigger
                         putMVar mvar () -- synchronize finish
                    runSysfsGpioIO
@@ -926,15 +916,14 @@ runTests =
                                setPinDirection h Out
                                setPinActiveLevel h High
                                writePin h High
-                               liftIO $ threadDelay 250000
                                liftIO $ void $ takeMVar mvar
-                               liftIO $ threadDelay 250000
+                               liftIO $ threadDelay 500000
                                void $ togglePinValue h
-                               liftIO $ threadDelay 250000
+                               liftIO $ threadDelay 500000
                                void $ togglePinValue h -- trigger
-                               liftIO $ threadDelay 250000
+                               liftIO $ threadDelay 500000
                                void $ togglePinValue h
-                               liftIO $ threadDelay 250000
+                               liftIO $ threadDelay 500000
                                void $ togglePinValue h -- trigger
                         putMVar mvar () -- synchronize finish
                    runSysfsGpioIO
@@ -958,15 +947,14 @@ runTests =
                                setPinDirection h Out
                                setPinActiveLevel h High
                                writePin h Low
-                               liftIO $ threadDelay 250000
                                liftIO $ void $ takeMVar mvar
-                               liftIO $ threadDelay 250000
+                               liftIO $ threadDelay 500000
                                void $ togglePinValue h -- trigger
-                               liftIO $ threadDelay 250000
+                               liftIO $ threadDelay 500000
                                void $ togglePinValue h -- trigger
-                               liftIO $ threadDelay 250000
+                               liftIO $ threadDelay 500000
                                void $ togglePinValue h -- trigger
-                               liftIO $ threadDelay 250000
+                               liftIO $ threadDelay 500000
                                void $ togglePinValue h -- trigger
                         putMVar mvar () -- synchronize finish
                    runSysfsGpioIO
@@ -998,9 +986,9 @@ runTests =
                              void $ liftIO $ forkIO $
                                do runSysfsGpioIO $
                                     do liftIO $ void $ takeMVar mvar
-                                       liftIO $ threadDelay 250000
+                                       liftIO $ threadDelay 500000
                                        void $ togglePinValue outPin -- ignored
-                                       liftIO $ threadDelay 250000
+                                       liftIO $ threadDelay 500000
                                        setPinInterruptMode inPin Level
                                        void $ togglePinValue outPin -- trigger
                                   putMVar mvar () -- synchronize finish
