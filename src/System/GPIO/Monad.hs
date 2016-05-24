@@ -587,10 +587,15 @@ newtype InputPin h =
   InputPin {_inputHandle :: h}
   deriving (Eq,Show)
 
-withInputPin :: (MonadMask m, MonadGpio h m) => Pin -> (InputPin h -> m a) -> m a
-withInputPin p action =
+maybeSetPinActiveLevel :: (MonadGpio h m) => h -> Maybe PinValue -> m ()
+maybeSetPinActiveLevel _ Nothing = return ()
+maybeSetPinActiveLevel h (Just v) = setPinActiveLevel h v
+
+withInputPin :: (MonadMask m, MonadGpio h m) => Pin -> Maybe PinValue -> (InputPin h -> m a) -> m a
+withInputPin p l action =
   withPin p $ \h ->
     do setPinDirection h In
+       maybeSetPinActiveLevel h l
        action $ InputPin h
 
 readInputPin :: (MonadGpio h m) => InputPin h -> m PinValue
@@ -613,11 +618,12 @@ newtype InterruptPin h =
   InterruptPin {_interruptHandle :: h}
   deriving (Eq,Show)
 
-withInterruptPin :: (MonadMask m, MonadGpio h m) => Pin -> PinInterruptMode -> (InterruptPin h -> m a) -> m a
-withInterruptPin p mode action =
+withInterruptPin :: (MonadMask m, MonadGpio h m) => Pin -> PinInterruptMode -> Maybe PinValue -> (InterruptPin h -> m a) -> m a
+withInterruptPin p mode l action =
   withPin p $ \h ->
     do setPinDirection h In
        setPinInterruptMode h mode
+       maybeSetPinActiveLevel h l
        action $ InterruptPin h
 
 readInterruptPin :: (MonadGpio h m) => InterruptPin h -> m PinValue
@@ -658,10 +664,11 @@ newtype OutputPin h =
   OutputPin {_outputHandle :: h}
   deriving (Eq,Show)
 
-withOutputPin :: (MonadMask m, MonadGpio h m) => Pin -> PinValue -> (OutputPin h -> m a) -> m a
-withOutputPin p v action =
+withOutputPin :: (MonadMask m, MonadGpio h m) => Pin -> Maybe PinValue -> PinValue -> (OutputPin h -> m a) -> m a
+withOutputPin p l v action =
   withPin p $ \h ->
-    do writePin' h v
+    do maybeSetPinActiveLevel h l
+       writePin' h v
        action $ OutputPin h
 
 writeOutputPin :: (MonadGpio h m) => OutputPin h -> PinValue -> m ()
