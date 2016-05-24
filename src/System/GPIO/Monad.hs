@@ -23,7 +23,7 @@ module System.GPIO.Monad
        ( -- * MonadGpio class
          MonadGpio(..)
        , withPin
-         -- * Safer DSL actions
+         -- * Safer types
          --
          -- | Native GPIO APIs, as a rule, provide more or less the
          -- same interface for all GPIO pins, regardless of their
