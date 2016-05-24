@@ -23,6 +23,51 @@ module System.GPIO.Monad
        ( -- * MonadGpio class
          MonadGpio(..)
        , withPin
+         -- * Safer DSL actions
+         --
+         -- | Native GPIO APIs, as a rule, provide more or less the
+         -- same interface for all GPIO pins, regardless of their
+         -- actual capabilities or configuration. For example, pins
+         -- which support interrupts and pins which do not are
+         -- typically not represented as a separate types.
+         --
+         -- One advantage of this approach is that it is quite
+         -- flexible. It is, for example, possible to re-configure a
+         -- given pin "on the fly" for input, output, interrupts, etc.
+         -- However, a drawback of this approach is that it's easy to
+         -- make a mistake, e.g., by waiting for interrupts on a pin
+         -- that has been configured for output (an operation which,
+         -- on Linux, at least, will not raise an error but will block
+         -- forever).
+         --
+         -- The primary goal of the 'MonadGpio' DSL is to make
+         -- available to the Haskell programmer as much of the
+         -- low-level capabilities of a typical GPIO platform as
+         -- possible. As such, it retains both the flexibility of this
+         -- one-pin-fits-all approach, and its disadvantages. The
+         -- disadvantages are apparent by the number of error
+         -- conditions mentioned in the 'MonadGpio' documentation.
+         --
+         -- However, by trading some of that flexibility for more
+         -- restricted types, we can make GPIO programming safer. The
+         -- types and actions described below are defined on top of
+         -- the 'MonadGpio' DSL and eliminate a whole class of
+         -- configuration-related errors.
+         --
+         -- == A caveat
+         --
+         -- On some GPIO platforms (e.g., Linux @sysfs@), no provision
+         -- is made for opening pins in "exclusive mode," and as such,
+         -- pins can be opened and configured by any number of
+         -- processes on the system other than our own programs.
+         -- Therefore, even when using these safer types, a robust
+         -- @gpio@ program should still be prepared to deal with
+         -- configuration-related errors in case another process
+         -- re-configures a pin underneath our noses.
+         --
+         -- In other words, even when using these safer types, you
+         -- should still be prepared to handle the full range of
+         -- 'System.GPIO.Types.SomeGpioException's.
        , InputPin
        , withInputPin
        , readInputPin
@@ -47,6 +92,8 @@ module System.GPIO.Monad
        , getOutputPinActiveLevel
        , setOutputPinActiveLevel
        , toggleOutputPinActiveLevel
+         -- * Exceptions
+       , GpioException
        ) where
 
 import Prelude ()
@@ -583,6 +630,10 @@ instance (MonadGpio h m, Monoid w) => MonadGpio h (StrictWriter.WriterT w m) whe
 withPin :: (MonadMask m, MonadGpio h m) => Pin -> (h -> m a) -> m a
 withPin p = bracket (openPin p) closePin
 
+-- | A handle to a pin that's been configured for non-blocking reads
+-- only.
+--
+-- You cannot poll an 'InputPin' for interrupts. See 'InterruptPin'.
 newtype InputPin h =
   InputPin {_inputHandle :: h}
   deriving (Eq,Show)
@@ -591,6 +642,15 @@ maybeSetPinActiveLevel :: (MonadGpio h m) => h -> Maybe PinValue -> m ()
 maybeSetPinActiveLevel _ Nothing = return ()
 maybeSetPinActiveLevel h (Just v) = setPinActiveLevel h v
 
+-- | Like 'withPin', but for 'InputPin's.
+--
+-- The second argument is an optional active level. If it is
+-- 'Nothing', then the pin's active level is unchanged from its
+-- current state. Otherwise, the pin's active level is set to the
+-- specified level.
+--
+-- If the pin cannot be configured for input, this action will error
+-- as 'setPinDirection' does.
 withInputPin :: (MonadMask m, MonadGpio h m) => Pin -> Maybe PinValue -> (InputPin h -> m a) -> m a
 withInputPin p l action =
   withPin p $ \h ->
@@ -598,26 +658,47 @@ withInputPin p l action =
        maybeSetPinActiveLevel h l
        action $ InputPin h
 
+-- | Like 'readPin'.
 readInputPin :: (MonadGpio h m) => InputPin h -> m PinValue
 readInputPin p =
   readPin (_inputHandle p)
 
+-- | Like 'getPinActiveLevel'.
 getInputPinActiveLevel :: (MonadGpio h m) => InputPin h -> m PinValue
 getInputPinActiveLevel p =
   getPinActiveLevel (_inputHandle p)
 
+-- | Like 'setPinActiveLevel'.
 setInputPinActiveLevel :: (MonadGpio h m) => InputPin h -> PinValue -> m ()
 setInputPinActiveLevel p =
   setPinActiveLevel (_inputHandle p)
 
+-- | Like 'togglePinActiveLevel'.
 toggleInputPinActiveLevel :: (MonadGpio h m) => InputPin h -> m PinValue
 toggleInputPinActiveLevel p =
   togglePinActiveLevel (_inputHandle p)
 
+-- | A handle to a pin that's been configured both for non-blocking
+-- reads and for interrupt-driven polling reads.
 newtype InterruptPin h =
   InterruptPin {_interruptHandle :: h}
   deriving (Eq,Show)
 
+-- | Like 'withPin', but for 'InterruptPin's.
+--
+-- The pin is opened for input and its initial interrupt mode set to
+-- the specified mode. (The interrupt mode can be changed after
+-- opening, see 'setInterruptPinInterruptMode'.)
+--
+-- The third argument is an optional active level. If it is 'Nothing',
+-- then the pin's active level is unchanged from its current state.
+-- Otherwise, the pin's active level is set to the specified level.
+--
+-- If the pin cannot be configured for input, this action will error
+-- as 'setPinDirection' does.
+--
+-- If the pin does not support interrupts, this action will error as
+-- 'setPinInterruptMode' does.
 withInterruptPin :: (MonadMask m, MonadGpio h m) => Pin -> PinInterruptMode -> Maybe PinValue -> (InterruptPin h -> m a) -> m a
 withInterruptPin p mode l action =
   withPin p $ \h ->
@@ -626,44 +707,84 @@ withInterruptPin p mode l action =
        maybeSetPinActiveLevel h l
        action $ InterruptPin h
 
+-- | Like 'readPin'.
 readInterruptPin :: (MonadGpio h m) => InterruptPin h -> m PinValue
 readInterruptPin p =
   readPin (_interruptHandle p)
 
+-- | Like 'pollPin'.
 pollInterruptPin :: (MonadGpio h m) => InterruptPin h -> m PinValue
 pollInterruptPin p =
   pollPin (_interruptHandle p)
 
+-- | Like 'pollPinTimeout'.
 pollInterruptPinTimeout :: (MonadGpio h m) => InterruptPin h -> Int -> m (Maybe PinValue)
 pollInterruptPinTimeout p =
   pollPinTimeout (_interruptHandle p)
 
+-- | Like 'getPinInterruptMode'.
+--
+-- Note that, unlike 'getPinInterruptMode', this action does not wrap
+-- its result in a 'Maybe', because the only way to get a valid
+-- 'InterruptPin' handle is via 'withInterruptPin', and that action
+-- will fail in the first place if the pin does not support
+-- interrupts.
+--
+-- (However, in the (theoretically impossible) case that the pin
+-- suddenly stops supporting interrupts after the fact, this action
+-- will throw a 'GpioException', which explains the 'MonadThrow' @m@
+-- constraint.)
 getInterruptPinInterruptMode :: (MonadThrow m, MonadGpio h m) => InterruptPin h -> m PinInterruptMode
 getInterruptPinInterruptMode p =
   getPinInterruptMode (_interruptHandle p) >>= \case
     Just mode -> return mode
     Nothing -> throwM $ InternalError "The specified InterruptPin does not support interrupts"
 
+-- | Like 'setPinInterruptMode'.
 setInterruptPinInterruptMode :: (MonadGpio h m) => InterruptPin h -> PinInterruptMode -> m ()
 setInterruptPinInterruptMode p =
   setPinInterruptMode (_interruptHandle p)
 
+-- | Like 'getPinActiveLevel'.
 getInterruptPinActiveLevel :: (MonadGpio h m) => InterruptPin h -> m PinValue
 getInterruptPinActiveLevel p =
   getPinActiveLevel (_interruptHandle p)
 
+-- | Like 'setPinActiveLevel'.
 setInterruptPinActiveLevel :: (MonadGpio h m) => InterruptPin h -> PinValue -> m ()
 setInterruptPinActiveLevel p =
   setPinActiveLevel (_interruptHandle p)
 
+-- | Like 'togglePinActiveLevel'.
 toggleInterruptPinActiveLevel :: (MonadGpio h m) => InterruptPin h -> m PinValue
 toggleInterruptPinActiveLevel p =
   togglePinActiveLevel (_interruptHandle p)
 
+-- | A handle to a pin that's been configured for output only.
+--
+-- Note that output pins can be both read and written. However, they
+-- only support non-blocking reads, not interrupt-driven polling
+-- reads.
 newtype OutputPin h =
   OutputPin {_outputHandle :: h}
   deriving (Eq,Show)
 
+-- | Like 'withPin', but for 'OutputPin's.
+--
+-- The second argument is an optional active level. If it is
+-- 'Nothing', then the pin's active level is unchanged from its
+-- current state. Otherwise, the pin's active level is set to the
+-- specified level.
+--
+-- The third argument is the pin's initial output value. It is
+-- relative to the active level specified by the second argument, or
+-- to the pin's current active level, if the value of the second
+-- argument is 'Nothing'. Note that if the platform supports
+-- glitch-free output, then this action will use that capability to
+-- drive the initial output value; see 'writePin'' for details.
+--
+-- If the pin cannot be configured for output, this action will error
+-- as 'setPinDirection' does.
 withOutputPin :: (MonadMask m, MonadGpio h m) => Pin -> Maybe PinValue -> PinValue -> (OutputPin h -> m a) -> m a
 withOutputPin p l v action =
   withPin p $ \h ->
@@ -671,30 +792,37 @@ withOutputPin p l v action =
        writePin' h v
        action $ OutputPin h
 
+-- | Like 'writePin'.
 writeOutputPin :: (MonadGpio h m) => OutputPin h -> PinValue -> m ()
 writeOutputPin p =
   writePin (_outputHandle p)
 
+-- | Like 'togglePinValue'.
 toggleOutputPin :: (MonadGpio h m) => OutputPin h -> m PinValue
 toggleOutputPin p =
   togglePinValue (_outputHandle p)
 
+-- | Like 'readPin'.
 readOutputPin :: (MonadGpio h m) => OutputPin h -> m PinValue
 readOutputPin p =
   readPin (_outputHandle p)
 
+-- | Like 'getPinActiveLevel'.
 getOutputPinActiveLevel :: (MonadGpio h m) => OutputPin h -> m PinValue
 getOutputPinActiveLevel p =
   getPinActiveLevel (_outputHandle p)
 
+-- | Like 'setPinActiveLevel'.
 setOutputPinActiveLevel :: (MonadGpio h m) => OutputPin h -> PinValue -> m ()
 setOutputPinActiveLevel p =
   setPinActiveLevel (_outputHandle p)
 
+-- | Like 'togglePinActiveLevel'.
 toggleOutputPinActiveLevel :: (MonadGpio h m) => OutputPin h -> m PinValue
 toggleOutputPinActiveLevel p =
   togglePinActiveLevel (_outputHandle p)
 
+-- | Exceptions that are thrown at the 'MonadGpio' DSL layer.
 data GpioException
   = InternalError String
     -- ^ An internal error has occurred in the 'MonadGpio' DSL,
