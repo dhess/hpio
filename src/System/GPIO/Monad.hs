@@ -116,8 +116,8 @@ import qualified Control.Monad.Trans.Writer.Strict as StrictWriter (WriterT)
 import Data.Data
 
 import System.GPIO.Types
-       (Pin, PinActiveLevel(..), PinDirection(..), PinInterruptMode,
-        PinValue, gpioExceptionToException, gpioExceptionFromException)
+       (Pin, PinActiveLevel(..), PinDirection(..), PinInterruptMode(..),
+        PinValue(..), gpioExceptionToException, gpioExceptionFromException)
 
 -- | A monad type class for GPIO computations. The type class
 -- specifies a DSL for writing portable GPIO programs, and instances
