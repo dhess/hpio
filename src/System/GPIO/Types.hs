@@ -25,6 +25,8 @@ Basic GPIO types.
 module System.GPIO.Types
        ( -- * GPIO pins
          Pin(..)
+       , PinInputMode(..)
+       , PinOutputMode(..)
        , PinCapabilities(..)
        , PinDirection(..)
        , PinActiveLevel(..)
@@ -47,6 +49,7 @@ import Control.Exception (Exception(..), SomeException)
 import Data.Bits
 import Data.Data
 import Data.Ix
+import Data.Set (Set)
 import GHC.Generics
 import Test.QuickCheck (Arbitrary(..), arbitraryBoundedEnum, genericShrink)
 
@@ -70,16 +73,75 @@ instance Arbitrary Pin where
 pinNumber :: Pin -> Int
 pinNumber (Pin n) = n
 
--- | A pin's capabilities.
+-- | Pin input modes.
+--
+-- Pins that are capable of input will at least support the
+-- 'InputDefault' mode.
+--
+-- Note that in 'InputDefault' mode, under the covers the pin's actual
+-- input mode is most likely one of the other, more specific modes. By
+-- using 'InputDefault' mode, you are simply saying that you don't
+-- care about the pin's physical configuration, just that the pin is
+-- being used for input.
+data PinInputMode
+  = InputDefault
+    -- ^ The pin's default input mode, i.e., the mode used when a more
+    -- specific mode is not specified
+  | InputFloating
+    -- ^ A floating/high-impedance/tri-state mode which uses little
+    -- power, but when disconnected, the pin's value may vary over
+    -- time
+  | InputPullUp
+    -- ^ The pin is connected to an internal pull-up resistor such
+    -- that, when the pin is disconnected or connected to a
+    -- floating/high-impedance node, its physical value will be
+    -- 'High'
+  | InputPullDown
+    -- ^ The pin is connected to an internal pull-down resistor such
+    -- that, when the pin is disconnected or connected to a
+    -- floating/high-impedance noe, its physical value will be 'Low'
+  deriving (Bounded,Enum,Eq,Ord,Data,Read,Show,Generic,Typeable)
+
+-- | Pin output modes.
+--
+-- Pins that are capable of output will at least support the
+-- 'OutputDefault' mode.
+--
+-- Note that in 'OutputDefault' mode, under the covers the pin's
+-- actual input mode is most likely one of the other, more specific
+-- modes. By using 'OutputDefault' mode, you are simply saying that
+-- you don't care about the pin's physical configuration, just that
+-- the pin is being used for output.
+data PinOutputMode
+  = OutputDefault
+    -- ^ The pin's default output mode, i.e., the mode used when a
+    -- more specific mode is not specified
+  | OutputPushPull
+    -- ^ The output actively drives both the 'High' and 'Low' states
+  | OutputOpenDrain
+    -- ^ The output actively drives the 'Low' state, but 'High' is
+    -- left floating (also known as /open collector/)
+  | OutputOpenDrainPullUp
+    -- ^ The output actively drives the 'Low' state, and is connected
+    -- to an internal pull-up resistor in the 'High' state.
+  | OutputOpenSource
+    -- ^ The output actively drives the 'High' state, but 'Low' is
+    -- left floating (also known as /open emitter/)
+  | OutputOpenSourcePullDown
+    -- ^ The output actively drives the 'High' state, and is connected
+    -- to an internal pull-down resistor in the 'Low' state.
+  deriving (Bounded,Enum,Eq,Ord,Data,Read,Show,Generic,Typeable)
+
+-- | Catalog a pin's capabilities.
 data PinCapabilities =
-  PinCapabilities {_input :: Bool
-                   -- ^ Can the pin be configured for input?
-                  ,_output :: Bool
-                   -- ^ Can the pin be configured for output?
+  PinCapabilities {_inputModes :: Set PinInputMode
+                   -- ^ Which input modes does the pin support?
+                  ,_outputModes :: Set PinOutputMode
+                   -- ^ Which output modes does the pin support?
                   ,_interrupts :: Bool
                    -- ^ Does the pin support interrupts in input mode?
                   }
-  deriving (Eq,Data,Read,Show,Generic,Typeable)
+  deriving (Eq,Show,Generic,Typeable)
 
 -- | A pin's direction (input/output).
 data PinDirection

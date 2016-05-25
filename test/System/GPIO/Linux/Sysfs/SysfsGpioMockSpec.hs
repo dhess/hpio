@@ -7,14 +7,15 @@ import Control.Exception (fromException)
 import Control.Monad (void)
 import Control.Monad.Catch (MonadCatch, MonadMask, handle)
 import qualified Data.Map.Strict as Map (lookup)
+import qualified Data.Set as Set (empty, fromList)
 
 import System.GPIO.Linux.Sysfs.Mock
 import System.GPIO.Linux.Sysfs.Types (SysfsEdge(..), SysfsException(..))
 import System.GPIO.Monad
 import System.GPIO.Types
-       (Pin(..), PinCapabilities(..), PinActiveLevel(..),
-        PinDirection(..), PinInterruptMode(..), PinValue(..),
-        SomeGpioException)
+       (Pin(..), PinInputMode(..), PinOutputMode(..), PinCapabilities(..),
+        PinActiveLevel(..), PinDirection(..), PinInterruptMode(..),
+        PinValue(..), SomeGpioException)
 
 import Test.Hspec
 
@@ -275,9 +276,9 @@ spec =
                     [testChip]
             in do result
                     `shouldBe`
-                    (PinCapabilities True True True,
-                     PinCapabilities False False True,
-                     PinCapabilities True True False)
+                    (PinCapabilities (Set.fromList [InputDefault]) (Set.fromList [OutputDefault]) True,
+                     PinCapabilities Set.empty Set.empty False,
+                     PinCapabilities (Set.fromList [InputDefault]) (Set.fromList [OutputDefault]) False)
           it "doesn't leave any pin state around" $
             let (Right world) =
                   execSysfsGpioMock (void $ pinCapabilities (Pin 1)) initialMockWorld [chip0]

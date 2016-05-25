@@ -81,6 +81,7 @@ import Control.Monad.Writer (MonadWriter)
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Char8 as C8 (readInt, unpack)
 import Data.List (isPrefixOf, sort)
+import qualified Data.Set as Set (empty, fromList)
 import Foreign.C.Types (CInt(..))
 import qualified GHC.IO.Exception as IO (IOErrorType(..))
 import System.FilePath ((</>), takeFileName)
@@ -259,6 +260,23 @@ instance (Functor m, MonadCatch m, MonadMask m, MonadThrow m, MonadSysfs m) => M
       False -> return []
       True -> lift availablePins
 
+  -- The @sysfs@ GPIO interface is particularly information-poor. It
+  -- is not currently possible, in a hardware-independent way, to
+  -- determine which particular input and output modes a pin supports,
+  -- for example.
+  --
+  -- For input pins, therefore, we can only claim 'InputDefault'
+  -- support. However, for output pins, it's possible to emulate both
+  -- 'OutputOpenDrain' and 'OutputOpenSource' modes by switching the
+  -- pin into input mode for 'High' (in the case of 'OutputOpenDrain')
+  -- or 'Low' ('OutputOpenSource') values. We do not currently support
+  -- this, but it's a planned feature.
+  --
+  -- If a pin has no @direction@ attribute, it means there is no
+  -- hardware-independent way to determine its hard-wired direction
+  -- via @sysfs@. That means there's no practical way to use it with
+  -- the cross-platform DSL, so in this case we simply report the pin
+  -- as having no capabilities.
   pinCapabilities p =
     lift sysfsIsPresent >>= \case
       False -> throwM SysfsNotPresent
@@ -266,7 +284,11 @@ instance (Functor m, MonadCatch m, MonadMask m, MonadThrow m, MonadSysfs m) => M
         withPin p $ \_ ->
           do hasDir <- lift $ pinHasDirection p
              hasEdge <- lift $ pinHasEdge p
-             return $ PinCapabilities hasDir hasDir hasEdge
+             if hasDir
+                then return $ PinCapabilities (Set.fromList [InputDefault])
+                                              (Set.fromList [OutputDefault])
+                                              hasEdge
+                else return $ PinCapabilities Set.empty Set.empty False
 
   openPin p =
     lift sysfsIsPresent >>= \case
