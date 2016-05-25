@@ -14,14 +14,14 @@ Tested-With:            GHC == 7.8.4, GHC == 7.10.2, GHC == 7.10.3, GHC == 8.0.1
 Category:               System
 Synopsis:               Monads for GPIO in Haskell
 Description:
-  This package provides an embedded DSL for writing
-  platform-independent GPIO programs in Haskell. Currently only Linux
-  is supported (via the @sysfs@ filesystem), but other platforms will
-  be supported in the future.
+  This package provides an embedded DSL for writing cross-platform
+  GPIO programs in Haskell. Currently only Linux is supported (via the
+  @sysfs@ filesystem), but other UNIX GPIO platforms will be supported
+  in the future.
   .
-  Monads and low-level functions are also provided for each supported
-  platform's native GPIO API, so that you can program directly to the
-  platform API and avoid the overhead of the eDSL interpreter.
+  Monads and low-level actions are also provided for each supported
+  platform's native GPIO API, if you want to program directly to
+  the platform API.
   .
   Example programs are provided in the 'examples' directory of the
   source code distribution. There is also a "System.GPIO.Tutorial"
