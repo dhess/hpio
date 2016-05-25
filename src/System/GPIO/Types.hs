@@ -25,6 +25,7 @@ Basic GPIO types.
 module System.GPIO.Types
        ( -- * GPIO pins
          Pin(..)
+       , PinCapabilities(..)
        , PinDirection(..)
        , PinActiveLevel(..)
        , PinValue(..)
@@ -68,6 +69,17 @@ instance Arbitrary Pin where
 -- 5
 pinNumber :: Pin -> Int
 pinNumber (Pin n) = n
+
+-- | A pin's capabilities.
+data PinCapabilities =
+  PinCapabilities {_input :: Bool
+                   -- ^ Can the pin be configured for input?
+                  ,_output :: Bool
+                   -- ^ Can the pin be configured for output?
+                  ,_interrupts :: Bool
+                   -- ^ Does the pin support interrupts in input mode?
+                  }
+  deriving (Eq,Data,Read,Show,Generic,Typeable)
 
 -- | A pin's direction (input/output).
 data PinDirection

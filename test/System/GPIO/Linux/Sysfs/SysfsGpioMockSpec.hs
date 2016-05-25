@@ -12,8 +12,9 @@ import System.GPIO.Linux.Sysfs.Mock
 import System.GPIO.Linux.Sysfs.Types (SysfsEdge(..), SysfsException(..))
 import System.GPIO.Monad
 import System.GPIO.Types
-       (Pin(..), PinActiveLevel(..), PinDirection(..),
-        PinInterruptMode(..), PinValue(..), SomeGpioException)
+       (Pin(..), PinCapabilities(..), PinActiveLevel(..),
+        PinDirection(..), PinInterruptMode(..), PinValue(..),
+        SomeGpioException)
 
 import Test.Hspec
 
@@ -257,6 +258,34 @@ spec =
        in
          it "returns the list of available pins" $
              evalSysfsGpioMock' pins initialMockWorld [chip0] `shouldBe` expectedResult
+
+     describe "pinCapabilities" $
+       do it "returns a pin's capabilities" $
+            let testChip = MockGpioChip "testChip" 1 [defaultMockPinState
+                                                     ,defaultMockPinState {_userVisibleDirection = False}
+                                                     ,defaultMockPinState {_edge = Nothing}]
+                (Right result) =
+                  evalSysfsGpioMock'
+                    (do c1 <- pinCapabilities (Pin 1)
+                        c2 <- pinCapabilities (Pin 2)
+                        c3 <- pinCapabilities (Pin 3)
+                        return (c1,c2,c3)
+                    )
+                    initialMockWorld
+                    [testChip]
+            in do result
+                    `shouldBe`
+                    (PinCapabilities True True True,
+                     PinCapabilities False False True,
+                     PinCapabilities True True False)
+          it "doesn't leave any pin state around" $
+            let (Right world) =
+                  execSysfsGpioMock (void $ pinCapabilities (Pin 1)) initialMockWorld [chip0]
+            in evalSysfsMock' (doesDirectoryExist "/sys/class/gpio/gpio1") world [] `shouldBe` Right False
+          it "fails if the pin doesn't exist" $
+            let (Left failure) =
+                  evalSysfsGpioMock' (pinCapabilities (Pin 99)) initialMockWorld [chip0]
+            in failure `shouldBe` (Just $ InvalidPin (Pin 99))
 
      describe "openPin/closePin" $
        do it "cleans up properly" $

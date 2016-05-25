@@ -116,8 +116,9 @@ import qualified Control.Monad.Trans.Writer.Strict as StrictWriter (WriterT)
 import Data.Data
 
 import System.GPIO.Types
-       (Pin, PinActiveLevel(..), PinDirection(..), PinInterruptMode(..),
-        PinValue(..), gpioExceptionToException, gpioExceptionFromException)
+       (Pin, PinCapabilities(..), PinActiveLevel(..), PinDirection(..),
+        PinInterruptMode(..), PinValue(..), gpioExceptionToException,
+        gpioExceptionFromException)
 
 -- | A monad type class for GPIO computations. The type class
 -- specifies a DSL for writing portable GPIO programs, and instances
@@ -181,6 +182,9 @@ class Monad m => MonadGpio h m | m -> h where
   -- runtime. Therefore, there may be more pins available than are
   -- returned by this action.
   pins :: m [Pin]
+
+  -- | Query the pin's capabilities.
+  pinCapabilities :: Pin -> m PinCapabilities
 
   -- | Open a pin for use and return a handle to it.
   --
@@ -373,6 +377,7 @@ class Monad m => MonadGpio h m | m -> h where
 
 instance (MonadGpio h m) => MonadGpio h (IdentityT m) where
   pins = lift pins
+  pinCapabilities = lift . pinCapabilities
   openPin = lift . openPin
   closePin = lift . closePin
   getPinDirection = lift . getPinDirection
@@ -392,6 +397,7 @@ instance (MonadGpio h m) => MonadGpio h (IdentityT m) where
 
 instance (MonadGpio h m) => MonadGpio h (ContT r m) where
   pins = lift pins
+  pinCapabilities = lift . pinCapabilities
   openPin = lift . openPin
   closePin = lift . closePin
   getPinDirection = lift . getPinDirection
@@ -411,6 +417,7 @@ instance (MonadGpio h m) => MonadGpio h (ContT r m) where
 
 instance (MonadGpio h m) => MonadGpio h (CatchT m) where
   pins = lift pins
+  pinCapabilities = lift . pinCapabilities
   openPin = lift . openPin
   closePin = lift . closePin
   getPinDirection = lift . getPinDirection
@@ -430,6 +437,7 @@ instance (MonadGpio h m) => MonadGpio h (CatchT m) where
 
 instance (MonadGpio h m) => MonadGpio h (ExceptT e m) where
   pins = lift pins
+  pinCapabilities = lift . pinCapabilities
   openPin = lift . openPin
   closePin = lift . closePin
   getPinDirection = lift . getPinDirection
@@ -449,6 +457,7 @@ instance (MonadGpio h m) => MonadGpio h (ExceptT e m) where
 
 instance (MonadGpio h m) => MonadGpio h (ListT m) where
   pins = lift pins
+  pinCapabilities = lift . pinCapabilities
   openPin = lift . openPin
   closePin = lift . closePin
   getPinDirection = lift . getPinDirection
@@ -468,6 +477,7 @@ instance (MonadGpio h m) => MonadGpio h (ListT m) where
 
 instance (MonadGpio h m) => MonadGpio h (MaybeT m) where
   pins = lift pins
+  pinCapabilities = lift . pinCapabilities
   openPin = lift . openPin
   closePin = lift . closePin
   getPinDirection = lift . getPinDirection
@@ -487,6 +497,7 @@ instance (MonadGpio h m) => MonadGpio h (MaybeT m) where
 
 instance (MonadGpio h m) => MonadGpio h (ReaderT r m) where
   pins = lift pins
+  pinCapabilities = lift . pinCapabilities
   openPin = lift . openPin
   closePin = lift . closePin
   getPinDirection = lift . getPinDirection
@@ -506,6 +517,7 @@ instance (MonadGpio h m) => MonadGpio h (ReaderT r m) where
 
 instance (MonadGpio h m, Monoid w) => MonadGpio h (LazyRWS.RWST r w s m) where
   pins = lift pins
+  pinCapabilities = lift . pinCapabilities
   openPin = lift . openPin
   closePin = lift . closePin
   getPinDirection = lift . getPinDirection
@@ -525,6 +537,7 @@ instance (MonadGpio h m, Monoid w) => MonadGpio h (LazyRWS.RWST r w s m) where
 
 instance (MonadGpio h m, Monoid w) => MonadGpio h (StrictRWS.RWST r w s m) where
   pins = lift pins
+  pinCapabilities = lift . pinCapabilities
   openPin = lift . openPin
   closePin = lift . closePin
   getPinDirection = lift . getPinDirection
@@ -544,6 +557,7 @@ instance (MonadGpio h m, Monoid w) => MonadGpio h (StrictRWS.RWST r w s m) where
 
 instance (MonadGpio h m) => MonadGpio h (LazyState.StateT s m) where
   pins = lift pins
+  pinCapabilities = lift . pinCapabilities
   openPin = lift . openPin
   closePin = lift . closePin
   getPinDirection = lift . getPinDirection
@@ -563,6 +577,7 @@ instance (MonadGpio h m) => MonadGpio h (LazyState.StateT s m) where
 
 instance (MonadGpio h m) => MonadGpio h (StrictState.StateT s m) where
   pins = lift pins
+  pinCapabilities = lift . pinCapabilities
   openPin = lift . openPin
   closePin = lift . closePin
   getPinDirection = lift . getPinDirection
@@ -582,6 +597,7 @@ instance (MonadGpio h m) => MonadGpio h (StrictState.StateT s m) where
 
 instance (MonadGpio h m, Monoid w) => MonadGpio h (LazyWriter.WriterT w m) where
   pins = lift pins
+  pinCapabilities = lift . pinCapabilities
   openPin = lift . openPin
   closePin = lift . closePin
   getPinDirection = lift . getPinDirection
@@ -601,6 +617,7 @@ instance (MonadGpio h m, Monoid w) => MonadGpio h (LazyWriter.WriterT w m) where
 
 instance (MonadGpio h m, Monoid w) => MonadGpio h (StrictWriter.WriterT w m) where
   pins = lift pins
+  pinCapabilities = lift . pinCapabilities
   openPin = lift . openPin
   closePin = lift . closePin
   getPinDirection = lift . getPinDirection

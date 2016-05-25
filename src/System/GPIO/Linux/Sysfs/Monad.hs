@@ -87,7 +87,7 @@ import System.FilePath ((</>), takeFileName)
 
 import System.GPIO.Linux.Sysfs.Types (SysfsEdge(..), SysfsException(..), toPinInterruptMode, toSysfsEdge)
 import System.GPIO.Linux.Sysfs.Util
-import System.GPIO.Monad (MonadGpio(..))
+import System.GPIO.Monad (MonadGpio(..), withPin)
 import System.GPIO.Types
 import System.IO.Error
        (ioeGetErrorType, isAlreadyInUseError, isDoesNotExistError,
@@ -253,11 +253,20 @@ newtype SysfsGpioT m a =
 instance MonadTrans SysfsGpioT where
   lift = SysfsGpioT
 
-instance (Functor m, MonadCatch m, MonadThrow m, MonadSysfs m) => MonadGpio PinDescriptor (SysfsGpioT m) where
+instance (Functor m, MonadCatch m, MonadMask m, MonadThrow m, MonadSysfs m) => MonadGpio PinDescriptor (SysfsGpioT m) where
   pins =
     lift sysfsIsPresent >>= \case
       False -> return []
       True -> lift availablePins
+
+  pinCapabilities p =
+    lift sysfsIsPresent >>= \case
+      False -> throwM SysfsNotPresent
+      True ->
+        withPin p $ \_ ->
+          do hasDir <- lift $ pinHasDirection p
+             hasEdge <- lift $ pinHasEdge p
+             return $ PinCapabilities hasDir hasDir hasEdge
 
   openPin p =
     lift sysfsIsPresent >>= \case
