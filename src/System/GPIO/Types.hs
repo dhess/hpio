@@ -73,7 +73,8 @@ instance Arbitrary Pin where
 pinNumber :: Pin -> Int
 pinNumber (Pin n) = n
 
--- | Pin input modes.
+-- | Input pins may support a number of different physical
+-- configurations.
 --
 -- Pins that are capable of input will at least support the
 -- 'InputDefault' mode.
@@ -88,21 +89,21 @@ data PinInputMode
     -- ^ The pin's default input mode, i.e., the mode used when a more
     -- specific mode is not specified
   | InputFloating
-    -- ^ A floating/high-impedance/tri-state mode which uses little
-    -- power, but when disconnected, the pin's value may vary over
-    -- time
+    -- ^ A floating \/ high-impedance \/ tri-state mode which uses
+    -- little power, but when disconnected, may cause the pin's value
+    -- to be indeterminate
   | InputPullUp
     -- ^ The pin is connected to an internal pull-up resistor such
-    -- that, when the pin is disconnected or connected to a
-    -- floating/high-impedance node, its physical value will be
-    -- 'High'
+    -- that, when the pin is disconnected or connected to a floating /
+    -- high-impedance node, its physical value will be 'High'
   | InputPullDown
     -- ^ The pin is connected to an internal pull-down resistor such
-    -- that, when the pin is disconnected or connected to a
-    -- floating/high-impedance noe, its physical value will be 'Low'
+    -- that, when the pin is disconnected or connected to a floating /
+    -- high-impedance node, its physical value will be 'Low'
   deriving (Bounded,Enum,Eq,Ord,Data,Read,Show,Generic,Typeable)
 
--- | Pin output modes.
+-- | Output pins may support a number of different physical
+-- configurations.
 --
 -- Pins that are capable of output will at least support the
 -- 'OutputDefault' mode.
