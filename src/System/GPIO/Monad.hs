@@ -93,7 +93,7 @@ module System.GPIO.Monad
        , setOutputPinActiveLevel
        , toggleOutputPinActiveLevel
          -- * Exceptions
-       , GpioException
+       , GpioException(..)
        ) where
 
 import Prelude ()
@@ -736,7 +736,7 @@ getInterruptPinInterruptMode :: (MonadThrow m, MonadGpio h m) => InterruptPin h 
 getInterruptPinInterruptMode p =
   getPinInterruptMode (_interruptHandle p) >>= \case
     Just mode -> return mode
-    Nothing -> throwM $ InternalError "The specified InterruptPin does not support interrupts"
+    Nothing -> throwM $ GpioInternalError "The specified InterruptPin does not support interrupts"
 
 -- | Like 'setPinInterruptMode'.
 setInterruptPinInterruptMode :: (MonadGpio h m) => InterruptPin h -> PinInterruptMode -> m ()
@@ -821,7 +821,7 @@ toggleOutputPinActiveLevel p =
 
 -- | Exceptions that are thrown at the 'MonadGpio' DSL layer.
 data GpioException
-  = InternalError String
+  = GpioInternalError String
     -- ^ An internal error has occurred in the 'MonadGpio' DSL,
     -- something which should "never happen" and should be reported to
     -- the package maintainer.
