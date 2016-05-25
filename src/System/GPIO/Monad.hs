@@ -131,11 +131,12 @@ import System.GPIO.Types
 -- == Active-high versus active-low logic
 --
 -- The DSL supports both /active-high/ and /active-low/ logic. That
--- is, the /active level/ of a GPIO pin can be configured as 'High' or
--- 'Low'. If a pin's active level is 'High', then for that pin, a
--- 'PinValue' of 'High' corresponds to a "high" physical signal level,
--- and a 'PinValue' of 'Low' corresponds to a "low" physical signal
--- level. The converse is true when the pin's active level is 'Low'.
+-- is, the /active level/ of a GPIO pin can be configured as
+-- 'ActiveHigh' or 'ActiveLow'. If a pin's active level is
+-- 'ActiveHigh', then for that pin, a 'PinValue' of 'High' corresponds
+-- to a "high" physical signal level, and a 'PinValue' of 'Low'
+-- corresponds to a "low" physical signal level. The converse is true
+-- when the pin's active level is 'ActiveLow'.
 --
 -- (Note that this explanation oversimplifies the reality of circuit
 -- design, as in order to predict the actual voltage level seen on a
