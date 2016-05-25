@@ -116,8 +116,8 @@ import qualified Control.Monad.Trans.Writer.Strict as StrictWriter (WriterT)
 import Data.Data
 
 import System.GPIO.Types
-       (Pin, PinDirection(..), PinInterruptMode, PinValue,
-        gpioExceptionToException, gpioExceptionFromException)
+       (Pin, PinActiveLevel(..), PinDirection(..), PinInterruptMode,
+        PinValue, gpioExceptionToException, gpioExceptionFromException)
 
 -- | A monad type class for GPIO computations. The type class
 -- specifies a DSL for writing portable GPIO programs, and instances
@@ -361,16 +361,14 @@ class Monad m => MonadGpio h m | m -> h where
   -- It is an error to use this action on a pin configured for output.
   setPinInterruptMode :: h -> PinInterruptMode -> m ()
 
-  -- | Get the pin's active level: 'Low' means the pin is configured
-  -- for active-low logic, and 'High' means the pin is configured as
-  -- active-high.
-  getPinActiveLevel :: h -> m PinValue
+  -- | Get the pin's active level.
+  getPinActiveLevel :: h -> m PinActiveLevel
 
-  -- | Set the pin's active level, 'Low' or 'High'.
-  setPinActiveLevel :: h -> PinValue -> m ()
+  -- | Set the pin's active level.
+  setPinActiveLevel :: h -> PinActiveLevel -> m ()
 
   -- | Toggle the pin's active level. Returns the pin's new level.
-  togglePinActiveLevel :: h -> m PinValue
+  togglePinActiveLevel :: h -> m PinActiveLevel
 
 instance (MonadGpio h m) => MonadGpio h (IdentityT m) where
   pins = lift pins
@@ -638,20 +636,19 @@ newtype InputPin h =
   InputPin {_inputHandle :: h}
   deriving (Eq,Show)
 
-maybeSetPinActiveLevel :: (MonadGpio h m) => h -> Maybe PinValue -> m ()
+maybeSetPinActiveLevel :: (MonadGpio h m) => h -> Maybe PinActiveLevel -> m ()
 maybeSetPinActiveLevel _ Nothing = return ()
 maybeSetPinActiveLevel h (Just v) = setPinActiveLevel h v
 
 -- | Like 'withPin', but for 'InputPin's.
 --
--- The second argument is an optional active level. If it is
--- 'Nothing', then the pin's active level is unchanged from its
--- current state. Otherwise, the pin's active level is set to the
--- specified level.
+-- If the optional active level argument is 'Nothing', then the pin's
+-- active level is unchanged from its current state. Otherwise, the
+-- pin's active level is set to the specified level.
 --
 -- If the pin cannot be configured for input, this action will error
 -- as 'setPinDirection' does.
-withInputPin :: (MonadMask m, MonadGpio h m) => Pin -> Maybe PinValue -> (InputPin h -> m a) -> m a
+withInputPin :: (MonadMask m, MonadGpio h m) => Pin -> Maybe PinActiveLevel -> (InputPin h -> m a) -> m a
 withInputPin p l action =
   withPin p $ \h ->
     do setPinDirection h In
@@ -664,17 +661,17 @@ readInputPin p =
   readPin (_inputHandle p)
 
 -- | Like 'getPinActiveLevel'.
-getInputPinActiveLevel :: (MonadGpio h m) => InputPin h -> m PinValue
+getInputPinActiveLevel :: (MonadGpio h m) => InputPin h -> m PinActiveLevel
 getInputPinActiveLevel p =
   getPinActiveLevel (_inputHandle p)
 
 -- | Like 'setPinActiveLevel'.
-setInputPinActiveLevel :: (MonadGpio h m) => InputPin h -> PinValue -> m ()
+setInputPinActiveLevel :: (MonadGpio h m) => InputPin h -> PinActiveLevel -> m ()
 setInputPinActiveLevel p =
   setPinActiveLevel (_inputHandle p)
 
 -- | Like 'togglePinActiveLevel'.
-toggleInputPinActiveLevel :: (MonadGpio h m) => InputPin h -> m PinValue
+toggleInputPinActiveLevel :: (MonadGpio h m) => InputPin h -> m PinActiveLevel
 toggleInputPinActiveLevel p =
   togglePinActiveLevel (_inputHandle p)
 
@@ -690,16 +687,16 @@ newtype InterruptPin h =
 -- the specified mode. (The interrupt mode can be changed after
 -- opening, see 'setInterruptPinInterruptMode'.)
 --
--- The third argument is an optional active level. If it is 'Nothing',
--- then the pin's active level is unchanged from its current state.
--- Otherwise, the pin's active level is set to the specified level.
+-- If the optional active level argument is 'Nothing', then the pin's
+-- active level is unchanged from its current state. Otherwise, the
+-- pin's active level is set to the specified level.
 --
 -- If the pin cannot be configured for input, this action will error
 -- as 'setPinDirection' does.
 --
 -- If the pin does not support interrupts, this action will error as
 -- 'setPinInterruptMode' does.
-withInterruptPin :: (MonadMask m, MonadGpio h m) => Pin -> PinInterruptMode -> Maybe PinValue -> (InterruptPin h -> m a) -> m a
+withInterruptPin :: (MonadMask m, MonadGpio h m) => Pin -> PinInterruptMode -> Maybe PinActiveLevel -> (InterruptPin h -> m a) -> m a
 withInterruptPin p mode l action =
   withPin p $ \h ->
     do setPinDirection h In
@@ -746,17 +743,17 @@ setInterruptPinInterruptMode p =
   setPinInterruptMode (_interruptHandle p)
 
 -- | Like 'getPinActiveLevel'.
-getInterruptPinActiveLevel :: (MonadGpio h m) => InterruptPin h -> m PinValue
+getInterruptPinActiveLevel :: (MonadGpio h m) => InterruptPin h -> m PinActiveLevel
 getInterruptPinActiveLevel p =
   getPinActiveLevel (_interruptHandle p)
 
 -- | Like 'setPinActiveLevel'.
-setInterruptPinActiveLevel :: (MonadGpio h m) => InterruptPin h -> PinValue -> m ()
+setInterruptPinActiveLevel :: (MonadGpio h m) => InterruptPin h -> PinActiveLevel -> m ()
 setInterruptPinActiveLevel p =
   setPinActiveLevel (_interruptHandle p)
 
 -- | Like 'togglePinActiveLevel'.
-toggleInterruptPinActiveLevel :: (MonadGpio h m) => InterruptPin h -> m PinValue
+toggleInterruptPinActiveLevel :: (MonadGpio h m) => InterruptPin h -> m PinActiveLevel
 toggleInterruptPinActiveLevel p =
   togglePinActiveLevel (_interruptHandle p)
 
@@ -771,21 +768,20 @@ newtype OutputPin h =
 
 -- | Like 'withPin', but for 'OutputPin's.
 --
--- The second argument is an optional active level. If it is
--- 'Nothing', then the pin's active level is unchanged from its
--- current state. Otherwise, the pin's active level is set to the
--- specified level.
+-- If the optional active level argument is 'Nothing', then the pin's
+-- active level is unchanged from its current state. Otherwise, the
+-- pin's active level is set to the specified level.
 --
--- The third argument is the pin's initial output value. It is
--- relative to the active level specified by the second argument, or
--- to the pin's current active level, if the value of the second
--- argument is 'Nothing'. Note that if the platform supports
--- glitch-free output, then this action will use that capability to
--- drive the initial output value; see 'writePin'' for details.
+-- The 'PinValue' argument specifies the pin's initial output value.
+-- It is relative to the active level argument, or to the pin's
+-- current active level if the active level argument is 'Nothing'.
+-- Note that if the platform supports glitch-free output, then this
+-- action will use that capability to drive the initial output value;
+-- see 'writePin'' for details.
 --
 -- If the pin cannot be configured for output, this action will error
 -- as 'setPinDirection' does.
-withOutputPin :: (MonadMask m, MonadGpio h m) => Pin -> Maybe PinValue -> PinValue -> (OutputPin h -> m a) -> m a
+withOutputPin :: (MonadMask m, MonadGpio h m) => Pin -> Maybe PinActiveLevel -> PinValue -> (OutputPin h -> m a) -> m a
 withOutputPin p l v action =
   withPin p $ \h ->
     do maybeSetPinActiveLevel h l
@@ -808,17 +804,17 @@ readOutputPin p =
   readPin (_outputHandle p)
 
 -- | Like 'getPinActiveLevel'.
-getOutputPinActiveLevel :: (MonadGpio h m) => OutputPin h -> m PinValue
+getOutputPinActiveLevel :: (MonadGpio h m) => OutputPin h -> m PinActiveLevel
 getOutputPinActiveLevel p =
   getPinActiveLevel (_outputHandle p)
 
 -- | Like 'setPinActiveLevel'.
-setOutputPinActiveLevel :: (MonadGpio h m) => OutputPin h -> PinValue -> m ()
+setOutputPinActiveLevel :: (MonadGpio h m) => OutputPin h -> PinActiveLevel -> m ()
 setOutputPinActiveLevel p =
   setPinActiveLevel (_outputHandle p)
 
 -- | Like 'togglePinActiveLevel'.
-toggleOutputPinActiveLevel :: (MonadGpio h m) => OutputPin h -> m PinValue
+toggleOutputPinActiveLevel :: (MonadGpio h m) => OutputPin h -> m PinActiveLevel
 toggleOutputPinActiveLevel p =
   togglePinActiveLevel (_outputHandle p)
 

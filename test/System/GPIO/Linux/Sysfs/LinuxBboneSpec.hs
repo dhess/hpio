@@ -12,7 +12,9 @@ import Control.Monad.IO.Class (MonadIO, liftIO)
 import System.Directory (doesDirectoryExist)
 import System.GPIO.Linux.Sysfs (SysfsException(..), runSysfsGpioIO)
 import System.GPIO.Monad (MonadGpio(..), withPin)
-import System.GPIO.Types (Pin(..), PinDirection(..), PinInterruptMode(..), PinValue(..))
+import System.GPIO.Types
+       (Pin(..), PinActiveLevel(..), PinDirection(..),
+        PinInterruptMode(..), PinValue(..))
 import Test.Hspec
 
 isInvalidPinError :: SysfsException -> Bool
@@ -192,25 +194,25 @@ runTests =
              runSysfsGpioIO
                (withPin testPin1 $ \h ->
                  do udevScriptWait
-                    setPinActiveLevel h Low
+                    setPinActiveLevel h ActiveLow
                     level1 <- getPinActiveLevel h
-                    setPinActiveLevel h High
+                    setPinActiveLevel h ActiveHigh
                     level2 <- getPinActiveLevel h
-                    setPinActiveLevel h Low
+                    setPinActiveLevel h ActiveLow
                     level3 <- getPinActiveLevel h
                     return (level1, level2, level3))
-               `shouldReturn` (Low, High, Low)
+               `shouldReturn` (ActiveLow, ActiveHigh, ActiveLow)
          context "togglePinActiveLevel" $
            it "toggles the pin's active level" $
              runSysfsGpioIO
                (withPin testPin1 $ \h ->
                  do udevScriptWait
-                    setPinActiveLevel h High
+                    setPinActiveLevel h ActiveHigh
                     level1 <- togglePinActiveLevel h
                     level2 <- togglePinActiveLevel h
                     level3 <- togglePinActiveLevel h
                     return (level1, level2, level3))
-               `shouldReturn` (Low, High, Low)
+               `shouldReturn` (ActiveLow, ActiveHigh, ActiveLow)
          context "readPin/writePin" $
            -- Note: if these tests fail, you might not have hooked pin
            -- P9-15 up to pin P8-15!
@@ -220,9 +222,9 @@ runTests =
                      withPin testPin2 $ \h2 ->
                        do udevScriptWait
                           setPinDirection h1 In
-                          setPinActiveLevel h1 High
+                          setPinActiveLevel h1 ActiveHigh
                           setPinDirection h2 Out
-                          setPinActiveLevel h2 High
+                          setPinActiveLevel h2 ActiveHigh
                           writePin h2 High
                           -- give the pin time to settle
                           liftIO $ threadDelay 250000
@@ -241,9 +243,9 @@ runTests =
                      withPin testPin2 $ \h2 ->
                        do udevScriptWait
                           setPinDirection h1 In
-                          setPinActiveLevel h1 Low
+                          setPinActiveLevel h1 ActiveLow
                           setPinDirection h2 Out
-                          setPinActiveLevel h2 High
+                          setPinActiveLevel h2 ActiveHigh
                           writePin h2 High
                           -- give the pin time to settle
                           liftIO $ threadDelay 250000
@@ -261,7 +263,7 @@ runTests =
                    (withPin testPin2 $ \h ->
                       do udevScriptWait
                          setPinDirection h Out
-                         setPinActiveLevel h High
+                         setPinActiveLevel h ActiveHigh
                          writePin h High
                          liftIO $ threadDelay 250000
                          val1 <- readPin h
@@ -278,7 +280,7 @@ runTests =
                    (withPin testPin2 $ \h ->
                       do udevScriptWait
                          setPinDirection h Out
-                         setPinActiveLevel h Low
+                         setPinActiveLevel h ActiveLow
                          writePin h High
                          liftIO $ threadDelay 250000
                          val1 <- readPin h
@@ -296,9 +298,9 @@ runTests =
                      withPin testPin2 $ \h2 ->
                        do udevScriptWait
                           setPinDirection h1 In
-                          setPinActiveLevel h1 High
+                          setPinActiveLevel h1 ActiveHigh
                           setPinDirection h2 Out
-                          setPinActiveLevel h2 Low
+                          setPinActiveLevel h2 ActiveLow
                           writePin h2 High
                           -- give the pin time to settle
                           liftIO $ threadDelay 250000
@@ -327,9 +329,9 @@ runTests =
                      withPin testPin2 $ \h2 ->
                        do udevScriptWait
                           setPinDirection h1 In
-                          setPinActiveLevel h1 High
+                          setPinActiveLevel h1 ActiveHigh
                           setPinDirection h2 In
-                          setPinActiveLevel h2 High
+                          setPinActiveLevel h2 ActiveHigh
                           writePin' h2 High
                           -- give the pin time to settle
                           liftIO $ threadDelay 250000
@@ -348,22 +350,22 @@ runTests =
                      withPin testPin2 $ \h2 ->
                        do udevScriptWait
                           setPinDirection h1 In
-                          setPinActiveLevel h1 High
+                          setPinActiveLevel h1 ActiveHigh
                           setPinDirection h2 In
-                          setPinActiveLevel h2 High
+                          setPinActiveLevel h2 ActiveHigh
                           setPinInterruptMode h2 RisingEdge
                           writePin' h2 High
                           -- give the pin time to settle
                           liftIO $ threadDelay 250000
                           val1 <- readPin h1
                           setPinDirection h2 In
-                          setPinActiveLevel h2 High
+                          setPinActiveLevel h2 ActiveHigh
                           setPinInterruptMode h2 FallingEdge
                           writePin' h2 Low
                           liftIO $ threadDelay 250000
                           val2 <- readPin h1
                           setPinDirection h2 In
-                          setPinActiveLevel h2 High
+                          setPinActiveLevel h2 ActiveHigh
                           setPinInterruptMode h2 Level
                           writePin' h2 High
                           liftIO $ threadDelay 250000
@@ -376,9 +378,9 @@ runTests =
                      withPin testPin2 $ \h2 ->
                        do udevScriptWait
                           setPinDirection h1 In
-                          setPinActiveLevel h1 High
+                          setPinActiveLevel h1 ActiveHigh
                           setPinDirection h2 In
-                          setPinActiveLevel h2 Low
+                          setPinActiveLevel h2 ActiveLow
                           writePin' h2 High
                           -- give the pin time to settle
                           liftIO $ threadDelay 250000
@@ -400,9 +402,9 @@ runTests =
                      withPin testPin2 $ \h2 ->
                        do udevScriptWait
                           setPinDirection h1 In
-                          setPinActiveLevel h1 High
+                          setPinActiveLevel h1 ActiveHigh
                           setPinDirection h2 Out
-                          setPinActiveLevel h2 High
+                          setPinActiveLevel h2 ActiveHigh
                           h2_val1 <- togglePinValue h2
                           -- give the pin time to settle
                           liftIO $ threadDelay 250000
@@ -421,9 +423,9 @@ runTests =
                      withPin testPin2 $ \h2 ->
                        do udevScriptWait
                           setPinDirection h1 In
-                          setPinActiveLevel h1 High
+                          setPinActiveLevel h1 ActiveHigh
                           setPinDirection h2 Out
-                          setPinActiveLevel h2 Low
+                          setPinActiveLevel h2 ActiveLow
                           writePin h2 Low
                           h2_val1 <- togglePinValue h2
                           -- give the pin time to settle
@@ -477,7 +479,7 @@ runTests =
                           withPin testPin2 $ \h ->
                             do udevScriptWait
                                setPinDirection h Out
-                               setPinActiveLevel h High
+                               setPinActiveLevel h ActiveHigh
                                writePin h High
                                liftIO $ void $ takeMVar mvar
                                liftIO $ threadDelay 500000
@@ -493,7 +495,7 @@ runTests =
                       (withPin testPin1 $ \h ->
                          do udevScriptWait
                             setPinDirection h In
-                            setPinActiveLevel h High
+                            setPinActiveLevel h ActiveHigh
                             setPinInterruptMode h RisingEdge
                             liftIO $ putMVar mvar ()
                             val1 <- pollPin h
@@ -508,7 +510,7 @@ runTests =
                           withPin testPin2 $ \h ->
                             do udevScriptWait
                                setPinDirection h Out
-                               setPinActiveLevel h High
+                               setPinActiveLevel h ActiveHigh
                                writePin h Low
                                liftIO $ void $ takeMVar mvar
                                liftIO $ threadDelay 500000
@@ -524,7 +526,7 @@ runTests =
                       (withPin testPin1 $ \h ->
                          do udevScriptWait
                             setPinDirection h In
-                            setPinActiveLevel h High
+                            setPinActiveLevel h ActiveHigh
                             setPinInterruptMode h FallingEdge
                             liftIO $ putMVar mvar ()
                             val1 <- pollPin h
@@ -539,7 +541,7 @@ runTests =
                           withPin testPin2 $ \h ->
                             do udevScriptWait
                                setPinDirection h Out
-                               setPinActiveLevel h High
+                               setPinActiveLevel h ActiveHigh
                                writePin h High
                                liftIO $ void $ takeMVar mvar
                                liftIO $ threadDelay 500000
@@ -555,7 +557,7 @@ runTests =
                       (withPin testPin1 $ \h ->
                          do udevScriptWait
                             setPinDirection h In
-                            setPinActiveLevel h High
+                            setPinActiveLevel h ActiveHigh
                             setPinInterruptMode h Level
                             liftIO $ putMVar mvar ()
                             val1 <- pollPin h
@@ -572,10 +574,10 @@ runTests =
                         withPin testPin2 $ \outPin ->
                           do udevScriptWait
                              setPinDirection inPin In
-                             setPinActiveLevel inPin High
+                             setPinActiveLevel inPin ActiveHigh
                              setPinInterruptMode inPin Disabled
                              setPinDirection outPin Out
-                             setPinActiveLevel outPin High
+                             setPinActiveLevel outPin ActiveHigh
                              writePin outPin Low
                              void $ liftIO $ forkIO $
                                do runSysfsGpioIO $
@@ -601,7 +603,7 @@ runTests =
                           withPin testPin2 $ \h ->
                             do udevScriptWait
                                setPinDirection h Out
-                               setPinActiveLevel h High
+                               setPinActiveLevel h ActiveHigh
                                writePin h Low
                                liftIO $ void $ takeMVar mvar
                                liftIO $ threadDelay 500000
@@ -617,7 +619,7 @@ runTests =
                       (withPin testPin1 $ \h ->
                          do udevScriptWait
                             setPinDirection h In
-                            setPinActiveLevel h Low
+                            setPinActiveLevel h ActiveLow
                             setPinInterruptMode h RisingEdge
                             liftIO $ putMVar mvar ()
                             val1 <- pollPin h
@@ -632,7 +634,7 @@ runTests =
                           withPin testPin2 $ \h ->
                             do udevScriptWait
                                setPinDirection h Out
-                               setPinActiveLevel h High
+                               setPinActiveLevel h ActiveHigh
                                writePin h High
                                liftIO $ void $ takeMVar mvar
                                liftIO $ threadDelay 500000
@@ -648,7 +650,7 @@ runTests =
                       (withPin testPin1 $ \h ->
                          do udevScriptWait
                             setPinDirection h In
-                            setPinActiveLevel h Low
+                            setPinActiveLevel h ActiveLow
                             setPinInterruptMode h FallingEdge
                             liftIO $ putMVar mvar ()
                             val1 <- pollPin h
@@ -663,7 +665,7 @@ runTests =
                           withPin testPin2 $ \h ->
                             do udevScriptWait
                                setPinDirection h Out
-                               setPinActiveLevel h High
+                               setPinActiveLevel h ActiveHigh
                                writePin h Low
                                liftIO $ void $ takeMVar mvar
                                liftIO $ threadDelay 500000
@@ -679,7 +681,7 @@ runTests =
                       (withPin testPin1 $ \h ->
                          do udevScriptWait
                             setPinDirection h In
-                            setPinActiveLevel h Low
+                            setPinActiveLevel h ActiveLow
                             setPinInterruptMode h Level
                             liftIO $ putMVar mvar ()
                             val1 <- pollPin h
@@ -696,10 +698,10 @@ runTests =
                         withPin testPin2 $ \outPin ->
                           do udevScriptWait
                              setPinDirection inPin In
-                             setPinActiveLevel inPin Low
+                             setPinActiveLevel inPin ActiveLow
                              setPinInterruptMode inPin Disabled
                              setPinDirection outPin Out
-                             setPinActiveLevel outPin High
+                             setPinActiveLevel outPin ActiveHigh
                              writePin outPin Low
                              void $ liftIO $ forkIO $
                                do runSysfsGpioIO $
@@ -725,7 +727,7 @@ runTests =
                           withPin testPin2 $ \h ->
                             do udevScriptWait
                                setPinDirection h Out
-                               setPinActiveLevel h High
+                               setPinActiveLevel h ActiveHigh
                                writePin h High
                                liftIO $ void $ takeMVar mvar
                                liftIO $ threadDelay 500000
@@ -741,7 +743,7 @@ runTests =
                       (withPin testPin1 $ \h ->
                          do udevScriptWait
                             setPinDirection h In
-                            setPinActiveLevel h High
+                            setPinActiveLevel h ActiveHigh
                             setPinInterruptMode h RisingEdge
                             liftIO $ putMVar mvar ()
                             val1 <- pollPinTimeout h 10000000
@@ -756,7 +758,7 @@ runTests =
                           withPin testPin2 $ \h ->
                             do udevScriptWait
                                setPinDirection h Out
-                               setPinActiveLevel h High
+                               setPinActiveLevel h ActiveHigh
                                writePin h Low
                                liftIO $ void $ takeMVar mvar
                                liftIO $ threadDelay 500000
@@ -772,7 +774,7 @@ runTests =
                       (withPin testPin1 $ \h ->
                          do udevScriptWait
                             setPinDirection h In
-                            setPinActiveLevel h High
+                            setPinActiveLevel h ActiveHigh
                             setPinInterruptMode h FallingEdge
                             liftIO $ putMVar mvar ()
                             val1 <- pollPinTimeout h 10000000
@@ -787,7 +789,7 @@ runTests =
                           withPin testPin2 $ \h ->
                             do udevScriptWait
                                setPinDirection h Out
-                               setPinActiveLevel h High
+                               setPinActiveLevel h ActiveHigh
                                writePin h High
                                liftIO $ void $ takeMVar mvar
                                liftIO $ threadDelay 500000
@@ -803,7 +805,7 @@ runTests =
                       (withPin testPin1 $ \h ->
                          do udevScriptWait
                             setPinDirection h In
-                            setPinActiveLevel h High
+                            setPinActiveLevel h ActiveHigh
                             setPinInterruptMode h Level
                             liftIO $ putMVar mvar ()
                             val1 <- pollPinTimeout h 10000000
@@ -820,10 +822,10 @@ runTests =
                         withPin testPin2 $ \outPin ->
                           do udevScriptWait
                              setPinDirection inPin In
-                             setPinActiveLevel inPin High
+                             setPinActiveLevel inPin ActiveHigh
                              setPinInterruptMode inPin Disabled
                              setPinDirection outPin Out
-                             setPinActiveLevel outPin High
+                             setPinActiveLevel outPin ActiveHigh
                              writePin outPin Low
                              void $ liftIO $ forkIO $
                                do runSysfsGpioIO $
@@ -846,10 +848,10 @@ runTests =
                          withPin testPin2 $ \outPin ->
                            do udevScriptWait
                               setPinDirection inPin In
-                              setPinActiveLevel inPin High
+                              setPinActiveLevel inPin ActiveHigh
                               setPinInterruptMode inPin Disabled
                               setPinDirection outPin Out
-                              setPinActiveLevel outPin High
+                              setPinActiveLevel outPin ActiveHigh
                               writePin outPin Low
                               void $ liftIO $ forkIO $
                                 do runSysfsGpioIO $
@@ -869,7 +871,7 @@ runTests =
                       (withPin testPin2 $ \outPin ->
                         do udevScriptWait
                            setPinDirection outPin Out
-                           setPinActiveLevel outPin High
+                           setPinActiveLevel outPin ActiveHigh
                            val <- pollPinTimeout outPin 1000000
                            return val)
                     `shouldReturn` Nothing
@@ -883,7 +885,7 @@ runTests =
                           withPin testPin2 $ \h ->
                             do udevScriptWait
                                setPinDirection h Out
-                               setPinActiveLevel h High
+                               setPinActiveLevel h ActiveHigh
                                writePin h Low
                                liftIO $ void $ takeMVar mvar
                                liftIO $ threadDelay 500000
@@ -899,7 +901,7 @@ runTests =
                       (withPin testPin1 $ \h ->
                          do udevScriptWait
                             setPinDirection h In
-                            setPinActiveLevel h Low
+                            setPinActiveLevel h ActiveLow
                             setPinInterruptMode h RisingEdge
                             liftIO $ putMVar mvar ()
                             val1 <- pollPinTimeout h 10000000
@@ -914,7 +916,7 @@ runTests =
                           withPin testPin2 $ \h ->
                             do udevScriptWait
                                setPinDirection h Out
-                               setPinActiveLevel h High
+                               setPinActiveLevel h ActiveHigh
                                writePin h High
                                liftIO $ void $ takeMVar mvar
                                liftIO $ threadDelay 500000
@@ -930,7 +932,7 @@ runTests =
                       (withPin testPin1 $ \h ->
                          do udevScriptWait
                             setPinDirection h In
-                            setPinActiveLevel h Low
+                            setPinActiveLevel h ActiveLow
                             setPinInterruptMode h FallingEdge
                             liftIO $ putMVar mvar ()
                             val1 <- pollPinTimeout h 10000000
@@ -945,7 +947,7 @@ runTests =
                           withPin testPin2 $ \h ->
                             do udevScriptWait
                                setPinDirection h Out
-                               setPinActiveLevel h High
+                               setPinActiveLevel h ActiveHigh
                                writePin h Low
                                liftIO $ void $ takeMVar mvar
                                liftIO $ threadDelay 500000
@@ -961,7 +963,7 @@ runTests =
                       (withPin testPin1 $ \h ->
                          do udevScriptWait
                             setPinDirection h In
-                            setPinActiveLevel h Low
+                            setPinActiveLevel h ActiveLow
                             setPinInterruptMode h Level
                             liftIO $ putMVar mvar ()
                             val1 <- pollPinTimeout h 10000000
@@ -978,10 +980,10 @@ runTests =
                         withPin testPin2 $ \outPin ->
                           do udevScriptWait
                              setPinDirection inPin In
-                             setPinActiveLevel inPin Low
+                             setPinActiveLevel inPin ActiveLow
                              setPinInterruptMode inPin Disabled
                              setPinDirection outPin Out
-                             setPinActiveLevel outPin High
+                             setPinActiveLevel outPin ActiveHigh
                              writePin outPin Low
                              void $ liftIO $ forkIO $
                                do runSysfsGpioIO $
@@ -1042,7 +1044,7 @@ runTests =
                 runSysfsGpioIO
                   (do h <- openPin testPin1
                       closePin h
-                      setPinActiveLevel h High)
+                      setPinActiveLevel h ActiveHigh)
                   `shouldThrow` isNotExportedError
               it "toggleActiveLevel" $
                  runSysfsGpioIO

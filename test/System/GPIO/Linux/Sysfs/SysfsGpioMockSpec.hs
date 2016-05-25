@@ -11,7 +11,9 @@ import qualified Data.Map.Strict as Map (lookup)
 import System.GPIO.Linux.Sysfs.Mock
 import System.GPIO.Linux.Sysfs.Types (SysfsEdge(..), SysfsException(..))
 import System.GPIO.Monad
-import System.GPIO.Types (Pin (..), PinDirection(..), PinInterruptMode(..), PinValue (..), SomeGpioException)
+import System.GPIO.Types
+       (Pin(..), PinActiveLevel(..), PinDirection(..),
+        PinInterruptMode(..), PinValue(..), SomeGpioException)
 
 import Test.Hspec
 
@@ -181,7 +183,7 @@ testTogglePinValue =
      closePin d
      return (val1, val2, val3, val4, val5)
 
-testTogglePinActiveLevel :: (MonadGpio h m) => h -> m (PinValue, PinValue, PinValue, PinValue, PinValue)
+testTogglePinActiveLevel :: (MonadGpio h m) => h -> m (PinActiveLevel, PinActiveLevel, PinActiveLevel, PinActiveLevel, PinActiveLevel)
 testTogglePinActiveLevel h =
   do val1 <- getPinActiveLevel h
      val2 <- togglePinActiveLevel h
@@ -355,38 +357,38 @@ spec =
      describe "getPinActiveLevel" $
        do context "when active level is high" $
             do it "returns the pin's active level" $
-                   evalSysfsGpioMock' (withPin (Pin 1) getPinActiveLevel) initialMockWorld [chip0] `shouldBe` Right High
+                   evalSysfsGpioMock' (withPin (Pin 1) getPinActiveLevel) initialMockWorld [chip0] `shouldBe` Right ActiveHigh
           context "when active level is low" $
             do it "returns the pin's active level" $
                  let testChip = MockGpioChip "testChip" 1 [defaultMockPinState {_activeLow = True}]
-                 in evalSysfsGpioMock' (withPin (Pin 1) getPinActiveLevel) initialMockWorld [testChip] `shouldBe` Right Low
+                 in evalSysfsGpioMock' (withPin (Pin 1) getPinActiveLevel) initialMockWorld [testChip] `shouldBe` Right ActiveLow
 
      describe "setPinActiveLevel" $
        do context "when active level is high" $
             do it "sets the pin's active level to low" $
-                 let (Right (result, world)) = runSysfsGpioMock' (withPin (Pin 1) (\h -> setPinActiveLevel h Low >> getPinActiveLevel h)) initialMockWorld [chip0]
-                 in do result `shouldBe` Low
+                 let (Right (result, world)) = runSysfsGpioMock' (withPin (Pin 1) (\h -> setPinActiveLevel h ActiveLow >> getPinActiveLevel h)) initialMockWorld [chip0]
+                 in do result `shouldBe` ActiveLow
                        Map.lookup (Pin 1) (mockWorldPins world) `shouldBe` Just (defaultMockPinState {_activeLow = True})
                it "sets the pin's active level to high" $
-                 let (Right (result, world)) = runSysfsGpioMock' (withPin (Pin 1) (\h -> setPinActiveLevel h High >> getPinActiveLevel h)) initialMockWorld [chip0]
-                 in do result `shouldBe` High
+                 let (Right (result, world)) = runSysfsGpioMock' (withPin (Pin 1) (\h -> setPinActiveLevel h ActiveHigh >> getPinActiveLevel h)) initialMockWorld [chip0]
+                 in do result `shouldBe` ActiveHigh
                        Map.lookup (Pin 1) (mockWorldPins world) `shouldBe` Just (defaultMockPinState {_activeLow = False})
           context "when active level is low" $
             let testChip = MockGpioChip "testChip" 1 [defaultMockPinState {_activeLow = True}]
             in do it "sets the pin's active level to low" $
-                    let (Right (result, world)) = runSysfsGpioMock' (withPin (Pin 1) (\h -> setPinActiveLevel h Low >> getPinActiveLevel h)) initialMockWorld [testChip]
-                    in do result `shouldBe` Low
+                     let (Right (result, world)) = runSysfsGpioMock' (withPin (Pin 1) (\h -> setPinActiveLevel h ActiveLow >> getPinActiveLevel h)) initialMockWorld [testChip]
+                    in do result `shouldBe` ActiveLow
                           Map.lookup (Pin 1) (mockWorldPins world) `shouldBe` Just (defaultMockPinState {_activeLow = True})
                   it "sets the pin's active level to high" $
-                    let (Right (result, world)) = runSysfsGpioMock' (withPin (Pin 1) (\h -> setPinActiveLevel h High >> getPinActiveLevel h)) initialMockWorld [chip0]
-                    in do result `shouldBe` High
+                     let (Right (result, world)) = runSysfsGpioMock' (withPin (Pin 1) (\h -> setPinActiveLevel h ActiveHigh >> getPinActiveLevel h)) initialMockWorld [chip0]
+                    in do result `shouldBe` ActiveHigh
                           Map.lookup (Pin 1) (mockWorldPins world) `shouldBe` Just (defaultMockPinState {_activeLow = False})
 
      describe "togglePinActiveLevel" $
        do it "toggles the pin's active level when the pin is configured for output" $
-            evalSysfsGpioMock' (withPin (Pin 1) testTogglePinActiveLevel) initialMockWorld [chip0] `shouldBe` Right (High, Low, Low, High, High)
+            evalSysfsGpioMock' (withPin (Pin 1) testTogglePinActiveLevel) initialMockWorld [chip0] `shouldBe` Right (ActiveHigh, ActiveLow, ActiveLow, ActiveHigh, ActiveHigh)
           it "and when the pin is configured for input" $
-            evalSysfsGpioMock' (withPin (Pin 1) (\h -> setPinDirection h In >> testTogglePinActiveLevel h)) initialMockWorld [chip0] `shouldBe` Right (High, Low, Low, High, High)
+            evalSysfsGpioMock' (withPin (Pin 1) (\h -> setPinDirection h In >> testTogglePinActiveLevel h)) initialMockWorld [chip0] `shouldBe` Right (ActiveHigh, ActiveLow, ActiveLow, ActiveHigh, ActiveHigh)
 
      describe "pollPin" $
        do it "waits for the specified trigger and returns the pin's value" $
@@ -406,9 +408,9 @@ spec =
      describe "readPin" $
        do context "returns the pin's logical level" $
             do it "when the active level is high" $
-                 evalSysfsGpioMock' (withPin (Pin 1) (\h -> setPinActiveLevel h High >> readPin h)) initialMockWorld [chip0] `shouldBe` Right Low
+                 evalSysfsGpioMock' (withPin (Pin 1) (\h -> setPinActiveLevel h ActiveHigh >> readPin h)) initialMockWorld [chip0] `shouldBe` Right Low
                it "when the active level is low" $
-                 evalSysfsGpioMock' (withPin (Pin 1) (\h -> setPinActiveLevel h Low >> readPin h)) initialMockWorld [chip0] `shouldBe` Right High
+                 evalSysfsGpioMock' (withPin (Pin 1) (\h -> setPinActiveLevel h ActiveLow >> readPin h)) initialMockWorld [chip0] `shouldBe` Right High
 
      describe "writePin" $
        do context "sets the pin's logical value" $
@@ -417,7 +419,7 @@ spec =
                  in do result `shouldBe` (Low, High, Low)
                        Map.lookup (Pin 1) (mockWorldPins world) `shouldBe` Just defaultMockPinState
                it "when the active level is low" $
-                 let Right (result, world) = runSysfsGpioMock' (withPin (Pin 1) (\h -> setPinActiveLevel h Low >> testReadWritePin h)) initialMockWorld [chip0]
+                  let Right (result, world) = runSysfsGpioMock' (withPin (Pin 1) (\h -> setPinActiveLevel h ActiveLow >> testReadWritePin h)) initialMockWorld [chip0]
                  in do result `shouldBe` (High, Low, High)
                        Map.lookup (Pin 1) (mockWorldPins world) `shouldBe` Just (defaultMockPinState {_activeLow = True, _value = Low})
 
@@ -519,7 +521,7 @@ spec =
             evalSysfsGpioMock' (invalidHandle getPinActiveLevel) initialMockWorld [chip0] `shouldBe` Left (Just $ NotExported (Pin 1))
 
           it "in setPinActiveLevel" $
-             evalSysfsGpioMock' (invalidHandle (\d -> setPinActiveLevel d High)) initialMockWorld [chip0] `shouldBe` Left (Just $ NotExported (Pin 1))
+            evalSysfsGpioMock' (invalidHandle (\d -> setPinActiveLevel d ActiveHigh)) initialMockWorld [chip0] `shouldBe` Left (Just $ NotExported (Pin 1))
 
           it "in togglePinActiveLevel" $
              evalSysfsGpioMock' (invalidHandle togglePinActiveLevel) initialMockWorld [chip0] `shouldBe` Left (Just $ NotExported (Pin 1))
@@ -573,7 +575,7 @@ spec =
                          (Right world) =
                           execSysfsGpioMock'
                             (withInputPin (Pin 1) Nothing $ \_ ->
-                               withInputPin (Pin 2) (Just High) $ \_ ->
+                               withInputPin (Pin 2) (Just ActiveHigh) $ \_ ->
                                  return ()
                             )
                             initialMockWorld
@@ -584,7 +586,7 @@ spec =
                  let testChip = MockGpioChip "testChip" 1 [defaultMockPinState, defaultMockPinState {_direction = Out, _userVisibleDirection = False}]
                  in evalSysfsGpioMock'
                       (withInputPin (Pin 1) Nothing $ \_ ->
-                         withInputPin (Pin 2) (Just High) $ \_ ->
+                         withInputPin (Pin 2) (Just ActiveHigh) $ \_ ->
                            return ()
                       )
                       initialMockWorld
@@ -596,7 +598,7 @@ spec =
                   let testChip = MockGpioChip "testChip" 1 [defaultMockPinState {_value = High}, defaultMockPinState {_value = Low}]
                   in evalSysfsGpioMock'
                        (withInputPin (Pin 1) Nothing $ \h1 ->
-                         withInputPin (Pin 2) (Just Low) $ \h2 ->
+                         withInputPin (Pin 2) (Just ActiveLow) $ \h2 ->
                            do v1 <- readInputPin h1
                               v2 <- readInputPin h2
                               return (v1,v2)
@@ -609,32 +611,32 @@ spec =
              do it "gets/sets the pin's active level" $
                   let (Right (result, world)) =
                         runSysfsGpioMock'
-                         (withInputPin (Pin 1) (Just High) $ \h1 ->
-                            withInputPin (Pin 2) (Just Low) $ \h2 ->
-                              do setInputPinActiveLevel h1 Low
-                                 setInputPinActiveLevel h2 High
+                         (withInputPin (Pin 1) (Just ActiveHigh) $ \h1 ->
+                            withInputPin (Pin 2) (Just ActiveLow) $ \h2 ->
+                              do setInputPinActiveLevel h1 ActiveLow
+                                 setInputPinActiveLevel h2 ActiveHigh
                                  l1 <- getInputPinActiveLevel h1
                                  l2 <- getInputPinActiveLevel h2
                                  return (l1,l2)
                          )
                          initialMockWorld
                          [chip0]
-                  in do result `shouldBe` (Low,High)
+                  in do result `shouldBe` (ActiveLow,ActiveHigh)
                         Map.lookup (Pin 1) (mockWorldPins world) `shouldBe` Just defaultMockPinState {_direction = In, _activeLow = True}
                         Map.lookup (Pin 2) (mockWorldPins world) `shouldBe` Just defaultMockPinState {_direction = In, _activeLow = False}
           context "toggleInputPinActiveLevel" $
               do it "toggles the pin's active level and returns the new value" $
                    let (Right (result, world)) =
                          runSysfsGpioMock'
-                          (withInputPin (Pin 1) (Just High) $ \h1 ->
-                            withInputPin (Pin 2) (Just Low) $ \h2 ->
+                          (withInputPin (Pin 1) (Just ActiveHigh) $ \h1 ->
+                            withInputPin (Pin 2) (Just ActiveLow) $ \h2 ->
                               do l1 <- toggleInputPinActiveLevel h1
                                  l2 <- toggleInputPinActiveLevel h2
                                  return (l1,l2)
                           )
                           initialMockWorld
                           [chip0]
-                   in do result `shouldBe` (Low,High)
+                   in do result `shouldBe` (ActiveLow,ActiveHigh)
                          Map.lookup (Pin 1) (mockWorldPins world) `shouldBe` Just defaultMockPinState {_direction = In, _activeLow = True}
                          Map.lookup (Pin 2) (mockWorldPins world) `shouldBe` Just defaultMockPinState {_direction = In, _activeLow = False}
      describe "InterruptPin" $
@@ -658,7 +660,7 @@ spec =
                           (Right world) =
                            execSysfsGpioMock'
                              (withInterruptPin (Pin 1) Disabled Nothing $ \_ ->
-                                withInterruptPin (Pin 2) Disabled (Just High) $ \_ ->
+                                withInterruptPin (Pin 2) Disabled (Just ActiveHigh) $ \_ ->
                                   return ()
                              )
                              initialMockWorld
@@ -669,7 +671,7 @@ spec =
                   let testChip = MockGpioChip "testChip" 1 [defaultMockPinState, defaultMockPinState {_direction = Out, _userVisibleDirection = False}]
                   in evalSysfsGpioMock'
                        (withInterruptPin (Pin 1) Disabled Nothing $ \_ ->
-                          withInterruptPin (Pin 2) Disabled (Just High) $ \_ ->
+                          withInterruptPin (Pin 2) Disabled (Just ActiveHigh) $ \_ ->
                             return ()
                        )
                        initialMockWorld
@@ -680,7 +682,7 @@ spec =
                    let testChip = MockGpioChip "testChip" 1 [defaultMockPinState, defaultMockPinState {_edge = Nothing}]
                    in evalSysfsGpioMock'
                         (withInterruptPin (Pin 1) Disabled Nothing $ \_ ->
-                           withInterruptPin (Pin 2) Disabled (Just High) $ \_ ->
+                           withInterruptPin (Pin 2) Disabled (Just ActiveHigh) $ \_ ->
                              return ()
                         )
                         initialMockWorld
@@ -692,7 +694,7 @@ spec =
                    let testChip = MockGpioChip "testChip" 1 [defaultMockPinState {_value = High}, defaultMockPinState {_value = Low}]
                    in evalSysfsGpioMock'
                         (withInterruptPin (Pin 1) Disabled Nothing $ \h1 ->
-                          withInterruptPin (Pin 2) Disabled (Just Low) $ \h2 ->
+                          withInterruptPin (Pin 2) Disabled (Just ActiveLow) $ \h2 ->
                             do v1 <- readInterruptPin h1
                                v2 <- readInterruptPin h2
                                return (v1,v2)
@@ -705,32 +707,32 @@ spec =
               do it "gets/sets the pin's active level" $
                    let (Right (result, world)) =
                          runSysfsGpioMock'
-                          (withInterruptPin (Pin 1) Disabled (Just High) $ \h1 ->
-                             withInterruptPin (Pin 2) Disabled (Just Low) $ \h2 ->
-                               do setInterruptPinActiveLevel h1 Low
-                                  setInterruptPinActiveLevel h2 High
+                          (withInterruptPin (Pin 1) Disabled (Just ActiveHigh) $ \h1 ->
+                             withInterruptPin (Pin 2) Disabled (Just ActiveLow) $ \h2 ->
+                               do setInterruptPinActiveLevel h1 ActiveLow
+                                  setInterruptPinActiveLevel h2 ActiveHigh
                                   l1 <- getInterruptPinActiveLevel h1
                                   l2 <- getInterruptPinActiveLevel h2
                                   return (l1,l2)
                           )
                           initialMockWorld
                           [chip0]
-                   in do result `shouldBe` (Low,High)
+                   in do result `shouldBe` (ActiveLow,ActiveHigh)
                          Map.lookup (Pin 1) (mockWorldPins world) `shouldBe` Just defaultMockPinState {_direction = In, _activeLow = True}
                          Map.lookup (Pin 2) (mockWorldPins world) `shouldBe` Just defaultMockPinState {_direction = In, _activeLow = False}
            context "toggleInterruptPinActiveLevel" $
                do it "toggles the pin's active level and returns the new value" $
                     let (Right (result, world)) =
                           runSysfsGpioMock'
-                           (withInterruptPin (Pin 1) Disabled (Just High) $ \h1 ->
-                             withInterruptPin (Pin 2) Disabled (Just Low) $ \h2 ->
+                           (withInterruptPin (Pin 1) Disabled (Just ActiveHigh) $ \h1 ->
+                             withInterruptPin (Pin 2) Disabled (Just ActiveLow) $ \h2 ->
                                do l1 <- toggleInterruptPinActiveLevel h1
                                   l2 <- toggleInterruptPinActiveLevel h2
                                   return (l1,l2)
                            )
                            initialMockWorld
                            [chip0]
-                    in do result `shouldBe` (Low,High)
+                    in do result `shouldBe` (ActiveLow,ActiveHigh)
                           Map.lookup (Pin 1) (mockWorldPins world) `shouldBe` Just defaultMockPinState {_direction = In, _activeLow = True}
                           Map.lookup (Pin 2) (mockWorldPins world) `shouldBe` Just defaultMockPinState {_direction = In, _activeLow = False}
            context "get/setInterruptPinInterruptMode" $
@@ -784,10 +786,10 @@ spec =
                            execSysfsGpioMock'
                              (withOutputPin (Pin 1) Nothing Low $ \_ ->
                                 withOutputPin (Pin 2) Nothing High $ \_ ->
-                                  withOutputPin (Pin 3) (Just Low) Low $ \_ ->
-                                    withOutputPin (Pin 4) (Just Low) High $ \_ ->
-                                      withOutputPin (Pin 5) (Just High) Low $ \_ ->
-                                        withOutputPin (Pin 6) (Just High) High $ \_ ->
+                                  withOutputPin (Pin 3) (Just ActiveLow) Low $ \_ ->
+                                    withOutputPin (Pin 4) (Just ActiveLow) High $ \_ ->
+                                      withOutputPin (Pin 5) (Just ActiveHigh) Low $ \_ ->
+                                        withOutputPin (Pin 6) (Just ActiveHigh) High $ \_ ->
                                           return ()
                              )
                              initialMockWorld
@@ -813,7 +815,7 @@ spec =
              do it "respects the pin's active level" $
                   evalSysfsGpioMock'
                     (withOutputPin (Pin 1) Nothing Low $ \h1 ->
-                      withOutputPin (Pin 2) (Just Low) High $ \h2 ->
+                      withOutputPin (Pin 2) (Just ActiveLow) High $ \h2 ->
                         do v1 <- readOutputPin h1
                            v2 <- readOutputPin h2
                            return (v1,v2)
@@ -826,10 +828,10 @@ spec =
              do it "writes the output value and respects the pin's active level" $
                   let (Right world) =
                         execSysfsGpioMock'
-                          (withOutputPin (Pin 1) (Just Low) High $ \h1 ->
-                             withOutputPin (Pin 2) (Just Low) Low $ \h2 ->
-                               withOutputPin (Pin 3) (Just High) High $ \h3 ->
-                                 withOutputPin (Pin 4) (Just High) Low $ \h4 ->
+                          (withOutputPin (Pin 1) (Just ActiveLow) High $ \h1 ->
+                             withOutputPin (Pin 2) (Just ActiveLow) Low $ \h2 ->
+                               withOutputPin (Pin 3) (Just ActiveHigh) High $ \h3 ->
+                                 withOutputPin (Pin 4) (Just ActiveHigh) Low $ \h4 ->
                                    do writeOutputPin h1 Low
                                       writeOutputPin h2 High
                                       writeOutputPin h3 Low
@@ -845,10 +847,10 @@ spec =
               do it "toggles the output value, returns the new value, and respects the pin's active level" $
                    let (Right (result, world)) =
                          runSysfsGpioMock'
-                           (withOutputPin (Pin 1) (Just Low) High $ \h1 ->
-                              withOutputPin (Pin 2) (Just Low) Low $ \h2 ->
-                                withOutputPin (Pin 3) (Just High) High $ \h3 ->
-                                  withOutputPin (Pin 4) (Just High) Low $ \h4 ->
+                           (withOutputPin (Pin 1) (Just ActiveLow) High $ \h1 ->
+                              withOutputPin (Pin 2) (Just ActiveLow) Low $ \h2 ->
+                                withOutputPin (Pin 3) (Just ActiveHigh) High $ \h3 ->
+                                  withOutputPin (Pin 4) (Just ActiveHigh) Low $ \h4 ->
                                     do v1 <- toggleOutputPin h1
                                        v2 <- toggleOutputPin h2
                                        v3 <- toggleOutputPin h3
@@ -866,31 +868,31 @@ spec =
               do it "gets/sets the pin's active level" $
                    let (Right (result, world)) =
                          runSysfsGpioMock'
-                          (withOutputPin (Pin 1) (Just High) Low $ \h1 ->
-                             withOutputPin (Pin 2) (Just Low) Low $ \h2 ->
-                               do setOutputPinActiveLevel h1 Low
-                                  setOutputPinActiveLevel h2 High
+                          (withOutputPin (Pin 1) (Just ActiveHigh) Low $ \h1 ->
+                             withOutputPin (Pin 2) (Just ActiveLow) Low $ \h2 ->
+                               do setOutputPinActiveLevel h1 ActiveLow
+                                  setOutputPinActiveLevel h2 ActiveHigh
                                   l1 <- getOutputPinActiveLevel h1
                                   l2 <- getOutputPinActiveLevel h2
                                   return (l1,l2)
                           )
                           initialMockWorld
                           [chip0]
-                   in do result `shouldBe` (Low,High)
+                   in do result `shouldBe` (ActiveLow,ActiveHigh)
                          Map.lookup (Pin 1) (mockWorldPins world) `shouldBe` Just defaultMockPinState {_direction = Out, _activeLow = True}
                          Map.lookup (Pin 2) (mockWorldPins world) `shouldBe` Just defaultMockPinState {_direction = Out, _activeLow = False, _value = High}
            context "toggleOutputPinActiveLevel" $
                do it "toggles the pin's active level and returns the new value" $
                     let (Right (result, world)) =
                           runSysfsGpioMock'
-                           (withOutputPin (Pin 1) (Just High) Low $ \h1 ->
-                             withOutputPin (Pin 2) (Just Low) Low $ \h2 ->
+                           (withOutputPin (Pin 1) (Just ActiveHigh) Low $ \h1 ->
+                             withOutputPin (Pin 2) (Just ActiveLow) Low $ \h2 ->
                                do l1 <- toggleOutputPinActiveLevel h1
                                   l2 <- toggleOutputPinActiveLevel h2
                                   return (l1,l2)
                            )
                            initialMockWorld
                            [chip0]
-                    in do result `shouldBe` (Low,High)
+                    in do result `shouldBe` (ActiveLow,ActiveHigh)
                           Map.lookup (Pin 1) (mockWorldPins world) `shouldBe` Just defaultMockPinState {_direction = Out, _activeLow = True}
                           Map.lookup (Pin 2) (mockWorldPins world) `shouldBe` Just defaultMockPinState {_direction = Out, _activeLow = False, _value = High}

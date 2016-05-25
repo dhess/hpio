@@ -13,7 +13,8 @@ module System.GPIO.Tutorial (
     -- $pin_direction
     , PinDirection(..)
     -- $pin_value
-    , PinValue (..)
+    , PinValue(..)
+    , PinActiveLevel(..)
     -- $pin_interrupt_mode
     , PinInterruptMode(..)
 
@@ -52,8 +53,8 @@ import System.GPIO.Linux.Sysfs.Mock
         defaultMockPinState, initialMockWorld, evalSysfsGpioMockIO, evalSysfsMockT)
 import System.GPIO.Linux.Sysfs.Types (SysfsException(..))
 import System.GPIO.Types
-       (Pin(..), PinDirection(..), PinValue(..), PinInterruptMode(..),
-        SomeGpioException)
+       (Pin(..), PinActiveLevel(..), PinDirection(..), PinValue(..),
+        PinInterruptMode(..), SomeGpioException)
 
 -- $setup
 -- >>> :set -XFlexibleContexts
@@ -185,7 +186,8 @@ independent of the voltage level seen on the physical pin. We refer to
 this notion as the pin's /logical value/, as opposed to
 its /physical value/.
 
-In @gpio@, the 'PinValue' type represents a pin's value.
+In @gpio@, the 'PinValue' type represents a pin's value, and
+'PinActiveLevel' represents its active-level setting:
 
 -}
 
@@ -360,22 +362,22 @@ Every pin has an active level, which we can query using
 'getPinActiveLevel':
 
 >>> runTutorial $ withPin (Pin 8) getPinActiveLevel
-High
+ActiveHigh
 
 You can change it using 'setPinActiveLevel':
 
 >>> :{
 runTutorial $
   withPin (Pin 5) $ \h ->
-    do setPinActiveLevel h Low
+    do setPinActiveLevel h ActiveLow
        getPinActiveLevel h
 :}
-Low
+ActiveLow
 
 or toggle it using 'togglePinActiveLevel':
 
 >>> runTutorial $ withPin (Pin 8) togglePinActiveLevel
-Low
+ActiveLow
 
 While all GPIO pins by definition have a direction (/in/ or /out/), on
 some platforms you may not be able to modify, or even query, a
@@ -540,7 +542,7 @@ this time changing their active levels before reading them, we get:
   >>> :{
   runTutorial $
     withPin (Pin 16) $ \h ->
-      do setPinActiveLevel h Low
+      do setPinActiveLevel h ActiveLow
          readPin h
   :}
   Low
@@ -548,7 +550,7 @@ this time changing their active levels before reading them, we get:
    >>> :{
    runTutorial $
      withPin (Pin 9) $ \h ->
-       do setPinActiveLevel h Low
+       do setPinActiveLevel h ActiveLow
           readPin h
    :}
    High
@@ -601,10 +603,10 @@ signal level, per se, but the mock interpreter does keep track of the
   runTutorial $
     withPin (Pin 9) $ \h ->
       do setPinDirection h Out
-         setPinActiveLevel h Low
+         setPinActiveLevel h ActiveLow
          writePin h High
          v1 <- readPin h
-         setPinActiveLevel h High
+         setPinActiveLevel h ActiveHigh
          v2 <- readPin h
          return (v1,v2)
   :}
@@ -615,9 +617,9 @@ signal level, per se, but the mock interpreter does keep track of the
     withPin (Pin 9) $ \h ->
       do setPinDirection h Out
          writePin h Low
-         setPinActiveLevel h Low
+         setPinActiveLevel h ActiveLow
          v1 <- togglePinValue h
-         setPinActiveLevel h High
+         setPinActiveLevel h ActiveHigh
          v2 <- togglePinValue h
          return (v1,v2)
   :}

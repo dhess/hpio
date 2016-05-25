@@ -26,6 +26,7 @@ module System.GPIO.Types
        ( -- * GPIO pins
          Pin(..)
        , PinDirection(..)
+       , PinActiveLevel(..)
        , PinValue(..)
        , PinInterruptMode(..)
          -- * Convenience functions
@@ -75,6 +76,16 @@ data PinDirection
   deriving (Bounded,Enum,Eq,Data,Ord,Read,Show,Ix,Generic,Typeable)
 
 instance Arbitrary PinDirection where
+  arbitrary = arbitraryBoundedEnum
+  shrink = genericShrink
+
+-- | A pin's active level (active-high/active-low).
+data PinActiveLevel
+  = ActiveLow
+  | ActiveHigh
+  deriving (Bounded,Enum,Eq,Data,Ord,Read,Show,Ix,Generic,Typeable)
+
+instance Arbitrary PinActiveLevel where
   arbitrary = arbitraryBoundedEnum
   shrink = genericShrink
 

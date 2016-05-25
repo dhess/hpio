@@ -312,22 +312,25 @@ instance (Functor m, MonadCatch m, MonadThrow m, MonadSysfs m) => MonadGpio PinD
   setPinInterruptMode (PinDescriptor p) mode =
     lift $ writePinEdge p $ toSysfsEdge mode
 
-  -- N.B.: @sysfs@'s @active_low@ attribute is the opposite of
-  -- 'MonadGpio''s "active level"!
   getPinActiveLevel (PinDescriptor p) =
     do activeLow <- lift $ readPinActiveLow p
-       return $ boolToValue (not activeLow)
+       return $ activeLowToActiveLevel activeLow
 
-  -- N.B.: see 'getPinActiveLevel'.
-  setPinActiveLevel (PinDescriptor p) v =
-    lift $ writePinActiveLow p $ valueToBool (invertValue v)
+  setPinActiveLevel (PinDescriptor p) l =
+    lift $ writePinActiveLow p $ activeLevelToActiveLow l
 
-  -- NB: see 'getPinActiveLevel'.
-  togglePinActiveLevel h =
-    do level <- getPinActiveLevel h
-       let newLevel = invertValue level
-       setPinActiveLevel h newLevel
-       return newLevel
+  togglePinActiveLevel (PinDescriptor p) =
+    do toggled <- not <$> lift (readPinActiveLow p)
+       lift $ writePinActiveLow p toggled
+       return $ activeLowToActiveLevel toggled
+
+activeLevelToActiveLow :: PinActiveLevel -> Bool
+activeLevelToActiveLow ActiveLow = True
+activeLevelToActiveLow ActiveHigh = False
+
+activeLowToActiveLevel :: Bool -> PinActiveLevel
+activeLowToActiveLevel False = ActiveHigh
+activeLowToActiveLevel True = ActiveLow
 
 getPinEdge :: (MonadSysfs m, MonadThrow m, MonadCatch m) => Pin -> m (Maybe SysfsEdge)
 getPinEdge p =
