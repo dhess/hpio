@@ -130,7 +130,7 @@ pollInput =
      mode <- asks trigger
      timeout <- asks wait
      withPin p $ \h ->
-       do setPinDirection h In
+       do setPinInputMode h InputDefault
           setPinInterruptMode h mode
           forever $
             do result <- pollPinTimeout h timeout
@@ -143,10 +143,10 @@ driveOutput =
   do p <- asks pin
      delay <- asks wait
      withPin p $ \h ->
-       do setPinDirection h Out
+       do setPinOutputMode h OutputDefault Low
           forever $
             do liftIO $ threadDelay delay
-               v <- togglePinValue h
+               v <- togglePin h
                output ("Output: " ++ show v)
 
 main :: IO ()

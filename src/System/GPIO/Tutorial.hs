@@ -10,11 +10,16 @@ module System.GPIO.Tutorial (
     -- Let's define some terms that will be used throughout this tutorial.
     -- $pin
       Pin(..)
-    -- $pin_direction
-    , PinDirection(..)
+
     -- $pin_value
     , PinValue(..)
     , PinActiveLevel(..)
+
+    -- $pin_direction
+    , PinDirection(..)
+    , PinInputMode(..)
+    , PinOutputMode(..)
+
     -- $pin_interrupt_mode
     , PinInterruptMode(..)
 
@@ -53,8 +58,9 @@ import System.GPIO.Linux.Sysfs.Mock
         defaultMockPinState, initialMockWorld, evalSysfsGpioMockIO, evalSysfsMockT)
 import System.GPIO.Linux.Sysfs.Types (SysfsException(..))
 import System.GPIO.Types
-       (Pin(..), PinActiveLevel(..), PinDirection(..), PinValue(..),
-        PinInterruptMode(..), SomeGpioException)
+       (Pin(..), PinInputMode(..), PinOutputMode(..), PinActiveLevel(..),
+        PinDirection(..), PinValue(..), PinInterruptMode(..),
+        SomeGpioException)
 
 -- $setup
 -- >>> :set -XFlexibleContexts
@@ -136,23 +142,6 @@ Google) for the hardware-to-software pin mapping.
 
 -}
 
-{- $pin_direction
-
-== Pin direction
-
-We say a pin's /direction/ is either /in/ (for input) or /out/ (for
-output).
-
-On some platforms, pins may be configured for other states which
-describe a specific type of input or output (e.g., open-drain); or for
-a third, high-impedance state. However, as they are so
-platform-specific, these configurations are not supported by the
-cross-platform DSL.
-
-In @gpio@, the 'PinDirection' type represents a pin's direction.
-
--}
-
 {- $pin_value
 
 == Pin (signal) value
@@ -188,6 +177,52 @@ its /physical value/.
 
 In @gpio@, the 'PinValue' type represents a pin's value, and
 'PinActiveLevel' represents its active-level setting:
+
+-}
+
+{- $pin_direction
+
+== Pin direction and pin input / output modes
+
+We say a pin's /direction/ is either /in/ (for input) or /out/ (for
+output).
+
+However, not all inputs and outputs are necessarily the same. On some
+GPIO platforms, it's possible to configure an input or output pin in
+various /modes/ which change the behavior of the pin under certain
+conditions.
+
+For example, consider an input pin. If the pin is not connected to a
+source, what is its value?
+
+If the input pin is a /floating/ mode (sometimes called /tri-state/ or
+/high-impedance/ mode), then its value in this scenario may "float,"
+or vary, from moment to moment. Perhaps your application can tolerate
+this indeterminacy, in which case the floating mode is fine, and
+probably uses less power than other input modes, to boot. But if your
+application requires that a disconnected pin maintain a predictable,
+constant state, and your GPIO platform supports it, you can set the
+input pin's mode to /pull-up/ or /pull-down/ to give the disconnected
+pin an always-high or always-low value, respectively.
+
+Output pin modes are even more complicated due to the fact that
+multiple output pins are often connected together to drive a single
+input; this is known as /wired-OR/ or /wired-AND/ design, depending on
+whether the devices involved use positive or negative logic.
+
+A full discussion of the various input and output modes, and when you
+should use them, is outside the scope of this tutorial. We simply
+point out here that the @gpio@ cross-platform DSL provides the ability
+to set many of these modes on your input and output pins, provided
+that your hardware supports them.
+
+For simple needs, the DSL provides default input and output mode
+values, which set whatever mode the target platform uses by default.
+These are the values we'll use in this tutorial.
+
+In @gpio@, the 'PinDirection' type represents a pin's direction (a
+simple "in" or "out"), while the 'PinInputMode' and 'PinOutputMode'
+types represent modes for input and output pins, respectively.
 
 -}
 
@@ -379,49 +414,71 @@ or toggle it using 'togglePinActiveLevel':
 >>> runTutorial $ withPin (Pin 8) togglePinActiveLevel
 ActiveLow
 
-While all GPIO pins by definition have a direction (/in/ or /out/), on
-some platforms you may not be able to modify, or even query, a
-particular pin's direction in a portable way. Therefore, when querying
-a pin's direction using the cross-platform DSL action
-'getPinDirection', the returned value is wrapped in a 'Maybe':
+You can get a pin's current direction using 'getPinDirection':
 
 >>> runTutorial $ withPin (Pin 10) getPinDirection
-Just Out
+Out
 
 >>> runTutorial $ withPin (Pin 16) getPinDirection -- Pin 16's direction is not settable
-Nothing
+*** Exception: NoDirectionAttribute (Pin 16)
 
-If 'getPinDirection' returns 'Nothing', as it does for 'Pin' @16@ in
-our example, then the pin's direction is not settable, and you'll need
-another (platform-specific) method for determining its hard-wired
-value. Conversely, if 'getPinDirection' returns a 'Just', the pin's
-direction is configurable via the 'setPinDirection' action:
+If 'getPinDirection' fails, as it does for 'Pin' @16@ in our example,
+then the pin's direction is not queryable in a cross-platform way, in
+which case you'll need another (platform-specific) method for
+determining its hard-wired direction. (This is a relatively rare
+occurrence.)
+
+To configure a pin for input or output, we must specify not only its
+direction, but also its input / output mode, as discussed earlier.
+Therefore, there is no @setPinDirection@ action. Instead, you set the
+pin's direction and mode simultaneously using the 'setPinInputMode'
+and 'setPinOutputMode' actions:
 
 >>> :{
 runTutorial $
   withPin (Pin 5) $ \h ->
-    do setPinDirection h In
+    do setPinInputMode h InputDefault
        getPinDirection h
 :}
-Just In
-
-You can also toggle it using 'togglePinDirection':
+In
 
 >>> :{
 runTutorial $
-  withPin (Pin 5) togglePinDirection
+  withPin (Pin 5) $ \h ->
+    do setPinOutputMode h OutputDefault Low
+       getPinDirection h
 :}
-Just In
+Out
 
-Obviously, it's an error to try to set the direction of a pin whose
-direction is not settable:
+Note that when we configure a pin for output, we must also supply an
+initial output value for the pin. (This value is relative to the pin's
+active level, i.e., it is a logical value.)
+
+If we attempt to use a mode that the pin doesn't support, we get an
+error:
+
+>>> :{
+runTutorial $
+  withPin (Pin 5) $ \h ->
+    setPinInputMode h InputPullDown
+:}
+*** Exception: UnsupportedInputMode InputPullDown (Pin 5)
+
+>>> :{
+runTutorial $
+  withPin (Pin 5) $ \h ->
+    setPinOutputMode h OutputOpenSourcePullDown Low
+:}
+*** Exception: UnsupportedOutputMode OutputOpenSourcePullDown (Pin 5)
+
+Also, it's obviously an error to try to set the direction of a pin
+whose direction is not settable:
 
 >>> :{
 -- Pin 16's direction is not settable
 runTutorial $
   withPin (Pin 16) $ \h ->
-    do setPinDirection h In
-       getPinDirection h
+    setPinInputMode h InputDefault
 :}
 *** Exception: NoDirectionAttribute (Pin 16)
 
@@ -433,17 +490,6 @@ this case, specific to Linux @sysfs@ GPIO, as we're using the mock
 interpreter you're using, but all @gpio@ exception types are instances
 of the 'SomeGpioException' type class.
 
-Using 'togglePinDirection' on a fixed-direction pin is also an error,
-but as the whole point of using 'togglePinDirection' is to avoid
-querying the pin's direction in the first place, 'togglePinDirection'
-handles this error by returning 'Nothing':
-
->>> :{
-runTutorial $
-  withPin (Pin 16) togglePinDirection
-:}
-Nothing
-
 Finally, some pins, /when configured for input/, may support edge- or
 level-triggered interrupts. As with the pin's direction, you can
 discover whether a pin supports this functionality by asking for its
@@ -452,7 +498,7 @@ interrupt mode via the 'getPinInterruptMode' action:
  >>> :{
  runTutorial $
    withPin (Pin 5) $ \h ->
-     do setPinDirection h In
+     do setPinInputMode h InputDefault
         getPinInterruptMode h
  :}
  Just Disabled
@@ -476,7 +522,7 @@ for input before we do so:
  >>> :{
  runTutorial $
    withPin (Pin 5) $ \h ->
-     do setPinDirection h In
+     do setPinInputMode h InputDefault
         setPinInterruptMode h Level
         getPinInterruptMode h
  :}
@@ -489,7 +535,7 @@ for output, it is an error to attempt to set its interrupt mode:
   -- Here we have tried to set an output pin's interrupt mode
   runTutorial $
     withPin (Pin 5) $ \h ->
-      do setPinDirection h Out
+      do setPinOutputMode h OutputDefault Low
          setPinInterruptMode h Level
          getPinInterruptMode h
   :}
@@ -533,7 +579,8 @@ blocking the current thread, use the 'readPin' action:
   :}
   Low
 
-Note that we can use 'readPin' on a pin regardless of its direction.
+Note that we can use 'readPin' on a pin regardless of its direction or
+input / output mode.
 
 The value returned by 'readPin' is relative to the pin's current
 active level. Using the same pins as the previous two examples, but
@@ -561,7 +608,7 @@ When a pin is configured for output, we can set its value using
   >>> :{
   runTutorial $
     withPin (Pin 9) $ \h ->
-      do setPinDirection h Out
+      do setPinOutputMode h OutputDefault Low
          writePin h High
          readPin h
   :}
@@ -573,21 +620,21 @@ for input:
  >>> :{
  runTutorial $
    withPin (Pin 9) $ \h ->
-     do setPinDirection h In
+     do setPinInputMode h InputDefault
         writePin h High
         readPin h
  :}
  *** Exception: PermissionDenied (Pin 9)
 
-We can also toggle an output pin's value using 'togglePinValue', which
+We can also toggle an output pin's value using 'togglePin', which
 returns the new value:
 
   >>> :{
   runTutorial $
     withPin (Pin 9) $ \h ->
-      do setPinDirection h Out
-         v1 <- togglePinValue h
-         v2 <- togglePinValue h
+      do setPinOutputMode h OutputDefault Low
+         v1 <- togglePin h
+         v2 <- togglePin h
          return (v1,v2)
   :}
   (High,Low)
@@ -602,9 +649,8 @@ signal level, per se, but the mock interpreter does keep track of the
   >>> :{
   runTutorial $
     withPin (Pin 9) $ \h ->
-      do setPinDirection h Out
-         setPinActiveLevel h ActiveLow
-         writePin h High
+      do setPinActiveLevel h ActiveLow
+         setPinOutputMode h OutputDefault High
          v1 <- readPin h
          setPinActiveLevel h ActiveHigh
          v2 <- readPin h
@@ -615,12 +661,11 @@ signal level, per se, but the mock interpreter does keep track of the
   >>> :{
   runTutorial $
     withPin (Pin 9) $ \h ->
-      do setPinDirection h Out
-         writePin h Low
-         setPinActiveLevel h ActiveLow
-         v1 <- togglePinValue h
+      do setPinActiveLevel h ActiveLow
+         setPinOutputMode h OutputDefault High
+         v1 <- togglePin h
          setPinActiveLevel h ActiveHigh
-         v2 <- togglePinValue h
+         v2 <- togglePin h
          return (v1,v2)
   :}
   (Low,Low)
@@ -630,50 +675,6 @@ may be different than the value your program writes to it, depending
 on what type of output pin it is, what other elements are attached to
 the pin, etc. A discussion of these factors is outside the scope of
 this tutorial.)
-
-== Glitch-free output
-
-Suppose that you want to configure a pin for output and ensure that,
-as soon as the pin enters output mode, its value is 'Low'. Because
-'setPinDirection' and 'writePin' are two separate actions, it's
-possible that the output pin's value will briefly be set to 'High'
-between the execution of those two actions:
-
-  >>> :{
-  runTutorial $
-    withPin (Pin 9) $ \h ->
-      do setPinDirection h Out
-         -- What is the pin's value here?
-         writePin h Low
-  :}
-
-If, in the time between the moment a pin switches to output mode and
-the moment that the desired output value is driven onto that pin, the
-pin briefly drives the opposite value, we say that the pin has
-/glitched/.
-
-Some GPIO platforms provide an atomic operation that ensures a
-/glitch-free/ signal, setting both the pin's output mode and its value
-simultaneously. The @gpio@ cross-platform DSL supports this operation
-via the 'writePin'' action:
-
-  >>> :{
-  runTutorial $
-    withPin (Pin 10) $ \h ->
-      do setPinDirection h In
-         writePin' h Low
-         d <- getPinDirection h
-         v <- readPin h
-         return (d,v)
-  :}
-  (Just Out,Low)
-
-While all currently-supported GPIO platforms support this operation,
-it is possible that some future platforms will not. The interpreters
-for those implementations will simply implement 'writePin'' as two
-separate steps ('setPinDirection' followed by 'writePin'), which will
-produce the same final state, though it will not guarantee glitch-free
-output, of course.
 
 == Waiting for interrupts
 
@@ -714,7 +715,7 @@ is included in @gpio@'s source distribution):
 > pollInput :: (MonadMask m, MonadIO m, MonadGpio h m) => Pin -> PinInterruptMode -> Int -> m ()
 > pollInput p mode to =
 >   withPin p $ \h ->
->     do setPinDirection h In
+>     do setPinInputMode h InputDefault
 >        setPinInterruptMode h mode
 >        forever $
 >          do result <- pollPinTimeout h to
@@ -728,10 +729,10 @@ is included in @gpio@'s source distribution):
 > driveOutput :: (MonadMask m, MonadIO m, MonadGpio h m) => Pin -> Int -> m ()
 > driveOutput p delay =
 >   withPin p $ \h ->
->     do setPinDirection h Out
+>     do setPinOutputMode h OutputMode Low
 >        forever $
 >          do liftIO $ threadDelay delay
->             v <- togglePinValue h
+>             v <- togglePin h
 >             output ("Output: " ++ show v)
 >
 >
@@ -986,7 +987,7 @@ monad actions such as 'asks' inside our @program@.
 The next layer up is the 'SysfsGpioT' transformer, which we execute
 via the 'runSysfsGpioT' interpreter. This layer makes the @gpio@
 cross-platform DSL actions available to our @program@ -- actions such
-as 'readPin' and 'setPinDirection'.
+as 'readPin' and 'writePin'.
 
 However, as explained earlier in the tutorial, the 'SysfsGpioT'
 transformer is only one half of the @sysfs@ GPIO story. The
@@ -1097,10 +1098,10 @@ let toggleOutput :: (MonadMask m, MonadIO m, MonadGpio h m, MonadReader Tutorial
          iv <- asks _initialValue
          it <- asks _iterations
          withPin p $ \h ->
-           do writePin' h iv
+           do setPinOutputMode h OutputDefault iv
               forM_ [1..it] $ const $
                 do liftIO $ threadDelay delay
-                   v <- togglePinValue h
+                   v <- togglePin h
                    liftIO $ putStrLn ("Output: " ++ show v)
 :}
 

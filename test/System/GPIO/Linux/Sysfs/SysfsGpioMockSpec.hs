@@ -31,30 +31,10 @@ testOpenClose =
   do h <- openPin (Pin 1)
      closePin h
 
-testSetDirection :: (MonadGpio h m) => m (PinDirection, PinDirection, PinDirection)
-testSetDirection =
-  do d <- openPin (Pin 1)
-     (Just dir1) <- getPinDirection d
-     case dir1 of
-       In ->
-         do setPinDirection d Out
-            (Just dir2) <- getPinDirection d
-            setPinDirection d In
-            (Just dir3) <- getPinDirection d
-            closePin d
-            return (dir1,dir2,dir3)
-       Out ->
-         do setPinDirection d In
-            (Just dir2) <- getPinDirection d
-            setPinDirection d Out
-            (Just dir3) <- getPinDirection d
-            closePin d
-            return (dir1,dir2,dir3)
-
 testSetInterruptMode :: (MonadGpio h m) => m (Maybe PinInterruptMode, Maybe PinInterruptMode, Maybe PinInterruptMode, Maybe PinInterruptMode)
 testSetInterruptMode =
   do d <- openPin (Pin 1)
-     setPinDirection d In
+     setPinInputMode d InputDefault
      setPinInterruptMode d Disabled
      t1 <- getPinInterruptMode d
      setPinInterruptMode d RisingEdge
@@ -69,40 +49,13 @@ testSetInterruptMode =
 testSetInterruptModeIdempotent :: (MonadGpio h m) => m (Maybe PinInterruptMode, Maybe PinInterruptMode)
 testSetInterruptModeIdempotent =
   do d <- openPin (Pin 1)
-     setPinDirection d In
+     setPinInputMode d InputDefault
      setPinInterruptMode d FallingEdge
      t1 <- getPinInterruptMode d
      setPinInterruptMode d FallingEdge
      t2 <- getPinInterruptMode d
      closePin d
      return (t1, t2)
-
-testSetDirectionIdempotent :: (MonadGpio h m) => m (PinDirection, PinDirection)
-testSetDirectionIdempotent =
-  do d <- openPin (Pin 1)
-     (Just dir1) <- getPinDirection d
-     case dir1 of
-       In ->
-         do setPinDirection d In
-            (Just dir2) <- getPinDirection d
-            closePin d
-            return (dir1,dir2)
-       Out ->
-         do setPinDirection d Out
-            (Just dir2) <- getPinDirection d
-            closePin d
-            return (dir1,dir2)
-
-testTogglePinDirection :: (MonadGpio h m) => m (PinDirection, PinDirection, PinDirection, PinDirection, PinDirection)
-testTogglePinDirection =
-  do d <- openPin (Pin 1)
-     (Just dir1) <- getPinDirection d
-     (Just dir2) <- togglePinDirection d
-     (Just dir3) <- getPinDirection d
-     (Just dir4) <- togglePinDirection d
-     (Just dir5) <- getPinDirection d
-     closePin d
-     return (dir1, dir2, dir3, dir4, dir5)
 
 testReadWritePin :: (MonadGpio h m) => h -> m (PinValue, PinValue, PinValue)
 testReadWritePin d =
@@ -124,7 +77,7 @@ testReadWritePin d =
 testReadWritePinIdempotent :: (MonadGpio h m) => m (PinValue, PinValue)
 testReadWritePinIdempotent =
   do d <- openPin (Pin 1)
-     setPinDirection d Out
+     setPinOutputMode d OutputDefault Low
      val1 <- readPin d
      case val1 of
        Low ->
@@ -141,46 +94,18 @@ testReadWritePinIdempotent =
 testWritePinFailsOnInputPin :: (MonadGpio h m) => m ()
 testWritePinFailsOnInputPin =
   do d <- openPin (Pin 1)
-     setPinDirection d In
+     setPinInputMode d InputDefault
      writePin d High
      closePin d
-
-testWritePin' :: (MonadGpio h m) => m (PinValue, PinValue, Maybe PinDirection, Maybe PinDirection)
-testWritePin' =
-  do d1 <- openPin (Pin 1)
-     d2 <- openPin (Pin 2)
-     writePin' d1 High
-     val1 <- readPin d1
-     writePin' d2 Low
-     val2 <- readPin d2
-     dir1 <- getPinDirection d1
-     dir2 <- getPinDirection d2
-     closePin d1
-     closePin d2
-     return (val1, val2, dir1, dir2)
-
-testWritePinIdempotent' :: (MonadGpio h m) => m (PinValue, PinValue, PinValue, PinValue)
-testWritePinIdempotent' =
-  do d <- openPin (Pin 1)
-     writePin' d High
-     val1 <- readPin d
-     writePin' d High
-     val2 <- readPin d
-     writePin' d Low
-     val3 <- readPin d
-     writePin' d Low
-     val4 <- readPin d
-     closePin d
-     return (val1, val2, val3, val4)
 
 testTogglePinValue :: (MonadGpio h m) => m (PinValue, PinValue, PinValue, PinValue, PinValue)
 testTogglePinValue =
   do d <- openPin (Pin 1)
-     setPinDirection d Out
+     setPinOutputMode d OutputDefault Low
      val1 <- readPin d
-     val2 <- togglePinValue d
+     val2 <- togglePin d
      val3 <- readPin d
-     val4 <- togglePinValue d
+     val4 <- togglePin d
      val5 <- readPin d
      closePin d
      return (val1, val2, val3, val4, val5)
@@ -202,7 +127,7 @@ invalidHandle action =
 
 testWithPin :: (MonadGpio h m, MonadMask m) => m PinValue
 testWithPin = withPin (Pin 1) $ \h ->
-  do setPinDirection h Out
+  do setPinOutputMode h OutputDefault Low
      writePin h High
      val <- readPin h
      return val
@@ -211,8 +136,8 @@ testNestedWithPin :: (MonadGpio h m, MonadMask m) => Pin -> Pin -> m (PinValue, 
 testNestedWithPin p1 p2 =
   withPin p1 $ \h1 ->
     withPin p2 $ \h2 ->
-      do setPinDirection h1 Out
-         setPinDirection h2 Out
+      do setPinOutputMode h1 OutputDefault Low
+         setPinOutputMode h2 OutputDefault Low
          writePin h1 High
          writePin h2 Low
          val1 <- readPin h1
@@ -226,8 +151,8 @@ testWithPinError :: (MonadGpio h m, MonadMask m, MonadCatch m) => Pin -> Pin -> 
 testWithPinError p1 p2 = handleGpioException (const $ return Nothing) $
   withPin p1 $ \h1 ->
     withPin p2 $ \h2 ->
-      do setPinDirection h1 Out
-         setPinDirection h2 In
+      do setPinOutputMode h1 OutputDefault Low
+         setPinInputMode h2 InputDefault
          writePin h1 High -- should fail if p1 == p2
          writePin h2 Low -- should fail in any case
          val1 <- readPin h1
@@ -304,63 +229,100 @@ spec =
        do it "gets the pin's direction" $
             let testChip = MockGpioChip "testChip" 1 [defaultMockPinState {_direction = In}]
             in
-              do evalSysfsGpioMock' (withPin (Pin 1) getPinDirection) initialMockWorld [chip0] `shouldBe` Right (Just Out)
-                 evalSysfsGpioMock' (withPin (Pin 1) getPinDirection) initialMockWorld [testChip] `shouldBe` Right (Just In)
+              do evalSysfsGpioMock' (withPin (Pin 1) getPinDirection) initialMockWorld [chip0] `shouldBe` Right Out
+                 evalSysfsGpioMock' (withPin (Pin 1) getPinDirection) initialMockWorld [testChip] `shouldBe` Right In
 
-          it "returns Nothing when the pin direction is not settable" $
+          it "fails when the pin direction is not settable" $
             let testChip = MockGpioChip "testChip" 1 [defaultMockPinState {_userVisibleDirection = False}]
-            in evalSysfsGpioMock' (withPin (Pin 1) getPinDirection) initialMockWorld [testChip] `shouldBe` Right Nothing
+            in evalSysfsGpioMock' (withPin (Pin 1) getPinDirection) initialMockWorld [testChip] `shouldBe` Left (Just $ NoDirectionAttribute (Pin 1))
 
-     describe "setPinDirection" $
-       do it "sets the pin direction" $
-            let expectedResult = Right (Out, In, Out)
-            in evalSysfsGpioMock' testSetDirection initialMockWorld [chip0] `shouldBe` expectedResult
+     describe "getPinInputMode" $
+       do it "gets the pin's input mode" $
+            let testChip = MockGpioChip "testChip" 1 [defaultMockPinState {_direction = In}]
+            in
+              evalSysfsGpioMock' (withPin (Pin 1) getPinInputMode) initialMockWorld [testChip] `shouldBe` Right InputDefault
+          it "fails when the pin's direction is Out" $
+            evalSysfsGpioMock' (withPin (Pin 1) getPinInputMode) initialMockWorld [chip0] `shouldBe` Left (Just $ InvalidOperation (Pin 1))
 
+     describe "setPinInputMode" $
+       do it "sets the pin's input mode and direction" $
+             let testChip1 = MockGpioChip "testChip" 1 [defaultMockPinState {_direction = Out, _edge = Just Falling, _activeLow = True}]
+                 testChip2 = MockGpioChip "testChip" 1 [defaultMockPinState {_direction = In, _edge = Just Rising}]
+                 (Right (result1,world1)) = runSysfsGpioMock' (withPin (Pin 1) $ \h -> setPinInputMode h InputDefault >> getPinInputMode h) initialMockWorld [testChip1]
+                 (Right (result2,world2)) = runSysfsGpioMock' (withPin (Pin 1) $ \h -> setPinInputMode h InputDefault >> getPinInputMode h) initialMockWorld [testChip2]
+             in do result1 `shouldBe` InputDefault
+                   result2 `shouldBe` InputDefault
+                   Map.lookup (Pin 1) (mockWorldPins world1) `shouldBe` Just (defaultMockPinState {_direction = In, _edge = Just Falling, _activeLow = True})
+                   Map.lookup (Pin 1) (mockWorldPins world2) `shouldBe` Just (defaultMockPinState {_direction = In, _edge = Just Rising})
+
+          it "fails when the input mode is unsupported" $
+             evalSysfsGpioMock' (withPin (Pin 1) $ \h -> setPinInputMode h InputFloating) initialMockWorld [chip0] `shouldBe` Left (Just $ (UnsupportedInputMode InputFloating (Pin 1)))
+          it "fails when the pin's direction is not settable" $
+             let testChip = MockGpioChip "testChip" 1 [defaultMockPinState {_userVisibleDirection = False}]
+             in evalSysfsGpioMock' (withPin (Pin 1) (\h -> setPinInputMode h InputDefault)) initialMockWorld [testChip] `shouldBe` Left (Just $ NoDirectionAttribute (Pin 1))
+
+     describe "getPinOutputMode" $
+       do it "gets the pin's output mode" $
+            evalSysfsGpioMock' (withPin (Pin 1) getPinOutputMode) initialMockWorld [chip0] `shouldBe` Right OutputDefault
+          it "fails when the pin's direction is Out" $
+            let testChip = MockGpioChip "testChip" 1 [defaultMockPinState {_direction = In}]
+            in evalSysfsGpioMock' (withPin (Pin 1) getPinOutputMode) initialMockWorld [testChip] `shouldBe` Left (Just $ InvalidOperation (Pin 1))
+
+     describe "setPinOutputMode" $
+       do it "sets the pin's output mode, value, and direction" $
+            let testChip1 = MockGpioChip "testChip" 1 [defaultMockPinState {_direction = In, _value = Low}]
+                (Right (result1,world1)) = runSysfsGpioMock' (withPin (Pin 1) $ \h -> setPinOutputMode h OutputDefault High >> getPinOutputMode h) initialMockWorld [testChip1]
+                testChip2 = MockGpioChip "testChip" 1 [defaultMockPinState {_direction = In, _value = Low}]
+                (Right (result2,world2)) = runSysfsGpioMock' (withPin (Pin 1) $ \h -> setPinOutputMode h OutputDefault Low >> getPinOutputMode h) initialMockWorld [testChip2]
+                testChip3 = MockGpioChip "testChip" 1 [defaultMockPinState {_direction = Out, _value = High}]
+                (Right (result3,world3)) = runSysfsGpioMock' (withPin (Pin 1) $ \h -> setPinOutputMode h OutputDefault Low >> getPinOutputMode h) initialMockWorld [testChip3]
+                (Right (result4,world4)) = runSysfsGpioMock' (withPin (Pin 1) $ \h -> setPinOutputMode h OutputDefault High >> getPinOutputMode h) initialMockWorld [chip0]
+            in do result1 `shouldBe` OutputDefault
+                  result2 `shouldBe` OutputDefault
+                  result3 `shouldBe` OutputDefault
+                  result4 `shouldBe` OutputDefault
+                  Map.lookup (Pin 1) (mockWorldPins world1) `shouldBe` Just (defaultMockPinState {_direction = Out, _value = High})
+                  Map.lookup (Pin 1) (mockWorldPins world2) `shouldBe` Just (defaultMockPinState {_direction = Out, _value = Low})
+                  Map.lookup (Pin 1) (mockWorldPins world3) `shouldBe` Just (defaultMockPinState {_direction = Out, _value = Low})
+                  Map.lookup (Pin 1) (mockWorldPins world4) `shouldBe` Just (defaultMockPinState {_direction = Out, _value = High})
+          it "respects the pin's active level" $
+            let testChip1 = MockGpioChip "testChip" 1 [defaultMockPinState {_direction = In, _value = Low, _activeLow = True}]
+                (Right (result1,world1)) = runSysfsGpioMock' (withPin (Pin 1) $ \h -> setPinOutputMode h OutputDefault High >> getPinOutputMode h) initialMockWorld [testChip1]
+                testChip2 = MockGpioChip "testChip" 1 [defaultMockPinState {_direction = In, _value = Low, _activeLow = True}]
+                (Right (result2,world2)) = runSysfsGpioMock' (withPin (Pin 1) $ \h -> setPinOutputMode h OutputDefault Low >> getPinOutputMode h) initialMockWorld [testChip2]
+                testChip3 = MockGpioChip "testChip" 1 [defaultMockPinState {_direction = Out, _value = High, _activeLow = True}]
+                (Right (result3,world3)) = runSysfsGpioMock' (withPin (Pin 1) $ \h -> setPinOutputMode h OutputDefault Low >> getPinOutputMode h) initialMockWorld [testChip3]
+                testChip4 = MockGpioChip "testChip" 1 [defaultMockPinState {_activeLow = True}]
+                (Right (result4,world4)) = runSysfsGpioMock' (withPin (Pin 1) $ \h -> setPinOutputMode h OutputDefault High >> getPinOutputMode h) initialMockWorld [testChip4]
+             in do result1 `shouldBe` OutputDefault
+                   result2 `shouldBe` OutputDefault
+                   result3 `shouldBe` OutputDefault
+                   result4 `shouldBe` OutputDefault
+                   Map.lookup (Pin 1) (mockWorldPins world1) `shouldBe` Just (defaultMockPinState {_direction = Out, _activeLow = True, _value = Low})
+                   Map.lookup (Pin 1) (mockWorldPins world2) `shouldBe` Just (defaultMockPinState {_direction = Out, _activeLow = True, _value = High})
+                   Map.lookup (Pin 1) (mockWorldPins world3) `shouldBe` Just (defaultMockPinState {_direction = Out, _activeLow = True, _value = High})
+                   Map.lookup (Pin 1) (mockWorldPins world4) `shouldBe` Just (defaultMockPinState {_direction = Out, _activeLow = True, _value = Low})
+          it "fails when the output mode is unsupported" $
+              evalSysfsGpioMock' (withPin (Pin 1) $ \h -> setPinOutputMode h OutputPushPull Low) initialMockWorld [chip0] `shouldBe` Left (Just $ (UnsupportedOutputMode OutputPushPull (Pin 1)))
           it "can change the pin direction to 'Out' when the pin is configured for edge- or level-triggered reads " $
             evalSysfsGpioMock'
               (withPin (Pin 1) $ \h ->
-                do setPinDirection h In
+                do setPinInputMode h InputDefault
                    setPinInterruptMode h RisingEdge
-                   setPinDirection h Out
-                   setPinDirection h In
+                   setPinOutputMode h OutputDefault Low
+                   setPinInputMode h InputDefault
                    setPinInterruptMode h FallingEdge
-                   setPinDirection h Out
-                   setPinDirection h In
+                   setPinOutputMode h OutputDefault Low
+                   setPinInputMode h InputDefault
                    setPinInterruptMode h Level
-                   setPinDirection h Out
+                   setPinOutputMode h OutputDefault Low
                    return True)
               initialMockWorld
               [chip0]
             `shouldBe` Right True
-          it "is idempotent" $
-            evalSysfsGpioMock' testSetDirectionIdempotent initialMockWorld [chip0] `shouldBe` Right (Out, Out)
-
           it "fails when the pin's direction is not settable" $
             let testChip = MockGpioChip "testChip" 1 [defaultMockPinState {_userVisibleDirection = False}]
-            in evalSysfsGpioMock' (withPin (Pin 1) (\h -> setPinDirection h Out)) initialMockWorld [testChip] `shouldBe` Left (Just $ NoDirectionAttribute (Pin 1))
-
-     describe "togglePinDirection" $
-       do it "toggles pin direction" $
-            evalSysfsGpioMock' testTogglePinDirection initialMockWorld [chip0] `shouldBe` Right (Out, In, In, Out, Out)
-          it "toggles the pin's direction when the pin is configured for input and edge- or level-triggered reads" $
-            evalSysfsGpioMock'
-              (withPin (Pin 1) $ \h ->
-                do setPinDirection h In
-                   setPinInterruptMode h RisingEdge
-                   void $ togglePinDirection h
-                   setPinDirection h In
-                   setPinInterruptMode h FallingEdge
-                   void $ togglePinDirection h
-                   setPinDirection h In
-                   setPinInterruptMode h Level
-                   void $ togglePinDirection h
-                   return True)
-              initialMockWorld
-              [chip0]
-            `shouldBe` Right True
-          it "returns Nothing when the pin direction is not settable" $
-            let testChip = MockGpioChip "testChip" 1 [defaultMockPinState {_userVisibleDirection = False}]
-            in evalSysfsGpioMock' (withPin (Pin 1) togglePinDirection) initialMockWorld [testChip] `shouldBe` Right Nothing
+            in evalSysfsGpioMock' (withPin (Pin 1) (\h -> setPinOutputMode h OutputDefault Low)) initialMockWorld [testChip] `shouldBe` Left (Just $ NoDirectionAttribute (Pin 1))
 
      describe "getPinInterruptMode" $
        do it "gets the pin's interrupt mode" $
@@ -418,7 +380,7 @@ spec =
        do it "toggles the pin's active level when the pin is configured for output" $
             evalSysfsGpioMock' (withPin (Pin 1) testTogglePinActiveLevel) initialMockWorld [chip0] `shouldBe` Right (ActiveHigh, ActiveLow, ActiveLow, ActiveHigh, ActiveHigh)
           it "and when the pin is configured for input" $
-            evalSysfsGpioMock' (withPin (Pin 1) (\h -> setPinDirection h In >> testTogglePinActiveLevel h)) initialMockWorld [chip0] `shouldBe` Right (ActiveHigh, ActiveLow, ActiveLow, ActiveHigh, ActiveHigh)
+            evalSysfsGpioMock' (withPin (Pin 1) (\h -> setPinInputMode h InputDefault >> testTogglePinActiveLevel h)) initialMockWorld [chip0] `shouldBe` Right (ActiveHigh, ActiveLow, ActiveLow, ActiveHigh, ActiveHigh)
 
      describe "pollPin" $
        do it "waits for the specified trigger and returns the pin's value" $
@@ -459,53 +421,11 @@ spec =
           it "fails when the pin direction is In" $
             evalSysfsGpioMock' testWritePinFailsOnInputPin initialMockWorld [chip0] `shouldBe` Left (Just $ PermissionDenied (Pin 1))
 
-     describe "writePin'" $
-       do context "sets the pin's logical value and direction" $
-            do it "when the active level is high" $
-                 let testChip = MockGpioChip "testChip" 1 [defaultMockPinState {_direction = In}, defaultMockPinState {_value = High}]
-                     Right (result, world) = runSysfsGpioMock' testWritePin' initialMockWorld [testChip]
-                 in do result `shouldBe` (High, Low, Just Out, Just Out)
-                       Map.lookup (Pin 1) (mockWorldPins world) `shouldBe` Just (defaultMockPinState {_value = High})
-                       Map.lookup (Pin 2) (mockWorldPins world) `shouldBe` Just defaultMockPinState
-
-               it "when the active level is low" $
-                 let testChip = MockGpioChip "testChip" 1 [defaultMockPinState {_direction = In, _activeLow = True}, defaultMockPinState {_activeLow = True, _value = High}]
-                     Right (result, world) = runSysfsGpioMock' testWritePin' initialMockWorld [testChip]
-                 in do result `shouldBe` (High, Low, Just Out, Just Out)
-                       Map.lookup (Pin 1) (mockWorldPins world) `shouldBe` Just (defaultMockPinState {_activeLow = True})
-                       Map.lookup (Pin 2) (mockWorldPins world) `shouldBe` Just (defaultMockPinState {_activeLow = True, _value = High})
-
-          it "works when the pin is configured for input and edge- or level-triggered reads" $
-            evalSysfsGpioMock'
-              (withPin (Pin 1) $ \h ->
-                do setPinDirection h In
-                   setPinInterruptMode h RisingEdge
-                   writePin' h High
-                   val1 <- readPin h
-                   setPinDirection h In
-                   setPinInterruptMode h RisingEdge
-                   writePin' h High
-                   val2 <- readPin h
-                   setPinDirection h In
-                   setPinInterruptMode h RisingEdge
-                   writePin' h High
-                   val3 <- readPin h
-                   return (val1, val2, val3))
-              initialMockWorld
-              [chip0]
-            `shouldBe` Right (High, High, High)
-          it "is idempotent" $
-            evalSysfsGpioMock' testWritePinIdempotent' initialMockWorld [chip0] `shouldBe` Right (High, High, Low, Low)
-
-          it "fails when the pin's direction is not settable" $
-            let testChip = MockGpioChip "testChip" 1 [defaultMockPinState {_userVisibleDirection = False, _value = High}, defaultMockPinState]
-            in evalSysfsGpioMock' testWritePin' initialMockWorld [testChip] `shouldBe` Left (Just $ NoDirectionAttribute (Pin 1))
-
-     describe "togglePinValue" $
+     describe "togglePin" $
        do it "toggles the pin's value" $
             evalSysfsGpioMock' testTogglePinValue initialMockWorld [chip0] `shouldBe` Right (Low, High, High, Low, Low)
           it "fails when the pin is not configured for output" $
-            evalSysfsGpioMock' (withPin (Pin 1) (\h -> setPinDirection h In >> togglePinValue h)) initialMockWorld [chip0] `shouldBe` Left (Just $ PermissionDenied (Pin 1))
+            evalSysfsGpioMock' (withPin (Pin 1) (\h -> setPinInputMode h InputDefault >> togglePin h)) initialMockWorld [chip0] `shouldBe` Left (Just $ PermissionDenied (Pin 1))
 
      describe "operations on an invalid handle fail" $
        -- Note: When used on an invalid handle, GPIO commands which
@@ -514,14 +434,17 @@ spec =
        do it "in getPinDirection" $
              evalSysfsGpioMock' (invalidHandle getPinDirection) initialMockWorld [chip0] `shouldBe` Left (Just $ NotExported (Pin 1))
 
-          it "in setPinDirection" $
-             evalSysfsGpioMock' (invalidHandle (\h -> setPinDirection h Out)) initialMockWorld [chip0] `shouldBe` Left (Just $ NotExported (Pin 1))
+          it "in getPinInputMode" $
+            evalSysfsGpioMock' (invalidHandle getPinInputMode) initialMockWorld [chip0] `shouldBe` Left (Just $ NotExported (Pin 1))
 
-          it "in togglePinDirection" $
-            evalSysfsGpioMock' (invalidHandle togglePinDirection) initialMockWorld [chip0] `shouldBe` Left (Just $ NotExported (Pin 1))
+          it "in setPinInputMode" $
+            evalSysfsGpioMock' (invalidHandle (\d -> setPinInputMode d InputDefault)) initialMockWorld [chip0] `shouldBe` Left (Just $ NotExported (Pin 1))
 
-          it "in setPinDirection" $
-            evalSysfsGpioMock' (invalidHandle (\d -> setPinDirection d Out)) initialMockWorld [chip0] `shouldBe` Left (Just $ NotExported (Pin 1))
+          it "in getPinOutputMode" $
+             evalSysfsGpioMock' (invalidHandle getPinOutputMode) initialMockWorld [chip0] `shouldBe` Left (Just $ NotExported (Pin 1))
+
+          it "in setPinOutputMode" $
+             evalSysfsGpioMock' (invalidHandle (\h -> setPinOutputMode h OutputDefault Low)) initialMockWorld [chip0] `shouldBe` Left (Just $ NotExported (Pin 1))
 
           it "in readPin" $
             evalSysfsGpioMock' (invalidHandle readPin) initialMockWorld [chip0] `shouldBe` Left (Just $ NotExported (Pin 1))
@@ -535,11 +458,8 @@ spec =
           it "in writePin" $
              evalSysfsGpioMock' (invalidHandle (\d -> writePin d High)) initialMockWorld [chip0] `shouldBe` Left (Just $ NotExported (Pin 1))
 
-          it "in writePin'" $
-             evalSysfsGpioMock' (invalidHandle (\d -> writePin' d High)) initialMockWorld [chip0] `shouldBe` Left (Just $ NotExported (Pin 1))
-
-          it "in togglePinValue" $
-            evalSysfsGpioMock' (invalidHandle togglePinValue) initialMockWorld [chip0] `shouldBe` Left (Just $ NotExported (Pin 1))
+          it "in togglePin" $
+            evalSysfsGpioMock' (invalidHandle togglePin) initialMockWorld [chip0] `shouldBe` Left (Just $ NotExported (Pin 1))
 
           it "in getPinInterruptMode" $
             evalSysfsGpioMock' (invalidHandle getPinInterruptMode) initialMockWorld [chip0] `shouldBe` Left (Just $ NotExported (Pin 1))
@@ -590,8 +510,8 @@ spec =
                      let testChip = MockGpioChip "testChip" 1 [defaultMockPinState {_direction = In}, defaultMockPinState {_direction = Out}]
                          (Right world) =
                            execSysfsGpioMock'
-                             (withInputPin (Pin 1) Nothing $ \_ ->
-                                withInputPin (Pin 2) Nothing $ \_ ->
+                             (withInputPin (Pin 1) InputDefault Nothing $ \_ ->
+                                withInputPin (Pin 2) InputDefault Nothing $ \_ ->
                                   return ()
                              )
                            initialMockWorld
@@ -604,8 +524,8 @@ spec =
                      let testChip = MockGpioChip "testChip" 1 [defaultMockPinState {_activeLow = True}, defaultMockPinState {_activeLow = True}]
                          (Right world) =
                           execSysfsGpioMock'
-                            (withInputPin (Pin 1) Nothing $ \_ ->
-                               withInputPin (Pin 2) (Just ActiveHigh) $ \_ ->
+                            (withInputPin (Pin 1) InputDefault Nothing $ \_ ->
+                               withInputPin (Pin 2) InputDefault (Just ActiveHigh) $ \_ ->
                                  return ()
                             )
                             initialMockWorld
@@ -615,8 +535,8 @@ spec =
                it "fails if the pin's direction is fixed" $
                  let testChip = MockGpioChip "testChip" 1 [defaultMockPinState, defaultMockPinState {_direction = Out, _userVisibleDirection = False}]
                  in evalSysfsGpioMock'
-                      (withInputPin (Pin 1) Nothing $ \_ ->
-                         withInputPin (Pin 2) (Just ActiveHigh) $ \_ ->
+                      (withInputPin (Pin 1) InputDefault Nothing $ \_ ->
+                         withInputPin (Pin 2) InputDefault (Just ActiveHigh) $ \_ ->
                            return ()
                       )
                       initialMockWorld
@@ -627,8 +547,8 @@ spec =
             do it "respects the pin's active level" $
                   let testChip = MockGpioChip "testChip" 1 [defaultMockPinState {_value = High}, defaultMockPinState {_value = Low}]
                   in evalSysfsGpioMock'
-                       (withInputPin (Pin 1) Nothing $ \h1 ->
-                         withInputPin (Pin 2) (Just ActiveLow) $ \h2 ->
+                       (withInputPin (Pin 1) InputDefault Nothing $ \h1 ->
+                         withInputPin (Pin 2) InputDefault (Just ActiveLow) $ \h2 ->
                            do v1 <- readInputPin h1
                               v2 <- readInputPin h2
                               return (v1,v2)
@@ -641,8 +561,8 @@ spec =
              do it "gets/sets the pin's active level" $
                   let (Right (result, world)) =
                         runSysfsGpioMock'
-                         (withInputPin (Pin 1) (Just ActiveHigh) $ \h1 ->
-                            withInputPin (Pin 2) (Just ActiveLow) $ \h2 ->
+                         (withInputPin (Pin 1) InputDefault (Just ActiveHigh) $ \h1 ->
+                            withInputPin (Pin 2) InputDefault (Just ActiveLow) $ \h2 ->
                               do setInputPinActiveLevel h1 ActiveLow
                                  setInputPinActiveLevel h2 ActiveHigh
                                  l1 <- getInputPinActiveLevel h1
@@ -658,8 +578,8 @@ spec =
               do it "toggles the pin's active level and returns the new value" $
                    let (Right (result, world)) =
                          runSysfsGpioMock'
-                          (withInputPin (Pin 1) (Just ActiveHigh) $ \h1 ->
-                            withInputPin (Pin 2) (Just ActiveLow) $ \h2 ->
+                          (withInputPin (Pin 1) InputDefault (Just ActiveHigh) $ \h1 ->
+                            withInputPin (Pin 2) InputDefault (Just ActiveLow) $ \h2 ->
                               do l1 <- toggleInputPinActiveLevel h1
                                  l2 <- toggleInputPinActiveLevel h2
                                  return (l1,l2)
@@ -675,8 +595,8 @@ spec =
                       let testChip = MockGpioChip "testChip" 1 [defaultMockPinState {_direction = In, _edge = Just None}, defaultMockPinState {_direction = Out, _edge = Just Rising}]
                           (Right world) =
                             execSysfsGpioMock'
-                              (withInterruptPin (Pin 1) FallingEdge Nothing $ \_ ->
-                                 withInterruptPin (Pin 2) Disabled Nothing $ \_ ->
+                              (withInterruptPin (Pin 1) InputDefault FallingEdge Nothing $ \_ ->
+                                 withInterruptPin (Pin 2) InputDefault Disabled Nothing $ \_ ->
                                    return ()
                               )
                             initialMockWorld
@@ -689,8 +609,8 @@ spec =
                       let testChip = MockGpioChip "testChip" 1 [defaultMockPinState {_activeLow = True}, defaultMockPinState {_activeLow = True}]
                           (Right world) =
                            execSysfsGpioMock'
-                             (withInterruptPin (Pin 1) Disabled Nothing $ \_ ->
-                                withInterruptPin (Pin 2) Disabled (Just ActiveHigh) $ \_ ->
+                             (withInterruptPin (Pin 1) InputDefault Disabled Nothing $ \_ ->
+                                withInterruptPin (Pin 2) InputDefault Disabled (Just ActiveHigh) $ \_ ->
                                   return ()
                              )
                              initialMockWorld
@@ -700,8 +620,8 @@ spec =
                 it "fails if the pin's direction is fixed" $
                   let testChip = MockGpioChip "testChip" 1 [defaultMockPinState, defaultMockPinState {_direction = Out, _userVisibleDirection = False}]
                   in evalSysfsGpioMock'
-                       (withInterruptPin (Pin 1) Disabled Nothing $ \_ ->
-                          withInterruptPin (Pin 2) Disabled (Just ActiveHigh) $ \_ ->
+                       (withInterruptPin (Pin 1) InputDefault Disabled Nothing $ \_ ->
+                          withInterruptPin (Pin 2) InputDefault Disabled (Just ActiveHigh) $ \_ ->
                             return ()
                        )
                        initialMockWorld
@@ -711,8 +631,8 @@ spec =
                 it "fails if the pin doesn't support interrupts" $
                    let testChip = MockGpioChip "testChip" 1 [defaultMockPinState, defaultMockPinState {_edge = Nothing}]
                    in evalSysfsGpioMock'
-                        (withInterruptPin (Pin 1) Disabled Nothing $ \_ ->
-                           withInterruptPin (Pin 2) Disabled (Just ActiveHigh) $ \_ ->
+                        (withInterruptPin (Pin 1) InputDefault Disabled Nothing $ \_ ->
+                           withInterruptPin (Pin 2) InputDefault Disabled (Just ActiveHigh) $ \_ ->
                              return ()
                         )
                         initialMockWorld
@@ -723,8 +643,8 @@ spec =
              do it "respects the pin's active level" $
                    let testChip = MockGpioChip "testChip" 1 [defaultMockPinState {_value = High}, defaultMockPinState {_value = Low}]
                    in evalSysfsGpioMock'
-                        (withInterruptPin (Pin 1) Disabled Nothing $ \h1 ->
-                          withInterruptPin (Pin 2) Disabled (Just ActiveLow) $ \h2 ->
+                        (withInterruptPin (Pin 1) InputDefault Disabled Nothing $ \h1 ->
+                          withInterruptPin (Pin 2) InputDefault Disabled (Just ActiveLow) $ \h2 ->
                             do v1 <- readInterruptPin h1
                                v2 <- readInterruptPin h2
                                return (v1,v2)
@@ -737,8 +657,8 @@ spec =
               do it "gets/sets the pin's active level" $
                    let (Right (result, world)) =
                          runSysfsGpioMock'
-                          (withInterruptPin (Pin 1) Disabled (Just ActiveHigh) $ \h1 ->
-                             withInterruptPin (Pin 2) Disabled (Just ActiveLow) $ \h2 ->
+                          (withInterruptPin (Pin 1) InputDefault Disabled (Just ActiveHigh) $ \h1 ->
+                             withInterruptPin (Pin 2) InputDefault Disabled (Just ActiveLow) $ \h2 ->
                                do setInterruptPinActiveLevel h1 ActiveLow
                                   setInterruptPinActiveLevel h2 ActiveHigh
                                   l1 <- getInterruptPinActiveLevel h1
@@ -754,8 +674,8 @@ spec =
                do it "toggles the pin's active level and returns the new value" $
                     let (Right (result, world)) =
                           runSysfsGpioMock'
-                           (withInterruptPin (Pin 1) Disabled (Just ActiveHigh) $ \h1 ->
-                             withInterruptPin (Pin 2) Disabled (Just ActiveLow) $ \h2 ->
+                           (withInterruptPin (Pin 1) InputDefault Disabled (Just ActiveHigh) $ \h1 ->
+                             withInterruptPin (Pin 2) InputDefault Disabled (Just ActiveLow) $ \h2 ->
                                do l1 <- toggleInterruptPinActiveLevel h1
                                   l2 <- toggleInterruptPinActiveLevel h2
                                   return (l1,l2)
@@ -769,8 +689,8 @@ spec =
                do it "gets/sets the pin's interrupt mode" $
                     let (Right (result, world)) =
                           runSysfsGpioMock'
-                           (withInterruptPin (Pin 1) Disabled Nothing $ \h1 ->
-                              withInterruptPin (Pin 2) RisingEdge Nothing $ \h2 ->
+                           (withInterruptPin (Pin 1) InputDefault Disabled Nothing $ \h1 ->
+                              withInterruptPin (Pin 2) InputDefault RisingEdge Nothing $ \h2 ->
                                 do setInterruptPinInterruptMode h1 RisingEdge
                                    setInterruptPinInterruptMode h2 Disabled
                                    m1 <- getInterruptPinInterruptMode h1
@@ -801,8 +721,8 @@ spec =
                       let testChip = MockGpioChip "testChip" 1 [defaultMockPinState {_direction = In}, defaultMockPinState {_direction = Out, _value = High}]
                           (Right world) =
                             execSysfsGpioMock'
-                              (withOutputPin (Pin 1) Nothing High $ \_ ->
-                                 withOutputPin (Pin 2) Nothing Low $ \_ ->
+                              (withOutputPin (Pin 1) OutputDefault Nothing High $ \_ ->
+                                 withOutputPin (Pin 2) OutputDefault Nothing Low $ \_ ->
                                    return ()
                               )
                             initialMockWorld
@@ -814,12 +734,12 @@ spec =
                 it "sets (or doesn't) the pin's active level (and the output value is relative to it)" $
                       let (Right world) =
                            execSysfsGpioMock'
-                             (withOutputPin (Pin 1) Nothing Low $ \_ ->
-                                withOutputPin (Pin 2) Nothing High $ \_ ->
-                                  withOutputPin (Pin 3) (Just ActiveLow) Low $ \_ ->
-                                    withOutputPin (Pin 4) (Just ActiveLow) High $ \_ ->
-                                      withOutputPin (Pin 5) (Just ActiveHigh) Low $ \_ ->
-                                        withOutputPin (Pin 6) (Just ActiveHigh) High $ \_ ->
+                             (withOutputPin (Pin 1) OutputDefault Nothing Low $ \_ ->
+                                withOutputPin (Pin 2) OutputDefault Nothing High $ \_ ->
+                                  withOutputPin (Pin 3) OutputDefault (Just ActiveLow) Low $ \_ ->
+                                    withOutputPin (Pin 4) OutputDefault (Just ActiveLow) High $ \_ ->
+                                      withOutputPin (Pin 5) OutputDefault (Just ActiveHigh) Low $ \_ ->
+                                        withOutputPin (Pin 6) OutputDefault (Just ActiveHigh) High $ \_ ->
                                           return ()
                              )
                              initialMockWorld
@@ -833,8 +753,8 @@ spec =
                 it "fails if the pin's direction is fixed" $
                   let testChip = MockGpioChip "testChip" 1 [defaultMockPinState, defaultMockPinState {_direction = Out, _userVisibleDirection = False}]
                   in evalSysfsGpioMock'
-                       (withOutputPin (Pin 1) Nothing High $ \_ ->
-                          withOutputPin (Pin 2) Nothing Low $ \_ ->
+                       (withOutputPin (Pin 1) OutputDefault Nothing High $ \_ ->
+                          withOutputPin (Pin 2) OutputDefault Nothing Low $ \_ ->
                             return ()
                        )
                        initialMockWorld
@@ -844,8 +764,8 @@ spec =
            context "readOutputPin" $
              do it "respects the pin's active level" $
                   evalSysfsGpioMock'
-                    (withOutputPin (Pin 1) Nothing Low $ \h1 ->
-                      withOutputPin (Pin 2) (Just ActiveLow) High $ \h2 ->
+                    (withOutputPin (Pin 1) OutputDefault Nothing Low $ \h1 ->
+                      withOutputPin (Pin 2) OutputDefault (Just ActiveLow) High $ \h2 ->
                         do v1 <- readOutputPin h1
                            v2 <- readOutputPin h2
                            return (v1,v2)
@@ -858,10 +778,10 @@ spec =
              do it "writes the output value and respects the pin's active level" $
                   let (Right world) =
                         execSysfsGpioMock'
-                          (withOutputPin (Pin 1) (Just ActiveLow) High $ \h1 ->
-                             withOutputPin (Pin 2) (Just ActiveLow) Low $ \h2 ->
-                               withOutputPin (Pin 3) (Just ActiveHigh) High $ \h3 ->
-                                 withOutputPin (Pin 4) (Just ActiveHigh) Low $ \h4 ->
+                          (withOutputPin (Pin 1) OutputDefault (Just ActiveLow) High $ \h1 ->
+                             withOutputPin (Pin 2) OutputDefault (Just ActiveLow) Low $ \h2 ->
+                               withOutputPin (Pin 3) OutputDefault (Just ActiveHigh) High $ \h3 ->
+                                 withOutputPin (Pin 4) OutputDefault (Just ActiveHigh) Low $ \h4 ->
                                    do writeOutputPin h1 Low
                                       writeOutputPin h2 High
                                       writeOutputPin h3 Low
@@ -877,10 +797,10 @@ spec =
               do it "toggles the output value, returns the new value, and respects the pin's active level" $
                    let (Right (result, world)) =
                          runSysfsGpioMock'
-                           (withOutputPin (Pin 1) (Just ActiveLow) High $ \h1 ->
-                              withOutputPin (Pin 2) (Just ActiveLow) Low $ \h2 ->
-                                withOutputPin (Pin 3) (Just ActiveHigh) High $ \h3 ->
-                                  withOutputPin (Pin 4) (Just ActiveHigh) Low $ \h4 ->
+                           (withOutputPin (Pin 1) OutputDefault (Just ActiveLow) High $ \h1 ->
+                              withOutputPin (Pin 2) OutputDefault (Just ActiveLow) Low $ \h2 ->
+                                withOutputPin (Pin 3) OutputDefault (Just ActiveHigh) High $ \h3 ->
+                                  withOutputPin (Pin 4) OutputDefault (Just ActiveHigh) Low $ \h4 ->
                                     do v1 <- toggleOutputPin h1
                                        v2 <- toggleOutputPin h2
                                        v3 <- toggleOutputPin h3
@@ -898,8 +818,8 @@ spec =
               do it "gets/sets the pin's active level" $
                    let (Right (result, world)) =
                          runSysfsGpioMock'
-                          (withOutputPin (Pin 1) (Just ActiveHigh) Low $ \h1 ->
-                             withOutputPin (Pin 2) (Just ActiveLow) Low $ \h2 ->
+                          (withOutputPin (Pin 1) OutputDefault (Just ActiveHigh) Low $ \h1 ->
+                             withOutputPin (Pin 2) OutputDefault (Just ActiveLow) Low $ \h2 ->
                                do setOutputPinActiveLevel h1 ActiveLow
                                   setOutputPinActiveLevel h2 ActiveHigh
                                   l1 <- getOutputPinActiveLevel h1
@@ -915,8 +835,8 @@ spec =
                do it "toggles the pin's active level and returns the new value" $
                     let (Right (result, world)) =
                           runSysfsGpioMock'
-                           (withOutputPin (Pin 1) (Just ActiveHigh) Low $ \h1 ->
-                             withOutputPin (Pin 2) (Just ActiveLow) Low $ \h2 ->
+                           (withOutputPin (Pin 1) OutputDefault (Just ActiveHigh) Low $ \h1 ->
+                             withOutputPin (Pin 2) OutputDefault (Just ActiveLow) Low $ \h2 ->
                                do l1 <- toggleOutputPinActiveLevel h1
                                   l2 <- toggleOutputPinActiveLevel h2
                                   return (l1,l2)

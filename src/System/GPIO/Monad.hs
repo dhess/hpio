@@ -116,9 +116,9 @@ import qualified Control.Monad.Trans.Writer.Strict as StrictWriter (WriterT)
 import Data.Data
 
 import System.GPIO.Types
-       (Pin, PinCapabilities(..), PinActiveLevel(..), PinDirection(..),
-        PinInterruptMode(..), PinValue(..), gpioExceptionToException,
-        gpioExceptionFromException)
+       (Pin, PinInputMode(..), PinOutputMode(..), PinCapabilities(..),
+        PinActiveLevel(..), PinDirection(..), PinInterruptMode(..),
+        PinValue(..), gpioExceptionToException, gpioExceptionFromException)
 
 -- | A monad type class for GPIO computations. The type class
 -- specifies a DSL for writing portable GPIO programs, and instances
@@ -229,36 +229,47 @@ class Monad m => MonadGpio h m | m -> h where
   -- environment.
   closePin :: h -> m ()
 
-  -- | Get the pin's 'PinDirection'.
+  -- | Get the pin's currently configured direction.
   --
-  -- Note that it is not uncommon for a pin's direction to be
-  -- immutable, i.e., to be hard-wired as 'In' or 'Out'. On some
-  -- systems (e.g., "System.GPIO.Linux.Sysfs"), the direction of
-  -- hard-wired pins is not made available at run-time. In such cases,
-  -- this action returns 'Nothing'.
-  getPinDirection :: h -> m (Maybe PinDirection)
+  -- Note that there is no @setPinDirection@ action. You set the pin's
+  -- direction indirectly by setting its input mode or output mode via
+  -- 'setPinInputMode' and 'setPinOutputMode', respectively.
+  --
+  -- Rarely, a particular pin's direction may not be available in a
+  -- cross-platform way. In these cases, this action errors. In
+  -- general, though, if the pin's capabilities indicate that it
+  -- supports at least one 'PinInputMode' or 'PinOutputMode', it's
+  -- safe to call this action.
+  getPinDirection :: h -> m PinDirection
 
-  -- | Set the pin's 'PinDirection'.
+  -- | Get the pin's input mode.
   --
-  -- As some pins' direction cannot be changed, you should first call
-  -- 'getPinDirection' on the pin handle to make sure this particular
-  -- pin's direction is configurable. It is an error to call this
-  -- action if the pin's direction cannot be changed.
-  --
-  -- Note that, on some GPIO platforms (e.g., Linux @sysfs@), setting
-  -- a pin's direction to 'Out' also sets its value to a constant
-  -- value; i.e., the platform has no memory of the pin's previous
-  -- output value, if any. This value is platform-dependent and
-  -- therefore, from the perspective of the DSL, is undefined. If you
-  -- want to guarantee that a particular value is driven when a pin is
-  -- configured for output, see the 'writePin'' action.
-  setPinDirection :: h -> PinDirection -> m ()
+  -- If the pin is not currently configured for input, it's an error
+  -- to call this action.
+  getPinInputMode :: h -> m PinInputMode
 
-  -- | Toggle the pin's 'PinDirection'.
+  -- | Set the pin's input mode. This action will also set the pin's
+  -- direction to 'In'.
   --
-  -- If the pin's direction cannot be changed, this action returns
-  -- 'Nothing'. Otherwise, it returns the new direction.
-  togglePinDirection :: h -> m (Maybe PinDirection)
+  -- If the pin does not support the given input mode, this action
+  -- will error.
+  setPinInputMode :: h -> PinInputMode -> m ()
+
+  -- | Get the pin's output mode.
+  --
+  -- If the pin is not currently configured for output, it's an error
+  -- to call this action.
+  getPinOutputMode :: h -> m PinOutputMode
+
+  -- | Set the pin's output mode and value. This action will also set
+  -- the pin's direction to 'Out'
+  --
+  -- If the pin is already in output mode and you only want to change
+  -- its value, use 'writePin'.
+  --
+  -- If the pin does not support the given output mode, this action
+  -- will error.
+  setPinOutputMode :: h -> PinOutputMode -> PinValue -> m ()
 
   -- | Read the pin's value.
   --
@@ -270,8 +281,10 @@ class Monad m => MonadGpio h m | m -> h where
   -- of the event, return the pin's value.
   --
   -- If the pin does not support interrupts, then this action's
-  -- behavior is plaform-dependent. To determine whether the pin
-  -- supports interrupts, see 'getPinInterruptMode'.
+  -- behavior is plaform-dependent.
+  --
+  -- It is an error to call this action when the pin is not configured
+  -- for input.
   --
   -- Note: due to its interaction with the threading system, this
   -- action may behave differently across different implementations of
@@ -292,6 +305,9 @@ class Monad m => MonadGpio h m | m -> h where
   -- behavior is platform-dependent. To determine whether the pin
   -- supports interrupts, see 'getPinInterruptMode'.
   --
+  -- It is an error to call this action when the pin is not configured
+  -- for input.
+  --
   -- Note: due to its interaction with the threading system, this
   -- action may behave differently across different implementations of
   -- Haskell. It has only been tested with GHC. (On GHC, you should
@@ -299,37 +315,15 @@ class Monad m => MonadGpio h m | m -> h where
   -- option.)
   pollPinTimeout :: h -> Int -> m (Maybe PinValue)
 
-  -- | Set the pin's signal level. It is an error to call this
-  -- action when the pin is not configured for output.
+  -- | Set the pin's output value. It is an error to call this action
+  -- when the pin is not configured for output.
   writePin :: h -> PinValue -> m ()
 
-  -- | Configure the pin for output and simultaneously set its signal
-  -- level. As long as the pin can be configured for output, you can
-  -- call this action regardless of the pin's current
-  -- 'PinDirection'. If the pin cannot be configured for output, it is
-  -- an error to call this action. (See 'getPinDirection' to
-  -- determine safely whether the pin can be configured for output.)
-  --
-  -- On some platforms (e.g., Linux @sysfs@ GPIO), this operation is
-  -- atomic ("glitch-free"), such that the pin will drive the given
-  -- value immediately upon being configured for output. If the
-  -- platform can't guarantee atomic operation, this command is
-  -- performed as two separate steps (first setting the direction to
-  -- 'Out', and then setting the 'PinValue'), so the pin may glitch
-  -- (i.e., briefly drive the opposite value before the proper value
-  -- can be set).
-  --
-  -- NB: this DSL action is subtly different than its native
-  -- equivalent on Linux @sysfs@ GPIO. See
-  -- 'System.GPIO.Linux.Sysfs.Monad.writePinDirectionWithValue' for
-  -- details.
-  writePin' :: h -> PinValue -> m ()
-
-  -- | Toggle the pin's signal level. It is an error to call this
+  -- | Toggle the pin's output value. It is an error to call this
   -- action when the pin is not configured for output.
   --
-  -- Returns the pin's new signal level.
-  togglePinValue :: h -> m PinValue
+  -- Returns the pin's new output value.
+  togglePin :: h -> m PinValue
 
   -- | Get the pin's interrupt mode.
   --
@@ -381,14 +375,15 @@ instance (MonadGpio h m) => MonadGpio h (IdentityT m) where
   openPin = lift . openPin
   closePin = lift . closePin
   getPinDirection = lift . getPinDirection
-  setPinDirection h dir = lift $ setPinDirection h dir
-  togglePinDirection = lift . togglePinDirection
+  getPinInputMode = lift . getPinInputMode
+  setPinInputMode h mode = lift $ setPinInputMode h mode
+  getPinOutputMode = lift . getPinOutputMode
+  setPinOutputMode h mode v = lift $ setPinOutputMode h mode v
   readPin = lift . readPin
   pollPin = lift . readPin
   pollPinTimeout h to = lift $ pollPinTimeout h to
   writePin h v = lift $ writePin h v
-  writePin' h v = lift $ writePin' h v
-  togglePinValue = lift . togglePinValue
+  togglePin = lift . togglePin
   getPinInterruptMode = lift . getPinInterruptMode
   setPinInterruptMode h mode = lift $ setPinInterruptMode h mode
   getPinActiveLevel = lift . getPinActiveLevel
@@ -401,14 +396,15 @@ instance (MonadGpio h m) => MonadGpio h (ContT r m) where
   openPin = lift . openPin
   closePin = lift . closePin
   getPinDirection = lift . getPinDirection
-  setPinDirection h dir = lift $ setPinDirection h dir
-  togglePinDirection = lift . togglePinDirection
+  getPinInputMode = lift . getPinInputMode
+  setPinInputMode h mode = lift $ setPinInputMode h mode
+  getPinOutputMode = lift . getPinOutputMode
+  setPinOutputMode h mode v = lift $ setPinOutputMode h mode v
   readPin = lift . readPin
   pollPin = lift . readPin
   pollPinTimeout h to = lift $ pollPinTimeout h to
   writePin h v = lift $ writePin h v
-  writePin' h v = lift $ writePin' h v
-  togglePinValue = lift . togglePinValue
+  togglePin = lift . togglePin
   getPinInterruptMode = lift . getPinInterruptMode
   setPinInterruptMode h mode = lift $ setPinInterruptMode h mode
   getPinActiveLevel = lift . getPinActiveLevel
@@ -421,14 +417,15 @@ instance (MonadGpio h m) => MonadGpio h (CatchT m) where
   openPin = lift . openPin
   closePin = lift . closePin
   getPinDirection = lift . getPinDirection
-  setPinDirection h dir = lift $ setPinDirection h dir
-  togglePinDirection = lift . togglePinDirection
+  getPinInputMode = lift . getPinInputMode
+  setPinInputMode h mode = lift $ setPinInputMode h mode
+  getPinOutputMode = lift . getPinOutputMode
+  setPinOutputMode h mode v = lift $ setPinOutputMode h mode v
   readPin = lift . readPin
   pollPin = lift . readPin
   pollPinTimeout h to = lift $ pollPinTimeout h to
   writePin h v = lift $ writePin h v
-  writePin' h v = lift $ writePin' h v
-  togglePinValue = lift . togglePinValue
+  togglePin = lift . togglePin
   getPinInterruptMode = lift . getPinInterruptMode
   setPinInterruptMode h mode = lift $ setPinInterruptMode h mode
   getPinActiveLevel = lift . getPinActiveLevel
@@ -441,14 +438,15 @@ instance (MonadGpio h m) => MonadGpio h (ExceptT e m) where
   openPin = lift . openPin
   closePin = lift . closePin
   getPinDirection = lift . getPinDirection
-  setPinDirection h dir = lift $ setPinDirection h dir
-  togglePinDirection = lift . togglePinDirection
+  getPinInputMode = lift . getPinInputMode
+  setPinInputMode h mode = lift $ setPinInputMode h mode
+  getPinOutputMode = lift . getPinOutputMode
+  setPinOutputMode h mode v = lift $ setPinOutputMode h mode v
   readPin = lift . readPin
   pollPin = lift . readPin
   pollPinTimeout h to = lift $ pollPinTimeout h to
   writePin h v = lift $ writePin h v
-  writePin' h v = lift $ writePin' h v
-  togglePinValue = lift . togglePinValue
+  togglePin = lift . togglePin
   getPinInterruptMode = lift . getPinInterruptMode
   setPinInterruptMode h mode = lift $ setPinInterruptMode h mode
   getPinActiveLevel = lift . getPinActiveLevel
@@ -461,14 +459,15 @@ instance (MonadGpio h m) => MonadGpio h (ListT m) where
   openPin = lift . openPin
   closePin = lift . closePin
   getPinDirection = lift . getPinDirection
-  setPinDirection h dir = lift $ setPinDirection h dir
-  togglePinDirection = lift . togglePinDirection
+  getPinInputMode = lift . getPinInputMode
+  setPinInputMode h mode = lift $ setPinInputMode h mode
+  getPinOutputMode = lift . getPinOutputMode
+  setPinOutputMode h mode v = lift $ setPinOutputMode h mode v
   readPin = lift . readPin
   pollPin = lift . readPin
   pollPinTimeout h to = lift $ pollPinTimeout h to
   writePin h v = lift $ writePin h v
-  writePin' h v = lift $ writePin' h v
-  togglePinValue = lift . togglePinValue
+  togglePin = lift . togglePin
   getPinInterruptMode = lift . getPinInterruptMode
   setPinInterruptMode h mode = lift $ setPinInterruptMode h mode
   getPinActiveLevel = lift . getPinActiveLevel
@@ -481,14 +480,15 @@ instance (MonadGpio h m) => MonadGpio h (MaybeT m) where
   openPin = lift . openPin
   closePin = lift . closePin
   getPinDirection = lift . getPinDirection
-  setPinDirection h dir = lift $ setPinDirection h dir
-  togglePinDirection = lift . togglePinDirection
+  getPinInputMode = lift . getPinInputMode
+  setPinInputMode h mode = lift $ setPinInputMode h mode
+  getPinOutputMode = lift . getPinOutputMode
+  setPinOutputMode h mode v = lift $ setPinOutputMode h mode v
   readPin = lift . readPin
   pollPin = lift . readPin
   pollPinTimeout h to = lift $ pollPinTimeout h to
   writePin h v = lift $ writePin h v
-  writePin' h v = lift $ writePin' h v
-  togglePinValue = lift . togglePinValue
+  togglePin = lift . togglePin
   getPinInterruptMode = lift . getPinInterruptMode
   setPinInterruptMode h mode = lift $ setPinInterruptMode h mode
   getPinActiveLevel = lift . getPinActiveLevel
@@ -501,14 +501,15 @@ instance (MonadGpio h m) => MonadGpio h (ReaderT r m) where
   openPin = lift . openPin
   closePin = lift . closePin
   getPinDirection = lift . getPinDirection
-  setPinDirection h dir = lift $ setPinDirection h dir
-  togglePinDirection = lift . togglePinDirection
+  getPinInputMode = lift . getPinInputMode
+  setPinInputMode h mode = lift $ setPinInputMode h mode
+  getPinOutputMode = lift . getPinOutputMode
+  setPinOutputMode h mode v = lift $ setPinOutputMode h mode v
   readPin = lift . readPin
   pollPin = lift . readPin
   pollPinTimeout h to = lift $ pollPinTimeout h to
   writePin h v = lift $ writePin h v
-  writePin' h v = lift $ writePin' h v
-  togglePinValue = lift . togglePinValue
+  togglePin = lift . togglePin
   getPinInterruptMode = lift . getPinInterruptMode
   setPinInterruptMode h mode = lift $ setPinInterruptMode h mode
   getPinActiveLevel = lift . getPinActiveLevel
@@ -521,14 +522,15 @@ instance (MonadGpio h m, Monoid w) => MonadGpio h (LazyRWS.RWST r w s m) where
   openPin = lift . openPin
   closePin = lift . closePin
   getPinDirection = lift . getPinDirection
-  setPinDirection h dir = lift $ setPinDirection h dir
-  togglePinDirection = lift . togglePinDirection
+  getPinInputMode = lift . getPinInputMode
+  setPinInputMode h mode = lift $ setPinInputMode h mode
+  getPinOutputMode = lift . getPinOutputMode
+  setPinOutputMode h mode v = lift $ setPinOutputMode h mode v
   readPin = lift . readPin
   pollPin = lift . readPin
   pollPinTimeout h to = lift $ pollPinTimeout h to
   writePin h v = lift $ writePin h v
-  writePin' h v = lift $ writePin' h v
-  togglePinValue = lift . togglePinValue
+  togglePin = lift . togglePin
   getPinInterruptMode = lift . getPinInterruptMode
   setPinInterruptMode h mode = lift $ setPinInterruptMode h mode
   getPinActiveLevel = lift . getPinActiveLevel
@@ -541,14 +543,15 @@ instance (MonadGpio h m, Monoid w) => MonadGpio h (StrictRWS.RWST r w s m) where
   openPin = lift . openPin
   closePin = lift . closePin
   getPinDirection = lift . getPinDirection
-  setPinDirection h dir = lift $ setPinDirection h dir
-  togglePinDirection = lift . togglePinDirection
+  getPinInputMode = lift . getPinInputMode
+  setPinInputMode h mode = lift $ setPinInputMode h mode
+  getPinOutputMode = lift . getPinOutputMode
+  setPinOutputMode h mode v = lift $ setPinOutputMode h mode v
   readPin = lift . readPin
   pollPin = lift . readPin
   pollPinTimeout h to = lift $ pollPinTimeout h to
   writePin h v = lift $ writePin h v
-  writePin' h v = lift $ writePin' h v
-  togglePinValue = lift . togglePinValue
+  togglePin = lift . togglePin
   getPinInterruptMode = lift . getPinInterruptMode
   setPinInterruptMode h mode = lift $ setPinInterruptMode h mode
   getPinActiveLevel = lift . getPinActiveLevel
@@ -561,14 +564,15 @@ instance (MonadGpio h m) => MonadGpio h (LazyState.StateT s m) where
   openPin = lift . openPin
   closePin = lift . closePin
   getPinDirection = lift . getPinDirection
-  setPinDirection h dir = lift $ setPinDirection h dir
-  togglePinDirection = lift . togglePinDirection
+  getPinInputMode = lift . getPinInputMode
+  setPinInputMode h mode = lift $ setPinInputMode h mode
+  getPinOutputMode = lift . getPinOutputMode
+  setPinOutputMode h mode v = lift $ setPinOutputMode h mode v
   readPin = lift . readPin
   pollPin = lift . readPin
   pollPinTimeout h to = lift $ pollPinTimeout h to
   writePin h v = lift $ writePin h v
-  writePin' h v = lift $ writePin' h v
-  togglePinValue = lift . togglePinValue
+  togglePin = lift . togglePin
   getPinInterruptMode = lift . getPinInterruptMode
   setPinInterruptMode h mode = lift $ setPinInterruptMode h mode
   getPinActiveLevel = lift . getPinActiveLevel
@@ -581,14 +585,15 @@ instance (MonadGpio h m) => MonadGpio h (StrictState.StateT s m) where
   openPin = lift . openPin
   closePin = lift . closePin
   getPinDirection = lift . getPinDirection
-  setPinDirection h dir = lift $ setPinDirection h dir
-  togglePinDirection = lift . togglePinDirection
+  getPinInputMode = lift . getPinInputMode
+  setPinInputMode h mode = lift $ setPinInputMode h mode
+  getPinOutputMode = lift . getPinOutputMode
+  setPinOutputMode h mode v = lift $ setPinOutputMode h mode v
   readPin = lift . readPin
   pollPin = lift . readPin
   pollPinTimeout h to = lift $ pollPinTimeout h to
   writePin h v = lift $ writePin h v
-  writePin' h v = lift $ writePin' h v
-  togglePinValue = lift . togglePinValue
+  togglePin = lift . togglePin
   getPinInterruptMode = lift . getPinInterruptMode
   setPinInterruptMode h mode = lift $ setPinInterruptMode h mode
   getPinActiveLevel = lift . getPinActiveLevel
@@ -601,14 +606,15 @@ instance (MonadGpio h m, Monoid w) => MonadGpio h (LazyWriter.WriterT w m) where
   openPin = lift . openPin
   closePin = lift . closePin
   getPinDirection = lift . getPinDirection
-  setPinDirection h dir = lift $ setPinDirection h dir
-  togglePinDirection = lift . togglePinDirection
+  getPinInputMode = lift . getPinInputMode
+  setPinInputMode h mode = lift $ setPinInputMode h mode
+  getPinOutputMode = lift . getPinOutputMode
+  setPinOutputMode h mode v = lift $ setPinOutputMode h mode v
   readPin = lift . readPin
   pollPin = lift . readPin
   pollPinTimeout h to = lift $ pollPinTimeout h to
   writePin h v = lift $ writePin h v
-  writePin' h v = lift $ writePin' h v
-  togglePinValue = lift . togglePinValue
+  togglePin = lift . togglePin
   getPinInterruptMode = lift . getPinInterruptMode
   setPinInterruptMode h mode = lift $ setPinInterruptMode h mode
   getPinActiveLevel = lift . getPinActiveLevel
@@ -621,14 +627,15 @@ instance (MonadGpio h m, Monoid w) => MonadGpio h (StrictWriter.WriterT w m) whe
   openPin = lift . openPin
   closePin = lift . closePin
   getPinDirection = lift . getPinDirection
-  setPinDirection h dir = lift $ setPinDirection h dir
-  togglePinDirection = lift . togglePinDirection
+  getPinInputMode = lift . getPinInputMode
+  setPinInputMode h mode = lift $ setPinInputMode h mode
+  getPinOutputMode = lift . getPinOutputMode
+  setPinOutputMode h mode v = lift $ setPinOutputMode h mode v
   readPin = lift . readPin
   pollPin = lift . readPin
   pollPinTimeout h to = lift $ pollPinTimeout h to
   writePin h v = lift $ writePin h v
-  writePin' h v = lift $ writePin' h v
-  togglePinValue = lift . togglePinValue
+  togglePin = lift . togglePin
   getPinInterruptMode = lift . getPinInterruptMode
   setPinInterruptMode h mode = lift $ setPinInterruptMode h mode
   getPinActiveLevel = lift . getPinActiveLevel
@@ -666,10 +673,10 @@ maybeSetPinActiveLevel h (Just v) = setPinActiveLevel h v
 --
 -- If the pin cannot be configured for input, this action will error
 -- as 'setPinDirection' does.
-withInputPin :: (MonadMask m, MonadGpio h m) => Pin -> Maybe PinActiveLevel -> (InputPin h -> m a) -> m a
-withInputPin p l action =
+withInputPin :: (MonadMask m, MonadGpio h m) => Pin -> PinInputMode -> Maybe PinActiveLevel -> (InputPin h -> m a) -> m a
+withInputPin p mode l action =
   withPin p $ \h ->
-    do setPinDirection h In
+    do setPinInputMode h mode
        maybeSetPinActiveLevel h l
        action $ InputPin h
 
@@ -714,11 +721,11 @@ newtype InterruptPin h =
 --
 -- If the pin does not support interrupts, this action will error as
 -- 'setPinInterruptMode' does.
-withInterruptPin :: (MonadMask m, MonadGpio h m) => Pin -> PinInterruptMode -> Maybe PinActiveLevel -> (InterruptPin h -> m a) -> m a
-withInterruptPin p mode l action =
+withInterruptPin :: (MonadMask m, MonadGpio h m) => Pin -> PinInputMode -> PinInterruptMode -> Maybe PinActiveLevel -> (InterruptPin h -> m a) -> m a
+withInterruptPin p inputMode interruptMode l action =
   withPin p $ \h ->
-    do setPinDirection h In
-       setPinInterruptMode h mode
+    do setPinInputMode h inputMode
+       setPinInterruptMode h interruptMode
        maybeSetPinActiveLevel h l
        action $ InterruptPin h
 
@@ -799,11 +806,11 @@ newtype OutputPin h =
 --
 -- If the pin cannot be configured for output, this action will error
 -- as 'setPinDirection' does.
-withOutputPin :: (MonadMask m, MonadGpio h m) => Pin -> Maybe PinActiveLevel -> PinValue -> (OutputPin h -> m a) -> m a
-withOutputPin p l v action =
+withOutputPin :: (MonadMask m, MonadGpio h m) => Pin -> PinOutputMode -> Maybe PinActiveLevel -> PinValue -> (OutputPin h -> m a) -> m a
+withOutputPin p mode l v action =
   withPin p $ \h ->
     do maybeSetPinActiveLevel h l
-       writePin' h v
+       setPinOutputMode h mode v
        action $ OutputPin h
 
 -- | Like 'writePin'.
@@ -811,10 +818,10 @@ writeOutputPin :: (MonadGpio h m) => OutputPin h -> PinValue -> m ()
 writeOutputPin p =
   writePin (_outputHandle p)
 
--- | Like 'togglePinValue'.
+-- | Like 'togglePin'.
 toggleOutputPin :: (MonadGpio h m) => OutputPin h -> m PinValue
 toggleOutputPin p =
-  togglePinValue (_outputHandle p)
+  togglePin (_outputHandle p)
 
 -- | Like 'readPin'.
 readOutputPin :: (MonadGpio h m) => OutputPin h -> m PinValue

@@ -13,8 +13,8 @@ import System.Directory (doesDirectoryExist)
 import System.GPIO.Linux.Sysfs (SysfsException(..), runSysfsGpioIO)
 import System.GPIO.Monad (MonadGpio(..), withPin)
 import System.GPIO.Types
-       (Pin(..), PinActiveLevel(..), PinDirection(..),
-        PinInterruptMode(..), PinValue(..))
+       (Pin(..), PinInputMode(..), PinOutputMode(..), PinActiveLevel(..),
+        PinDirection(..), PinInterruptMode(..), PinValue(..))
 import Test.Hspec
 
 isInvalidPinError :: SysfsException -> Bool
@@ -24,6 +24,14 @@ isInvalidPinError _ = False
 isNotExportedError :: SysfsException -> Bool
 isNotExportedError (NotExported _) = True
 isNotExportedError _ = False
+
+isUnsupportedInputMode :: SysfsException -> Bool
+isUnsupportedInputMode (UnsupportedInputMode _ _) = True
+isUnsupportedInputMode _ = False
+
+isUnsupportedOutputMode :: SysfsException -> Bool
+isUnsupportedOutputMode (UnsupportedOutputMode _ _) = True
+isUnsupportedOutputMode _ = False
 
 isPermissionDeniedError :: SysfsException -> Bool
 isPermissionDeniedError (PermissionDenied _) = True
@@ -135,60 +143,192 @@ runTests =
                      (withPin invalidPin $ const $
                         liftIO $ doesDirectoryExist "/sys/class/gpio/gpio9000")
                      `shouldThrow` isInvalidPinError
-         context "getPinDirection/setPinDirection" $
-           do it "gets and sets the pin's direction" $
+         context "getPinDirection" $
+           do it "gets the pin's direction" $
                 runSysfsGpioIO
                   (withPin testPin1 $ \h ->
                     do udevScriptWait
-                       setPinDirection h In
+                       setPinInputMode h InputDefault
                        dir1 <- getPinDirection h
-                       setPinDirection h Out
+                       setPinOutputMode h OutputDefault Low
                        dir2 <- getPinDirection h
-                       setPinDirection h In
+                       setPinInputMode h InputDefault
                        dir3 <- getPinDirection h
                        return (dir1, dir2, dir3))
-                  `shouldReturn` (Just In, Just Out, Just In)
-              it "can set the pin's direction to 'Out' when it's configured for edge-triggered reads" $
+                  `shouldReturn` (In, Out, In)
+         context "getPinInputMode" $
+           do it "gets the pin's input mode" $
+                runSysfsGpioIO
+                   (withPin testPin1 $ \h ->
+                     do udevScriptWait
+                        setPinInputMode h InputDefault
+                        getPinInputMode h)
+                   `shouldReturn` InputDefault
+              it "fails when the pin is in output mode" $
                 runSysfsGpioIO
                   (withPin testPin1 $ \h ->
                     do udevScriptWait
-                       setPinDirection h In
-                       setPinInterruptMode h RisingEdge
-                       setPinDirection h Out
-                       setPinDirection h In
-                       setPinInterruptMode h FallingEdge
-                       setPinDirection h Out
-                       setPinDirection h In
-                       setPinInterruptMode h Level
-                       setPinDirection h Out
-                       return True)
-                  `shouldReturn` True
-         context "togglePinDirection" $
-           do it "toggles the pin's direction" $
+                       setPinOutputMode h OutputDefault Low
+                       getPinInputMode h)
+                  `shouldThrow` isInvalidOperationError
+         context "setPinInputMode" $
+           do it "sets the pin's input mode and direction" $
+                do runSysfsGpioIO
+                     (withPin testPin1 $ \h ->
+                       do udevScriptWait
+                          setPinInputMode h InputDefault
+                          m <- getPinInputMode h
+                          d <- getPinDirection h
+                          return (m,d))
+                     `shouldReturn` (InputDefault,In)
+                   runSysfsGpioIO
+                      (withPin testPin1 $ \h ->
+                        do udevScriptWait
+                           setPinOutputMode h OutputDefault Low
+                           setPinInputMode h InputDefault
+                           m <- getPinInputMode h
+                           d <- getPinDirection h
+                           return (m,d))
+                      `shouldReturn` (InputDefault,In)
+              it "fails when the input mode is unsupported" $
                 runSysfsGpioIO
-                  (withPin testPin1 $ \h ->
-                    do udevScriptWait
-                       setPinDirection h In
-                       dir1 <- togglePinDirection h
-                       dir2 <- togglePinDirection h
-                       dir3 <- togglePinDirection h
-                       return (dir1, dir2, dir3))
-                  `shouldReturn` (Just Out, Just In, Just Out)
-              it "can set the pin's direction to 'Out' when it's configured for edge-triggered reads" $
+                      (withPin testPin1 $ \h ->
+                        do udevScriptWait
+                           setPinInputMode h InputPullDown
+                           getPinInputMode h)
+                      `shouldThrow` isUnsupportedInputMode
+         context "getPinOutputMode" $
+            do it "gets the pin's input mode" $
+                 runSysfsGpioIO
+                    (withPin testPin1 $ \h ->
+                      do udevScriptWait
+                         setPinOutputMode h OutputDefault Low
+                         getPinOutputMode h)
+                    `shouldReturn` OutputDefault
+               it "fails when the pin is in input mode" $
                  runSysfsGpioIO
                    (withPin testPin1 $ \h ->
                      do udevScriptWait
-                        setPinDirection h In
-                        setPinInterruptMode h RisingEdge
-                        dir1 <- togglePinDirection h
-                        setPinDirection h In
-                        setPinInterruptMode h FallingEdge
-                        dir2 <- togglePinDirection h
-                        setPinDirection h In
-                        setPinInterruptMode h Level
-                        dir3 <- togglePinDirection h
-                        return (dir1, dir2, dir3))
-                   `shouldReturn` (Just Out, Just Out, Just Out)
+                        setPinInputMode h InputDefault
+                        getPinOutputMode h)
+                   `shouldThrow` isInvalidOperationError
+         context "setPinOutputMode" $
+           do it "sets the pin's output mode, direction, and value" $
+                do runSysfsGpioIO
+                     (withPin testPin1 $ \h ->
+                       do udevScriptWait
+                          setPinInputMode h InputDefault
+                          setPinActiveLevel h ActiveHigh
+                          setPinOutputMode h OutputDefault Low
+                          v <- readPin h
+                          m <- getPinOutputMode h
+                          d <- getPinDirection h
+                          return (v,m,d))
+                     `shouldReturn` (Low,OutputDefault,Out)
+                   runSysfsGpioIO
+                      (withPin testPin1 $ \h ->
+                        do udevScriptWait
+                           setPinInputMode h InputDefault
+                           setPinActiveLevel h ActiveHigh
+                           setPinOutputMode h OutputDefault High
+                           v <- readPin h
+                           m <- getPinOutputMode h
+                           d <- getPinDirection h
+                           return (v,m,d))
+                      `shouldReturn` (High,OutputDefault,Out)
+                   runSysfsGpioIO
+                     (withPin testPin1 $ \h ->
+                       do udevScriptWait
+                          setPinActiveLevel h ActiveHigh
+                          setPinInputMode h InputDefault
+                          setPinOutputMode h OutputDefault High
+                          v <- readPin h
+                          m <- getPinOutputMode h
+                          d <- getPinDirection h
+                          return (v,m,d))
+                     `shouldReturn` (High,OutputDefault,Out)
+                   runSysfsGpioIO
+                      (withPin testPin1 $ \h ->
+                        do udevScriptWait
+                           setPinActiveLevel h ActiveHigh
+                           setPinInputMode h InputDefault
+                           setPinOutputMode h OutputDefault Low
+                           v <- readPin h
+                           m <- getPinOutputMode h
+                           d <- getPinDirection h
+                           return (v,m,d))
+                      `shouldReturn` (Low,OutputDefault,Out)
+              it "respects the pin's active level" $
+                 do runSysfsGpioIO
+                      (withPin testPin1 $ \h ->
+                        do udevScriptWait
+                           setPinInputMode h InputDefault
+                           setPinActiveLevel h ActiveLow
+                           setPinOutputMode h OutputDefault Low
+                           setPinActiveLevel h ActiveHigh
+                           v <- readPin h
+                           m <- getPinOutputMode h
+                           d <- getPinDirection h
+                           return (v,m,d))
+                      `shouldReturn` (High,OutputDefault,Out)
+                    runSysfsGpioIO
+                       (withPin testPin1 $ \h ->
+                         do udevScriptWait
+                            setPinInputMode h InputDefault
+                            setPinActiveLevel h ActiveLow
+                            setPinOutputMode h OutputDefault High
+                            setPinActiveLevel h ActiveHigh
+                            v <- readPin h
+                            m <- getPinOutputMode h
+                            d <- getPinDirection h
+                            return (v,m,d))
+                       `shouldReturn` (Low,OutputDefault,Out)
+                    runSysfsGpioIO
+                      (withPin testPin1 $ \h ->
+                        do udevScriptWait
+                           setPinActiveLevel h ActiveLow
+                           setPinInputMode h InputDefault
+                           setPinOutputMode h OutputDefault High
+                           setPinActiveLevel h ActiveHigh
+                           v <- readPin h
+                           m <- getPinOutputMode h
+                           d <- getPinDirection h
+                           return (v,m,d))
+                      `shouldReturn` (Low,OutputDefault,Out)
+                    runSysfsGpioIO
+                       (withPin testPin1 $ \h ->
+                         do udevScriptWait
+                            setPinActiveLevel h ActiveLow
+                            setPinInputMode h InputDefault
+                            setPinOutputMode h OutputDefault Low
+                            setPinActiveLevel h ActiveHigh
+                            v <- readPin h
+                            m <- getPinOutputMode h
+                            d <- getPinDirection h
+                            return (v,m,d))
+                       `shouldReturn` (High,OutputDefault,Out)
+              it "can set the pin's direction to 'Out' when it's configured for edge-triggered reads" $
+                runSysfsGpioIO
+                  (withPin testPin1 $ \h ->
+                    do udevScriptWait
+                       setPinInputMode h InputDefault
+                       setPinInterruptMode h RisingEdge
+                       setPinOutputMode h OutputDefault Low
+                       setPinInputMode h InputDefault
+                       setPinInterruptMode h FallingEdge
+                       setPinOutputMode h OutputDefault High
+                       setPinInputMode h InputDefault
+                       setPinInterruptMode h Level
+                       setPinOutputMode h OutputDefault Low
+                       return True)
+                  `shouldReturn` True
+              it "fails when the output mode is unsupported" $
+                 runSysfsGpioIO
+                       (withPin testPin1 $ \h ->
+                         do udevScriptWait
+                            setPinOutputMode h OutputOpenSourcePullDown Low
+                            getPinInputMode h)
+                       `shouldThrow` isUnsupportedOutputMode
          context "getPinActiveLevel/setPinActiveLevel" $
            it "gets and sets the pin's active level" $
              runSysfsGpioIO
@@ -221,11 +361,10 @@ runTests =
                   (withPin testPin1 $ \h1 ->
                      withPin testPin2 $ \h2 ->
                        do udevScriptWait
-                          setPinDirection h1 In
+                          setPinInputMode h1 InputDefault
                           setPinActiveLevel h1 ActiveHigh
-                          setPinDirection h2 Out
                           setPinActiveLevel h2 ActiveHigh
-                          writePin h2 High
+                          setPinOutputMode h2 OutputDefault High
                           -- give the pin time to settle
                           liftIO $ threadDelay 250000
                           val1 <- readPin h1
@@ -242,11 +381,10 @@ runTests =
                   (withPin testPin1 $ \h1 ->
                      withPin testPin2 $ \h2 ->
                        do udevScriptWait
-                          setPinDirection h1 In
+                          setPinInputMode h1 InputDefault
                           setPinActiveLevel h1 ActiveLow
-                          setPinDirection h2 Out
                           setPinActiveLevel h2 ActiveHigh
-                          writePin h2 High
+                          setPinOutputMode h2 OutputDefault High
                           -- give the pin time to settle
                           liftIO $ threadDelay 250000
                           val1 <- readPin h1
@@ -262,9 +400,8 @@ runTests =
                  runSysfsGpioIO
                    (withPin testPin2 $ \h ->
                       do udevScriptWait
-                         setPinDirection h Out
                          setPinActiveLevel h ActiveHigh
-                         writePin h High
+                         setPinOutputMode h OutputDefault High
                          liftIO $ threadDelay 250000
                          val1 <- readPin h
                          writePin h Low
@@ -279,9 +416,8 @@ runTests =
                  runSysfsGpioIO
                    (withPin testPin2 $ \h ->
                       do udevScriptWait
-                         setPinDirection h Out
                          setPinActiveLevel h ActiveLow
-                         writePin h High
+                         setPinOutputMode h OutputDefault High
                          liftIO $ threadDelay 250000
                          val1 <- readPin h
                          writePin h Low
@@ -297,11 +433,10 @@ runTests =
                   (withPin testPin1 $ \h1 ->
                      withPin testPin2 $ \h2 ->
                        do udevScriptWait
-                          setPinDirection h1 In
+                          setPinInputMode h1 InputDefault
                           setPinActiveLevel h1 ActiveHigh
-                          setPinDirection h2 Out
                           setPinActiveLevel h2 ActiveLow
-                          writePin h2 High
+                          setPinOutputMode h2 OutputDefault High
                           -- give the pin time to settle
                           liftIO $ threadDelay 250000
                           val1 <- readPin h1
@@ -317,83 +452,10 @@ runTests =
                 runSysfsGpioIO
                   (withPin testPin1 $ \h ->
                      do udevScriptWait
-                        setPinDirection h In
+                        setPinInputMode h InputDefault
                         writePin h High)
                   `shouldThrow` isPermissionDeniedError
-         context "writePin'" $
-           -- Note: if these tests fail, you might not have hooked pin
-           -- P9-15 up to pin P8-15!
-           do it "writes the pin's value and configures it for output simultaneously" $
-                runSysfsGpioIO
-                  (withPin testPin1 $ \h1 ->
-                     withPin testPin2 $ \h2 ->
-                       do udevScriptWait
-                          setPinDirection h1 In
-                          setPinActiveLevel h1 ActiveHigh
-                          setPinDirection h2 In
-                          setPinActiveLevel h2 ActiveHigh
-                          writePin' h2 High
-                          -- give the pin time to settle
-                          liftIO $ threadDelay 250000
-                          val1 <- readPin h1
-                          writePin' h2 Low
-                          liftIO $ threadDelay 250000
-                          val2 <- readPin h1
-                          writePin' h2 High
-                          liftIO $ threadDelay 250000
-                          val3 <- readPin h1
-                          return (val1, val2, val3))
-                  `shouldReturn` (High, Low, High)
-              it "works when the pin is configured for input and edge- or level-triggered reads" $
-                runSysfsGpioIO
-                  (withPin testPin1 $ \h1 ->
-                     withPin testPin2 $ \h2 ->
-                       do udevScriptWait
-                          setPinDirection h1 In
-                          setPinActiveLevel h1 ActiveHigh
-                          setPinDirection h2 In
-                          setPinActiveLevel h2 ActiveHigh
-                          setPinInterruptMode h2 RisingEdge
-                          writePin' h2 High
-                          -- give the pin time to settle
-                          liftIO $ threadDelay 250000
-                          val1 <- readPin h1
-                          setPinDirection h2 In
-                          setPinActiveLevel h2 ActiveHigh
-                          setPinInterruptMode h2 FallingEdge
-                          writePin' h2 Low
-                          liftIO $ threadDelay 250000
-                          val2 <- readPin h1
-                          setPinDirection h2 In
-                          setPinActiveLevel h2 ActiveHigh
-                          setPinInterruptMode h2 Level
-                          writePin' h2 High
-                          liftIO $ threadDelay 250000
-                          val3 <- readPin h1
-                          return (val1, val2, val3))
-                  `shouldReturn` (High, Low, High)
-              it "writePin' obeys the pin's active level" $
-                runSysfsGpioIO
-                  (withPin testPin1 $ \h1 ->
-                     withPin testPin2 $ \h2 ->
-                       do udevScriptWait
-                          setPinDirection h1 In
-                          setPinActiveLevel h1 ActiveHigh
-                          setPinDirection h2 In
-                          setPinActiveLevel h2 ActiveLow
-                          writePin' h2 High
-                          -- give the pin time to settle
-                          liftIO $ threadDelay 250000
-                          val1 <- readPin h1
-                          writePin' h2 Low
-                          liftIO $ threadDelay 250000
-                          val2 <- readPin h1
-                          writePin' h2 High
-                          liftIO $ threadDelay 250000
-                          val3 <- readPin h1
-                          return (val1, val2, val3))
-                  `shouldReturn` (Low, High, Low)
-         context "togglePinValue" $
+         context "togglePin" $
            -- Note: if these tests fail, you might not have hooked pin
            -- P9-15 up to pin P8-15!
            do it "toggles the pin's value and returns the previous value" $
@@ -401,40 +463,39 @@ runTests =
                   (withPin testPin1 $ \h1 ->
                      withPin testPin2 $ \h2 ->
                        do udevScriptWait
-                          setPinDirection h1 In
+                          setPinInputMode h1 InputDefault
                           setPinActiveLevel h1 ActiveHigh
-                          setPinDirection h2 Out
                           setPinActiveLevel h2 ActiveHigh
-                          h2_val1 <- togglePinValue h2
+                          setPinOutputMode h2 OutputDefault Low
+                          h2_val1 <- togglePin h2
                           -- give the pin time to settle
                           liftIO $ threadDelay 250000
                           h1_val1 <- readPin h1
-                          h2_val2 <- togglePinValue h2
+                          h2_val2 <- togglePin h2
                           liftIO $ threadDelay 250000
                           h1_val2 <- readPin h1
-                          h2_val3 <- togglePinValue h2
+                          h2_val3 <- togglePin h2
                           liftIO $ threadDelay 250000
                           h1_val3 <- readPin h1
                           return (h2_val1, h1_val1, h2_val2, h1_val2, h2_val3, h1_val3))
                   `shouldReturn` (High, High, Low, Low, High, High)
-              it "togglePinValue obeys the pin's active level" $
+              it "togglePin obeys the pin's active level" $
                 runSysfsGpioIO
                   (withPin testPin1 $ \h1 ->
                      withPin testPin2 $ \h2 ->
                        do udevScriptWait
-                          setPinDirection h1 In
+                          setPinInputMode h1 InputDefault
                           setPinActiveLevel h1 ActiveHigh
-                          setPinDirection h2 Out
                           setPinActiveLevel h2 ActiveLow
-                          writePin h2 Low
-                          h2_val1 <- togglePinValue h2
+                          setPinOutputMode h2 OutputDefault Low
+                          h2_val1 <- togglePin h2
                           -- give the pin time to settle
                           liftIO $ threadDelay 250000
                           h1_val1 <- readPin h1
-                          h2_val2 <- togglePinValue h2
+                          h2_val2 <- togglePin h2
                           liftIO $ threadDelay 250000
                           h1_val2 <- readPin h1
-                          h2_val3 <- togglePinValue h2
+                          h2_val3 <- togglePin h2
                           liftIO $ threadDelay 250000
                           h1_val3 <- readPin h1
                           return (h2_val1, h1_val1, h2_val2, h1_val2, h2_val3, h1_val3))
@@ -443,15 +504,15 @@ runTests =
                 runSysfsGpioIO
                   (withPin testPin1 $ \h ->
                      do udevScriptWait
-                        setPinDirection h In
-                        void $ togglePinValue h)
+                        setPinInputMode h InputDefault
+                        void $ togglePin h)
                   `shouldThrow` isPermissionDeniedError
          context "getPinInterruptMode/setPinInterruptMode" $
            do it "gets and sets the pin's interrupt mode" $
                 runSysfsGpioIO
                   (withPin testPin1 $ \h ->
                     do udevScriptWait
-                       setPinDirection h In
+                       setPinInputMode h InputDefault
                        setPinInterruptMode h RisingEdge
                        trigger1 <- getPinInterruptMode h
                        setPinInterruptMode h FallingEdge
@@ -466,7 +527,7 @@ runTests =
                 runSysfsGpioIO
                   (withPin testPin2 $ \h ->
                     do udevScriptWait
-                       setPinDirection h Out
+                       setPinOutputMode h OutputDefault Low
                        setPinInterruptMode h Level)
                 `shouldThrow` isInvalidOperationError
          context "pollPin" $
@@ -478,23 +539,22 @@ runTests =
                      do runSysfsGpioIO $
                           withPin testPin2 $ \h ->
                             do udevScriptWait
-                               setPinDirection h Out
                                setPinActiveLevel h ActiveHigh
-                               writePin h High
+                               setPinOutputMode h OutputDefault High
                                liftIO $ void $ takeMVar mvar
                                liftIO $ threadDelay 500000
-                               void $ togglePinValue h
+                               void $ togglePin h
                                liftIO $ threadDelay 500000
-                               void $ togglePinValue h -- trigger
+                               void $ togglePin h -- trigger
                                liftIO $ threadDelay 500000
-                               void $ togglePinValue h
+                               void $ togglePin h
                                liftIO $ threadDelay 500000
-                               void $ togglePinValue h -- trigger
+                               void $ togglePin h -- trigger
                         putMVar mvar () -- synchronize finish
                    runSysfsGpioIO
                       (withPin testPin1 $ \h ->
                          do udevScriptWait
-                            setPinDirection h In
+                            setPinInputMode h InputDefault
                             setPinActiveLevel h ActiveHigh
                             setPinInterruptMode h RisingEdge
                             liftIO $ putMVar mvar ()
@@ -509,23 +569,22 @@ runTests =
                      do runSysfsGpioIO $
                           withPin testPin2 $ \h ->
                             do udevScriptWait
-                               setPinDirection h Out
                                setPinActiveLevel h ActiveHigh
-                               writePin h Low
+                               setPinOutputMode h OutputDefault Low
                                liftIO $ void $ takeMVar mvar
                                liftIO $ threadDelay 500000
-                               void $ togglePinValue h
+                               void $ togglePin h
                                liftIO $ threadDelay 500000
-                               void $ togglePinValue h -- trigger
+                               void $ togglePin h -- trigger
                                liftIO $ threadDelay 500000
-                               void $ togglePinValue h
+                               void $ togglePin h
                                liftIO $ threadDelay 500000
-                               void $ togglePinValue h -- trigger
+                               void $ togglePin h -- trigger
                         putMVar mvar () -- synchronize finish
                    runSysfsGpioIO
                       (withPin testPin1 $ \h ->
                          do udevScriptWait
-                            setPinDirection h In
+                            setPinInputMode h InputDefault
                             setPinActiveLevel h ActiveHigh
                             setPinInterruptMode h FallingEdge
                             liftIO $ putMVar mvar ()
@@ -540,23 +599,22 @@ runTests =
                      do runSysfsGpioIO $
                           withPin testPin2 $ \h ->
                             do udevScriptWait
-                               setPinDirection h Out
                                setPinActiveLevel h ActiveHigh
-                               writePin h High
+                               setPinOutputMode h OutputDefault High
                                liftIO $ void $ takeMVar mvar
                                liftIO $ threadDelay 500000
-                               void $ togglePinValue h -- trigger
+                               void $ togglePin h -- trigger
                                liftIO $ threadDelay 500000
-                               void $ togglePinValue h -- trigger
+                               void $ togglePin h -- trigger
                                liftIO $ threadDelay 500000
-                               void $ togglePinValue h -- trigger
+                               void $ togglePin h -- trigger
                                liftIO $ threadDelay 500000
-                               void $ togglePinValue h -- trigger
+                               void $ togglePin h -- trigger
                         putMVar mvar () -- synchronize finish
                    runSysfsGpioIO
                       (withPin testPin1 $ \h ->
                          do udevScriptWait
-                            setPinDirection h In
+                            setPinInputMode h InputDefault
                             setPinActiveLevel h ActiveHigh
                             setPinInterruptMode h Level
                             liftIO $ putMVar mvar ()
@@ -573,20 +631,19 @@ runTests =
                      (withPin testPin1 $ \inPin ->
                         withPin testPin2 $ \outPin ->
                           do udevScriptWait
-                             setPinDirection inPin In
+                             setPinInputMode inPin InputDefault
                              setPinActiveLevel inPin ActiveHigh
                              setPinInterruptMode inPin Disabled
-                             setPinDirection outPin Out
                              setPinActiveLevel outPin ActiveHigh
-                             writePin outPin Low
+                             setPinOutputMode outPin OutputDefault Low
                              void $ liftIO $ forkIO $
                                do runSysfsGpioIO $
                                     do liftIO $ void $ takeMVar mvar
                                        liftIO $ threadDelay 500000
-                                       void $ togglePinValue outPin -- ignored
+                                       void $ togglePin outPin -- ignored
                                        liftIO $ threadDelay 500000
                                        setPinInterruptMode inPin Level
-                                       void $ togglePinValue outPin -- trigger
+                                       void $ togglePin outPin -- trigger
                                   putMVar mvar () -- synchronize finish
                              liftIO $ putMVar mvar ()
                              val <- pollPin inPin
@@ -602,23 +659,22 @@ runTests =
                      do runSysfsGpioIO $
                           withPin testPin2 $ \h ->
                             do udevScriptWait
-                               setPinDirection h Out
                                setPinActiveLevel h ActiveHigh
-                               writePin h Low
+                               setPinOutputMode h OutputDefault Low
                                liftIO $ void $ takeMVar mvar
                                liftIO $ threadDelay 500000
-                               void $ togglePinValue h
+                               void $ togglePin h
                                liftIO $ threadDelay 500000
-                               void $ togglePinValue h -- trigger
+                               void $ togglePin h -- trigger
                                liftIO $ threadDelay 500000
-                               void $ togglePinValue h
+                               void $ togglePin h
                                liftIO $ threadDelay 500000
-                               void $ togglePinValue h -- trigger
+                               void $ togglePin h -- trigger
                         putMVar mvar () -- synchronize finish
                    runSysfsGpioIO
                       (withPin testPin1 $ \h ->
                          do udevScriptWait
-                            setPinDirection h In
+                            setPinInputMode h InputDefault
                             setPinActiveLevel h ActiveLow
                             setPinInterruptMode h RisingEdge
                             liftIO $ putMVar mvar ()
@@ -633,23 +689,22 @@ runTests =
                      do runSysfsGpioIO $
                           withPin testPin2 $ \h ->
                             do udevScriptWait
-                               setPinDirection h Out
                                setPinActiveLevel h ActiveHigh
-                               writePin h High
+                               setPinOutputMode h OutputDefault High
                                liftIO $ void $ takeMVar mvar
                                liftIO $ threadDelay 500000
-                               void $ togglePinValue h
+                               void $ togglePin h
                                liftIO $ threadDelay 500000
-                               void $ togglePinValue h -- trigger
+                               void $ togglePin h -- trigger
                                liftIO $ threadDelay 500000
-                               void $ togglePinValue h
+                               void $ togglePin h
                                liftIO $ threadDelay 500000
-                               void $ togglePinValue h -- trigger
+                               void $ togglePin h -- trigger
                         putMVar mvar () -- synchronize finish
                    runSysfsGpioIO
                       (withPin testPin1 $ \h ->
                          do udevScriptWait
-                            setPinDirection h In
+                            setPinInputMode h InputDefault
                             setPinActiveLevel h ActiveLow
                             setPinInterruptMode h FallingEdge
                             liftIO $ putMVar mvar ()
@@ -664,23 +719,22 @@ runTests =
                      do runSysfsGpioIO $
                           withPin testPin2 $ \h ->
                             do udevScriptWait
-                               setPinDirection h Out
                                setPinActiveLevel h ActiveHigh
-                               writePin h Low
+                               setPinOutputMode h OutputDefault Low
                                liftIO $ void $ takeMVar mvar
                                liftIO $ threadDelay 500000
-                               void $ togglePinValue h -- trigger
+                               void $ togglePin h -- trigger
                                liftIO $ threadDelay 500000
-                               void $ togglePinValue h -- trigger
+                               void $ togglePin h -- trigger
                                liftIO $ threadDelay 500000
-                               void $ togglePinValue h -- trigger
+                               void $ togglePin h -- trigger
                                liftIO $ threadDelay 500000
-                               void $ togglePinValue h -- trigger
+                               void $ togglePin h -- trigger
                         putMVar mvar () -- synchronize finish
                    runSysfsGpioIO
                       (withPin testPin1 $ \h ->
                          do udevScriptWait
-                            setPinDirection h In
+                            setPinInputMode h InputDefault
                             setPinActiveLevel h ActiveLow
                             setPinInterruptMode h Level
                             liftIO $ putMVar mvar ()
@@ -697,20 +751,19 @@ runTests =
                      (withPin testPin1 $ \inPin ->
                         withPin testPin2 $ \outPin ->
                           do udevScriptWait
-                             setPinDirection inPin In
+                             setPinInputMode inPin InputDefault
                              setPinActiveLevel inPin ActiveLow
                              setPinInterruptMode inPin Disabled
-                             setPinDirection outPin Out
                              setPinActiveLevel outPin ActiveHigh
-                             writePin outPin Low
+                             setPinOutputMode outPin OutputDefault Low
                              void $ liftIO $ forkIO $
                                do runSysfsGpioIO $
                                     do liftIO $ void $ takeMVar mvar
                                        liftIO $ threadDelay 500000
-                                       void $ togglePinValue outPin -- ignored
+                                       void $ togglePin outPin -- ignored
                                        liftIO $ threadDelay 500000
                                        setPinInterruptMode inPin Level
-                                       void $ togglePinValue outPin -- trigger
+                                       void $ togglePin outPin -- trigger
                                   putMVar mvar () -- synchronize finish
                              liftIO $ putMVar mvar ()
                              val <- pollPin inPin
@@ -726,23 +779,22 @@ runTests =
                      do runSysfsGpioIO $
                           withPin testPin2 $ \h ->
                             do udevScriptWait
-                               setPinDirection h Out
                                setPinActiveLevel h ActiveHigh
-                               writePin h High
+                               setPinOutputMode h OutputDefault High
                                liftIO $ void $ takeMVar mvar
                                liftIO $ threadDelay 500000
-                               void $ togglePinValue h
+                               void $ togglePin h
                                liftIO $ threadDelay 500000
-                               void $ togglePinValue h -- trigger
+                               void $ togglePin h -- trigger
                                liftIO $ threadDelay 500000
-                               void $ togglePinValue h
+                               void $ togglePin h
                                liftIO $ threadDelay 500000
-                               void $ togglePinValue h -- trigger
+                               void $ togglePin h -- trigger
                         putMVar mvar () -- synchronize finish
                    runSysfsGpioIO
                       (withPin testPin1 $ \h ->
                          do udevScriptWait
-                            setPinDirection h In
+                            setPinInputMode h InputDefault
                             setPinActiveLevel h ActiveHigh
                             setPinInterruptMode h RisingEdge
                             liftIO $ putMVar mvar ()
@@ -757,23 +809,22 @@ runTests =
                      do runSysfsGpioIO $
                           withPin testPin2 $ \h ->
                             do udevScriptWait
-                               setPinDirection h Out
                                setPinActiveLevel h ActiveHigh
-                               writePin h Low
+                               setPinOutputMode h OutputDefault Low
                                liftIO $ void $ takeMVar mvar
                                liftIO $ threadDelay 500000
-                               void $ togglePinValue h
+                               void $ togglePin h
                                liftIO $ threadDelay 500000
-                               void $ togglePinValue h -- trigger
+                               void $ togglePin h -- trigger
                                liftIO $ threadDelay 500000
-                               void $ togglePinValue h
+                               void $ togglePin h
                                liftIO $ threadDelay 500000
-                               void $ togglePinValue h -- trigger
+                               void $ togglePin h -- trigger
                         putMVar mvar () -- synchronize finish
                    runSysfsGpioIO
                       (withPin testPin1 $ \h ->
                          do udevScriptWait
-                            setPinDirection h In
+                            setPinInputMode h InputDefault
                             setPinActiveLevel h ActiveHigh
                             setPinInterruptMode h FallingEdge
                             liftIO $ putMVar mvar ()
@@ -788,23 +839,22 @@ runTests =
                      do runSysfsGpioIO $
                           withPin testPin2 $ \h ->
                             do udevScriptWait
-                               setPinDirection h Out
                                setPinActiveLevel h ActiveHigh
-                               writePin h High
+                               setPinOutputMode h OutputDefault High
                                liftIO $ void $ takeMVar mvar
                                liftIO $ threadDelay 500000
-                               void $ togglePinValue h -- trigger
+                               void $ togglePin h -- trigger
                                liftIO $ threadDelay 500000
-                               void $ togglePinValue h -- trigger
+                               void $ togglePin h -- trigger
                                liftIO $ threadDelay 500000
-                               void $ togglePinValue h -- trigger
+                               void $ togglePin h -- trigger
                                liftIO $ threadDelay 500000
-                               void $ togglePinValue h -- trigger
+                               void $ togglePin h -- trigger
                         putMVar mvar () -- synchronize finish
                    runSysfsGpioIO
                       (withPin testPin1 $ \h ->
                          do udevScriptWait
-                            setPinDirection h In
+                            setPinInputMode h InputDefault
                             setPinActiveLevel h ActiveHigh
                             setPinInterruptMode h Level
                             liftIO $ putMVar mvar ()
@@ -821,20 +871,19 @@ runTests =
                      (withPin testPin1 $ \inPin ->
                         withPin testPin2 $ \outPin ->
                           do udevScriptWait
-                             setPinDirection inPin In
+                             setPinInputMode inPin InputDefault
                              setPinActiveLevel inPin ActiveHigh
                              setPinInterruptMode inPin Disabled
-                             setPinDirection outPin Out
                              setPinActiveLevel outPin ActiveHigh
-                             writePin outPin Low
+                             setPinOutputMode outPin OutputDefault Low
                              void $ liftIO $ forkIO $
                                do runSysfsGpioIO $
                                     do liftIO $ void $ takeMVar mvar
                                        liftIO $ threadDelay 500000
-                                       void $ togglePinValue outPin -- ignored
+                                       void $ togglePin outPin -- ignored
                                        liftIO $ threadDelay 500000
                                        setPinInterruptMode inPin Level
-                                       void $ togglePinValue outPin -- trigger
+                                       void $ togglePin outPin -- trigger
                                   putMVar mvar () -- synchronize finish
                              liftIO $ putMVar mvar ()
                              val <- pollPinTimeout inPin 10000000
@@ -847,19 +896,18 @@ runTests =
                       (withPin testPin1 $ \inPin ->
                          withPin testPin2 $ \outPin ->
                            do udevScriptWait
-                              setPinDirection inPin In
+                              setPinInputMode inPin InputDefault
                               setPinActiveLevel inPin ActiveHigh
                               setPinInterruptMode inPin Disabled
-                              setPinDirection outPin Out
                               setPinActiveLevel outPin ActiveHigh
-                              writePin outPin Low
+                              setPinOutputMode outPin OutputDefault Low
                               void $ liftIO $ forkIO $
                                 do runSysfsGpioIO $
                                      do liftIO $ void $ takeMVar mvar
                                         liftIO $ threadDelay 500000
-                                        void $ togglePinValue outPin -- ignored
+                                        void $ togglePin outPin -- ignored
                                         liftIO $ threadDelay 500000
-                                        void $ togglePinValue outPin -- ignored
+                                        void $ togglePin outPin -- ignored
                                    putMVar mvar () -- synchronize finish
                               liftIO $ putMVar mvar ()
                               val <- pollPinTimeout inPin 1000000
@@ -870,8 +918,8 @@ runTests =
                  do runSysfsGpioIO
                       (withPin testPin2 $ \outPin ->
                         do udevScriptWait
-                           setPinDirection outPin Out
                            setPinActiveLevel outPin ActiveHigh
+                           setPinOutputMode outPin OutputDefault Low
                            val <- pollPinTimeout outPin 1000000
                            return val)
                     `shouldReturn` Nothing
@@ -884,23 +932,22 @@ runTests =
                      do runSysfsGpioIO $
                           withPin testPin2 $ \h ->
                             do udevScriptWait
-                               setPinDirection h Out
                                setPinActiveLevel h ActiveHigh
-                               writePin h Low
+                               setPinOutputMode h OutputDefault Low
                                liftIO $ void $ takeMVar mvar
                                liftIO $ threadDelay 500000
-                               void $ togglePinValue h
+                               void $ togglePin h
                                liftIO $ threadDelay 500000
-                               void $ togglePinValue h -- trigger
+                               void $ togglePin h -- trigger
                                liftIO $ threadDelay 500000
-                               void $ togglePinValue h
+                               void $ togglePin h
                                liftIO $ threadDelay 500000
-                               void $ togglePinValue h -- trigger
+                               void $ togglePin h -- trigger
                         putMVar mvar () -- synchronize finish
                    runSysfsGpioIO
                       (withPin testPin1 $ \h ->
                          do udevScriptWait
-                            setPinDirection h In
+                            setPinInputMode h InputDefault
                             setPinActiveLevel h ActiveLow
                             setPinInterruptMode h RisingEdge
                             liftIO $ putMVar mvar ()
@@ -915,23 +962,22 @@ runTests =
                      do runSysfsGpioIO $
                           withPin testPin2 $ \h ->
                             do udevScriptWait
-                               setPinDirection h Out
                                setPinActiveLevel h ActiveHigh
-                               writePin h High
+                               setPinOutputMode h OutputDefault High
                                liftIO $ void $ takeMVar mvar
                                liftIO $ threadDelay 500000
-                               void $ togglePinValue h
+                               void $ togglePin h
                                liftIO $ threadDelay 500000
-                               void $ togglePinValue h -- trigger
+                               void $ togglePin h -- trigger
                                liftIO $ threadDelay 500000
-                               void $ togglePinValue h
+                               void $ togglePin h
                                liftIO $ threadDelay 500000
-                               void $ togglePinValue h -- trigger
+                               void $ togglePin h -- trigger
                         putMVar mvar () -- synchronize finish
                    runSysfsGpioIO
                       (withPin testPin1 $ \h ->
                          do udevScriptWait
-                            setPinDirection h In
+                            setPinInputMode h InputDefault
                             setPinActiveLevel h ActiveLow
                             setPinInterruptMode h FallingEdge
                             liftIO $ putMVar mvar ()
@@ -946,23 +992,22 @@ runTests =
                      do runSysfsGpioIO $
                           withPin testPin2 $ \h ->
                             do udevScriptWait
-                               setPinDirection h Out
                                setPinActiveLevel h ActiveHigh
-                               writePin h Low
+                               setPinOutputMode h OutputDefault Low
                                liftIO $ void $ takeMVar mvar
                                liftIO $ threadDelay 500000
-                               void $ togglePinValue h -- trigger
+                               void $ togglePin h -- trigger
                                liftIO $ threadDelay 500000
-                               void $ togglePinValue h -- trigger
+                               void $ togglePin h -- trigger
                                liftIO $ threadDelay 500000
-                               void $ togglePinValue h -- trigger
+                               void $ togglePin h -- trigger
                                liftIO $ threadDelay 500000
-                               void $ togglePinValue h -- trigger
+                               void $ togglePin h -- trigger
                         putMVar mvar () -- synchronize finish
                    runSysfsGpioIO
                       (withPin testPin1 $ \h ->
                          do udevScriptWait
-                            setPinDirection h In
+                            setPinInputMode h InputDefault
                             setPinActiveLevel h ActiveLow
                             setPinInterruptMode h Level
                             liftIO $ putMVar mvar ()
@@ -979,20 +1024,19 @@ runTests =
                      (withPin testPin1 $ \inPin ->
                         withPin testPin2 $ \outPin ->
                           do udevScriptWait
-                             setPinDirection inPin In
+                             setPinInputMode inPin InputDefault
                              setPinActiveLevel inPin ActiveLow
                              setPinInterruptMode inPin Disabled
-                             setPinDirection outPin Out
                              setPinActiveLevel outPin ActiveHigh
-                             writePin outPin Low
+                             setPinOutputMode outPin OutputDefault Low
                              void $ liftIO $ forkIO $
                                do runSysfsGpioIO $
                                     do liftIO $ void $ takeMVar mvar
                                        liftIO $ threadDelay 500000
-                                       void $ togglePinValue outPin -- ignored
+                                       void $ togglePin outPin -- ignored
                                        liftIO $ threadDelay 500000
                                        setPinInterruptMode inPin Level
-                                       void $ togglePinValue outPin -- trigger
+                                       void $ togglePin outPin -- trigger
                                   putMVar mvar () -- synchronize finish
                              liftIO $ putMVar mvar ()
                              val <- pollPinTimeout inPin 10000000
@@ -1007,19 +1051,30 @@ runTests =
                       v <- getPinDirection h
                       return v)
                   `shouldThrow` isNotExportedError
-              it "setPinDirection" $
+              it "getPinInputMode" $
+                  runSysfsGpioIO
+                    (do h <- openPin testPin1
+                        closePin h
+                        getPinInputMode h)
+                    `shouldThrow` isNotExportedError
+              it "setPinInputMode" $
                  runSysfsGpioIO
                    (do h <- openPin testPin1
                        closePin h
-                       setPinDirection h Out)
+                       setPinInputMode h InputDefault)
                    `shouldThrow` isNotExportedError
-              it "togglePinDirection" $
-                 runSysfsGpioIO
-                   (do h <- openPin testPin1
-                       closePin h
-                       v <- togglePinDirection h
-                       return v)
-                   `shouldThrow` isNotExportedError
+              it "getPinOutputMode" $
+                   runSysfsGpioIO
+                     (do h <- openPin testPin1
+                         closePin h
+                         getPinOutputMode h)
+                     `shouldThrow` isNotExportedError
+              it "setPinOutputMode" $
+                  runSysfsGpioIO
+                    (do h <- openPin testPin1
+                        closePin h
+                        setPinOutputMode h OutputDefault Low)
+                    `shouldThrow` isNotExportedError
               it "getPinInterruptMode" $
                 runSysfsGpioIO
                   (do h <- openPin testPin1
@@ -1080,16 +1135,10 @@ runTests =
                       closePin h
                       writePin h High)
                   `shouldThrow` isNotExportedError
-              it "writePin'" $
+              it "togglePin" $
                 runSysfsGpioIO
                   (do h <- openPin testPin1
                       closePin h
-                      writePin' h High)
-                  `shouldThrow` isNotExportedError
-              it "togglePinValue" $
-                runSysfsGpioIO
-                  (do h <- openPin testPin1
-                      closePin h
-                      v <- togglePinValue h
+                      v <- togglePin h
                       return v)
                   `shouldThrow` isNotExportedError

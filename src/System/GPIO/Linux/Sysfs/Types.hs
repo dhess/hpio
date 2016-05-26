@@ -122,6 +122,10 @@ data SysfsException
     -- ^ The specified pin does not exist
   | NotExported Pin
     -- ^ The pin has been un-exported or does not exist
+  | UnsupportedInputMode PinInputMode Pin
+    -- ^ The pin does not support the specified input mode
+  | UnsupportedOutputMode PinOutputMode Pin
+    -- ^ The pin does not support the specified output mode
   | NoDirectionAttribute Pin
     -- ^ The pin does not have a @direction@ attribute
   | NoEdgeAttribute Pin

@@ -300,22 +300,29 @@ instance (Functor m, MonadCatch m, MonadMask m, MonadThrow m, MonadSysfs m) => M
   closePin (PinDescriptor p) = lift $ unexportPin p
 
   getPinDirection (PinDescriptor p) =
-    lift (pinHasDirection p) >>= \case
-      False -> return Nothing
-      True ->
-        do dir <- lift $ readPinDirection p
-           return $ Just dir
+    lift $ readPinDirection p
 
-  setPinDirection (PinDescriptor p) dir =
-    lift $ writePinDirection p dir
+  getPinInputMode (PinDescriptor p) =
+    do dir <- lift $ readPinDirection p
+       if dir == In
+          then return InputDefault
+          else throwM $ InvalidOperation p
 
-  togglePinDirection h =
-    getPinDirection h >>= \case
-      Nothing -> return Nothing
-      Just dir ->
-        do let newDir = invertDirection dir
-           void $ setPinDirection h newDir
-           return $ Just newDir
+  setPinInputMode (PinDescriptor p) mode =
+    if mode == InputDefault
+       then lift $ writePinDirection p In
+       else throwM $ UnsupportedInputMode mode p
+
+  getPinOutputMode (PinDescriptor p) =
+    do dir <- lift $ readPinDirection p
+       if dir == Out
+          then return OutputDefault
+          else throwM $ InvalidOperation p
+
+  setPinOutputMode (PinDescriptor p) mode v =
+    if mode == OutputDefault
+       then lift $ writePinDirectionWithValue p v
+       else throwM $ UnsupportedOutputMode mode p
 
   readPin (PinDescriptor p) = lift $ readPinValue p
 
@@ -327,10 +334,7 @@ instance (Functor m, MonadCatch m, MonadMask m, MonadThrow m, MonadSysfs m) => M
   writePin (PinDescriptor p) v =
     lift $ writePinValue p v
 
-  writePin' (PinDescriptor p) v =
-    lift $ writePinDirectionWithValue p v
-
-  togglePinValue h =
+  togglePin h =
     do val <- readPin h
        let newVal = invertValue val
        void $ writePin h newVal

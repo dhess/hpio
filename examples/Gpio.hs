@@ -99,7 +99,7 @@ listPins =
 pollInput :: (MonadMask m, MonadIO m, MonadGpio h m) => Pin -> PinInterruptMode -> Int -> m ()
 pollInput p trigger to =
   withPin p $ \h ->
-    do setPinDirection h In
+    do setPinInputMode h InputDefault
        setPinInterruptMode h trigger
        forever $
          do result <- pollPinTimeout h to
@@ -110,10 +110,10 @@ pollInput p trigger to =
 driveOutput :: (MonadMask m, MonadIO m, MonadGpio h m) => Pin -> Int -> m ()
 driveOutput p delay =
   withPin p $ \h ->
-    do setPinDirection h Out
+    do setPinOutputMode h OutputDefault Low
        forever $
          do liftIO $ threadDelay delay
-            v <- togglePinValue h
+            v <- togglePin h
             output ("Output: " ++ show v)
 
 main :: IO ()
