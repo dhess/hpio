@@ -43,7 +43,8 @@ module System.GPIO.Monad
          -- same interface for all GPIO pins, regardless of their
          -- actual capabilities or configuration. For example, pins
          -- which support interrupts and pins which do not are
-         -- typically not represented as a separate types.
+         -- typically not represented by the system as a separate
+         -- types.
          --
          -- One advantage of this approach is that it is quite
          -- flexible. It is, for example, possible to re-configure a
@@ -77,7 +78,7 @@ module System.GPIO.Monad
          -- Therefore, even when using these safer types, a robust
          -- @gpio@ program should still be prepared to deal with
          -- configuration-related errors in case another process
-         -- re-configures a pin underneath our noses.
+         -- re-configures a pin while the @gpio@ program is using it.
          --
          -- In other words, even when using these safer types, you
          -- should still be prepared to handle the full range of
@@ -163,15 +164,6 @@ import System.GPIO.Types
 -- to a "high" physical signal level, and a 'PinValue' of 'Low'
 -- corresponds to a "low" physical signal level. The converse is true
 -- when the pin's active level is 'ActiveLow'.
---
--- (Note that this explanation oversimplifies the reality of circuit
--- design, as in order to predict the actual voltage level seen on a
--- given pin, one must also consider factors such as
--- open-drain/open-collector output, what other active sources and
--- passive elements are connected to the pin, etc. However, these
--- additional factors are outside the scope of this DSL and must be
--- considered in the context of your particular GPIO hardware and the
--- circuit to which it's connected.)
 --
 -- Despite the potential confusion, the advantage of supporting
 -- active-low logic is that you can, if you choose, write your program
@@ -261,10 +253,10 @@ class Monad m => MonadGpio h m | m -> h where
   -- 'setPinInputMode' and 'setPinOutputMode', respectively.
   --
   -- Rarely, a particular pin's direction may not be available in a
-  -- cross-platform way. In these cases, this action errors. In
-  -- general, though, if the pin's capabilities indicate that it
-  -- supports at least one 'PinInputMode' or 'PinOutputMode', it's
-  -- safe to call this action.
+  -- cross-platform way. In these cases, calling this action is an
+  -- error. In general, though, if the pin's capabilities indicate
+  -- that it supports at least one 'PinInputMode' or 'PinOutputMode',
+  -- it's safe to call this action.
   getPinDirection :: h -> m PinDirection
 
   -- | Get the pin's input mode.
@@ -276,8 +268,8 @@ class Monad m => MonadGpio h m | m -> h where
   -- | Set the pin's input mode. This action will also set the pin's
   -- direction to 'In'.
   --
-  -- If the pin does not support the given input mode, this action
-  -- will error.
+  -- It is an error to call this action if the given pin does not
+  -- support the given input mode.
   setPinInputMode :: h -> PinInputMode -> m ()
 
   -- | Get the pin's output mode.
@@ -292,8 +284,8 @@ class Monad m => MonadGpio h m | m -> h where
   -- If the pin is already in output mode and you only want to change
   -- its value, use 'writePin'.
   --
-  -- If the pin does not support the given output mode, this action
-  -- will error.
+  -- It is an error to call this action if the given pin does not
+  -- support the given output mode.
   setPinOutputMode :: h -> PinOutputMode -> PinValue -> m ()
 
   -- | Read the pin's value.
@@ -327,8 +319,7 @@ class Monad m => MonadGpio h m | m -> h where
   -- 'pollPin'.
   --
   -- If the pin does not support interrupts, then this action's
-  -- behavior is platform-dependent. To determine whether the pin
-  -- supports interrupts, see 'getPinInterruptMode'.
+  -- behavior is platform-dependent.
   --
   -- It is an error to call this action when the pin is not configured
   -- for input.
@@ -340,14 +331,17 @@ class Monad m => MonadGpio h m | m -> h where
   -- option.)
   pollPinTimeout :: h -> Int -> m (Maybe PinValue)
 
-  -- | Set the pin's output value. It is an error to call this action
-  -- when the pin is not configured for output.
+  -- | Set the pin's output value.
+  --
+  -- It is an error to call this action when the pin is not configured
+  -- for output.
   writePin :: h -> PinValue -> m ()
 
-  -- | Toggle the pin's output value. It is an error to call this
-  -- action when the pin is not configured for output.
+  -- | Toggle the pin's output value and return the pin's new output
+  -- value.
   --
-  -- Returns the pin's new output value.
+  -- It is an error to call this action when the pin is not configured
+  -- for output.
   togglePin :: h -> m PinValue
 
   -- | Get the pin's interrupt mode.
@@ -378,9 +372,7 @@ class Monad m => MonadGpio h m | m -> h where
   -- on that pin for some period of time.
   --
   -- Some pins (or even some GPIO platforms) may not support
-  -- interrupts. In such cases, it is an error to call this action. To
-  -- determine whether an pin supports interrupts, call
-  -- 'getPinInterruptMode' on the pin.
+  -- interrupts. In such cases, it is an error to call this action.
   --
   -- It is an error to use this action on a pin configured for output.
   setPinInterruptMode :: h -> PinInterruptMode -> m ()
@@ -690,14 +682,15 @@ maybeSetPinActiveLevel :: (MonadGpio h m) => h -> Maybe PinActiveLevel -> m ()
 maybeSetPinActiveLevel _ Nothing = return ()
 maybeSetPinActiveLevel h (Just v) = setPinActiveLevel h v
 
--- | Like 'withPin', but for 'InputPin's.
+-- | Like 'withPin', but for 'InputPin's. Sets the pin's input mode to
+-- the specified 'PinInputMode' value.
 --
 -- If the optional active level argument is 'Nothing', then the pin's
 -- active level is unchanged from its current state. Otherwise, the
 -- pin's active level is set to the specified level.
 --
--- If the pin cannot be configured for input, this action will error
--- as 'setPinDirection' does.
+-- It is an error to call this action if the pin cannot be configured
+-- for input, or if it does not support the specified input mode.
 withInputPin :: (MonadMask m, MonadGpio h m) => Pin -> PinInputMode -> Maybe PinActiveLevel -> (InputPin h -> m a) -> m a
 withInputPin p mode l action =
   withPin p $ \h ->
@@ -741,21 +734,22 @@ newtype InterruptPin h =
   InterruptPin {_interruptHandle :: h}
   deriving (Eq,Show)
 
--- | Like 'withPin', but for 'InterruptPin's.
---
--- The pin is opened for input and its initial interrupt mode set to
--- the specified mode. (The interrupt mode can be changed after
--- opening, see 'setInterruptPinInterruptMode'.)
+-- | Like 'withPin', but for 'InterruptPin's. The pin is opened for
+-- input, is input mode is set to the specified 'PinInputMode' value,
+-- and its interrupt mode is set to the specified 'PinInterruptMode'
+-- value.
 --
 -- If the optional active level argument is 'Nothing', then the pin's
 -- active level is unchanged from its current state. Otherwise, the
 -- pin's active level is set to the specified level.
 --
--- If the pin cannot be configured for input, this action will error
--- as 'setPinDirection' does.
+-- It is an error to call this action if any of the following are true:
 --
--- If the pin does not support interrupts, this action will error as
--- 'setPinInterruptMode' does.
+-- * The pin cannot be configured for input.
+--
+-- * The pin does not support the specified input mode.
+--
+-- * The pin does not support interrupts.
 withInterruptPin :: (MonadMask m, MonadGpio h m) => Pin -> PinInputMode -> PinInterruptMode -> Maybe PinActiveLevel -> (InterruptPin h -> m a) -> m a
 withInterruptPin p inputMode interruptMode l action =
   withPin p $ \h ->
@@ -823,21 +817,15 @@ newtype OutputPin h =
   OutputPin {_outputHandle :: h}
   deriving (Eq,Show)
 
--- | Like 'withPin', but for 'OutputPin's.
---
--- If the optional active level argument is 'Nothing', then the pin's
--- active level is unchanged from its current state. Otherwise, the
--- pin's active level is set to the specified level.
+-- | Like 'withPin', but for 'OutputPin's. Sets the pin's output mode
+-- to the specified 'PinOutputMode' value.
 --
 -- The 'PinValue' argument specifies the pin's initial output value.
 -- It is relative to the active level argument, or to the pin's
 -- current active level if the active level argument is 'Nothing'.
--- Note that if the platform supports glitch-free output, then this
--- action will use that capability to drive the initial output value;
--- see 'writePin'' for details.
 --
--- If the pin cannot be configured for output, this action will error
--- as 'setPinDirection' does.
+-- It is an error to call this action if the pin cannot be configured
+-- for output, or if it does not support the specified output mode.
 withOutputPin :: (MonadMask m, MonadGpio h m) => Pin -> PinOutputMode -> Maybe PinActiveLevel -> PinValue -> (OutputPin h -> m a) -> m a
 withOutputPin p mode l v action =
   withPin p $ \h ->

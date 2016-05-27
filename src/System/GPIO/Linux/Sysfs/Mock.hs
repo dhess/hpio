@@ -66,9 +66,9 @@ module System.GPIO.Linux.Sysfs.Mock
        , runSysfsMockIO
        , evalSysfsMockIO
        , execSysfsMockIO
-         -- * Mock @sysfs@ operations
+         -- * Mock @sysfs@ actions
          --
-         -- | Generally speaking, you should not need these functions.
+         -- | Generally speaking, you should not need these actions.
          -- They are primarily exported for unit testing.
        , doesDirectoryExist
        , doesFileExist
@@ -124,9 +124,6 @@ import System.GPIO.Types
         gpioExceptionFromException, invertValue)
 
 -- | A mock pin.
---
--- Note that in the real Linux @sysfs@, pins keep their state even
--- after they're unexported.
 data MockPinState =
   MockPinState {_direction :: !PinDirection
                -- ^ The pin's direction
@@ -143,9 +140,9 @@ data MockPinState =
 
 -- | Linux @sysfs@ GPIO natively supports active-low logic levels. A
 -- pin's "active" level is controlled by the pin's @active_low@
--- attribute. We call the pin's signal level as modulated by its
--- active level the pin's /logical value/. This function returns the
--- mock pin's logical value.
+-- attribute. The pin's value relative to its @active_low@ attribute
+-- is called its /logical value/. This function returns the mock pin's
+-- logical value.
 --
 -- >>> logicalValue defaultMockPinState
 -- Low
@@ -161,8 +158,7 @@ logicalValue s
   | otherwise = _value s
 
 -- | This function sets the 'MockPinState' signal level to the given
--- /logical/ value; i.e., the value set takes into consideration the
--- pin's active level.
+-- /logical/ value.
 --
 -- >>> _value $ setLogicalValue High defaultMockPinState
 -- High
@@ -185,19 +181,20 @@ defaultMockPinState =
                ,_value = Low
                ,_edge = Just None}
 
--- | A mock "gpiochip," which, in the Linux @sysfs@ GPIO filesystem,
--- describes the GPIO pin numbers that are available to userspace.
+-- | A mock GPIO "chip." In the Linux @sysfs@ GPIO filesystem, a GPIO
+-- chip is a set of one or more GPIO pins.
 --
--- Note that the '_initialPinStates' list is only used to construct a
--- mock filesystem. For each 'MockPinState' value in the list, a mock
--- pin is created in the mock filesystem with the path
--- @\/sys\/class\/gpio\/gpioN@, where @N@ is @_base@ + the pin's index in
--- the '_initialPinStates' list.
+-- Note that the '_initialPinStates' list is used to construct the pin
+-- state for a 'MockWorld' (see 'runSysfsMockT'). For each
+-- 'MockPinState' value in the list, a mock pin will be created in the
+-- mock filesystem such that, when that pin is exported, its path is
+-- @\/sys\/class\/gpio\/gpioN@, where @N@ is @_base@ + the pin's index
+-- in the '_initialPinStates' list.
 data MockGpioChip =
   MockGpioChip {_label :: !String
                -- ^ The name given to the chip in the filesystem
                ,_base :: !Int
-               -- ^ Start numbering the chip's pins from this number
+               -- ^ The pin number of the chip's first pin
                ,_initialPinStates :: [MockPinState]
                -- ^ The pins' initial states
                }
@@ -219,10 +216,10 @@ type MockPins = Map Pin MockPinState
 -- Likewise, the kernel and hardware platform together determine which
 -- GPIO pins are exposed to the user via the @sysfs@ GPIO filesystem.
 --
--- To preserve the illusion of an actual @sysfs@ GPIO filesystem,
--- then, the 'MockWorld' type is opaque and can only be manipulated
--- via the handful of operations that are implemented in this module,
--- which have been designed to keep the internal state of the mock
+-- To preserve the illusion of an actual @sysfs@ GPIO filesystem, the
+-- 'MockWorld' type is opaque and can only be manipulated via the
+-- handful of actions that are implemented in this module. These
+-- actions have been designed to keep the internal state of the mock
 -- @sysfs@ GPIO filesystem consistent with the behavior that would be
 -- seen in an actual @sysfs@ GPIO filesystem.
 --
@@ -280,15 +277,13 @@ putPinState pin f =
      (Map.insert pin (f ps) <$> getPins) >>= putPins
 
 -- | Run a mock @sysfs@ computation in monad 'm' with an initial mock
--- world and list of 'MockGpioChip'; and return a tuple containing the
+-- world and list of 'MockGpioChip's; and return a tuple containing the
 -- computation's value and the final 'MockWorld'. If an exception
 -- occurs in the mock computation, a 'MockFSException' is thrown.
 --
--- Before running the computation, the mock filesystem is populated
--- with the GPIO pins as specified by the list of 'MockGpioChip's. If
--- any of the chips in the list are already present in the filesystem,
--- or if any of the chips' pin ranges overlap, a 'MockFSException' is
--- thrown.
+-- Before running the computation, the 'MockWorld' is populated with
+-- the GPIO pins as specified by the list of 'MockGpioChip's. If any
+-- of the chips' pin ranges overlap, a 'MockFSException' is thrown.
 --
 -- Typically, you will only need this action if you're trying to mock
 -- Linux @sysfs@ GPIO computations using a custom monad transformer
@@ -299,11 +294,11 @@ runSysfsMockT action world chips =
   do startState <- execStateT (unSysfsMockT $ pushd "/" (makeFileSystem chips)) world
      runStateT (unSysfsMockT action) startState
 
--- | Like 'runSysfsMockT', but returns only the computation result.
+-- | Like 'runSysfsMockT', but returns only the computation's value.
 evalSysfsMockT :: (Functor m, MonadThrow m) => SysfsMockT m a -> MockWorld -> [MockGpioChip] -> m a
 evalSysfsMockT a w chips = fst <$> runSysfsMockT a w chips
 
--- | Like 'runSysfsMockT', but returns only the final 'MockWorld' state.
+-- | Like 'runSysfsMockT', but returns only the final 'MockWorld'.
 execSysfsMockT :: (Functor m, MonadThrow m) => SysfsMockT m a -> MockWorld -> [MockGpioChip] -> m MockWorld
 execSysfsMockT a w chips = snd <$> runSysfsMockT a w chips
 
@@ -323,12 +318,12 @@ instance (Functor m, MonadThrow m) => M.MonadSysfs (SysfsMockT m) where
 -- simulator.
 --
 -- You probably do not want to use this monad; see either
--- 'SysfsGpioMock' or 'SysfsGpioMockIO', which adds mock GPIO
--- computations to this mock @sysfs@ environment.
+-- 'SysfsGpioMock' or 'SysfsGpioMockIO', which adds GPIO computations
+-- to this mock @sysfs@ environment.
 type SysfsMock = SysfsMockT Catch
 
 -- | A pure version of 'runSysfsMockT' which returns errors in a
--- 'Left', and both the computation result and the final state of the
+-- 'Left', and both the computation's value and the final state of the
 -- 'MockWorld' in a 'Right'.
 --
 -- >>> let mockChip = MockGpioChip "chip0" 0 (replicate 16 defaultMockPinState)
@@ -339,13 +334,11 @@ type SysfsMock = SysfsMockT Catch
 runSysfsMock :: SysfsMock a -> MockWorld -> [MockGpioChip] -> Either SomeException (a, MockWorld)
 runSysfsMock a w chips = runCatch $ runSysfsMockT a w chips
 
--- | Like 'runSysfsMock', but returns only the computation result in a
--- 'Right'.
+-- | Like 'runSysfsMock', but returns only the computation's value.
 evalSysfsMock :: SysfsMock a -> MockWorld -> [MockGpioChip] -> Either SomeException a
 evalSysfsMock a w chips = fst <$> runSysfsMock a w chips
 
--- | Like 'runSysfsMock', but returns only the final 'MockWorld' state
--- in a 'Right'.
+-- | Like 'runSysfsMock', but returns only the final 'MockWorld'.
 execSysfsMock :: SysfsMock a -> MockWorld -> [MockGpioChip] -> Either SomeException MockWorld
 execSysfsMock a w chips = snd <$> runSysfsMock a w chips
 
@@ -358,10 +351,10 @@ type SysfsGpioMock = SysfsGpioT SysfsMock
 -- computation's value and the final 'MockWorld'. Any exceptions that
 -- occur in the mock computation are returned as a 'Left' value.
 --
--- Before running the computation, the mock filesystem is populated
--- with the GPIO pins as specified by the list of 'MockGpioChip's. If
--- any of the chips in the list are already present in the filesystem,
--- or if any of the chips' pin ranges overlap, an error is returned.
+-- Before running the computation, the 'MockWorld' is populated with
+-- the GPIO pins as specified by the list of 'MockGpioChip's. If any
+-- of the chips' pin ranges overlap, a 'MockFSException' is returned
+-- in a 'Left' value.
 --
 -- >>> import System.GPIO.Monad
 -- >>> let mockChip = MockGpioChip "chip0" 0 (replicate 16 defaultMockPinState)
@@ -372,27 +365,12 @@ type SysfsGpioMock = SysfsGpioT SysfsMock
 runSysfsGpioMock :: SysfsGpioMock a -> MockWorld -> [MockGpioChip] -> Either SomeException (a, MockWorld)
 runSysfsGpioMock a = runSysfsMock (runSysfsGpioT a)
 
--- | Run a 'SysfsGpioMock' computation with an initial mock world and
--- list of 'MockGpioChip's, and return the computation's value,
--- discarding the final state. Any exceptions that occur in the mock
--- computation are returned as a 'Left' value.
---
--- Before running the computation, the mock filesystem is populated
--- with the GPIO pins as specified by the list of 'MockGpioChip's. If
--- any of the chips in the list are already present in the filesystem,
--- or if any of the chips' pin ranges overlap, an error is returned.
+-- | Like 'runSysfsGpioMock', but returns only the computation's
+-- value.
 evalSysfsGpioMock :: SysfsGpioMock a -> MockWorld -> [MockGpioChip] -> Either SomeException a
 evalSysfsGpioMock a = evalSysfsMock (runSysfsGpioT a)
 
--- | Run a 'SysfsGpioMock' computation with an initial mock world and
--- list of 'MockGpioChip's, and return the final 'MockWorld',
--- discarding the computation's value. Any exceptions that occur in
--- the mock computation are returned as a 'Left' value.
---
--- Before running the computation, the mock filesystem is populated
--- with the GPIO pins as specified by the list of 'MockGpioChip's. If
--- any of the chips in the list are already present in the filesystem,
--- or if any of the chips' pin ranges overlap, an error is returned.
+-- | Like 'runSysfsGpioMock', but returns only the final 'MockWorld'.
 execSysfsGpioMock :: SysfsGpioMock a -> MockWorld -> [MockGpioChip] -> Either SomeException MockWorld
 execSysfsGpioMock a = execSysfsMock (runSysfsGpioT a)
 
@@ -405,8 +383,8 @@ execSysfsGpioMock a = execSysfsMock (runSysfsGpioT a)
 -- simulator.
 --
 -- You probably do not want to use this monad; see either
--- 'SysfsGpioMock' or 'SysfsGpioMockIO', which adds mock GPIO
--- computations to this mock @sysfs@ environment.
+-- 'SysfsGpioMock' or 'SysfsGpioMockIO', which adds GPIO computations
+-- to this mock @sysfs@ environment.
 type SysfsMockIO = SysfsMockT IO
 
 -- | An 'IO' version of 'runSysfsMockT'. Errors are expressed as
@@ -420,12 +398,11 @@ type SysfsMockIO = SysfsMockT IO
 runSysfsMockIO :: SysfsMockIO a -> MockWorld -> [MockGpioChip] -> IO (a, MockWorld)
 runSysfsMockIO = runSysfsMockT
 
--- | Like 'runSysfsMockIO', but returns only the computation result.
+-- | Like 'runSysfsMockIO', but returns only the computation's value.
 evalSysfsMockIO :: SysfsMockIO a -> MockWorld -> [MockGpioChip] -> IO a
 evalSysfsMockIO a w chips = fst <$> runSysfsMockIO a w chips
 
--- | Like 'runSysfsMockIO', but returns only the final 'MockWorld'
--- state in a 'Right'.
+-- | Like 'runSysfsMockIO', but returns only the final 'MockWorld'.
 execSysfsMockIO :: SysfsMockIO a -> MockWorld -> [MockGpioChip] -> IO MockWorld
 execSysfsMockIO a w chips = snd <$> runSysfsMockIO a w chips
 
@@ -437,10 +414,9 @@ type SysfsGpioMockIO = SysfsGpioT SysfsMockIO
 -- and list of 'MockGpioChip's, and return a tuple containing the
 -- computation's value and the final 'MockWorld'.
 --
--- Before running the computation, the mock filesystem is populated
--- with the GPIO pins as specified by the list of 'MockGpioChip's. If
--- any of the chips in the list are already present in the filesystem,
--- or if any of the chips' pin ranges overlap, an error is returned.
+-- Before running the computation, the 'MockWorld' is populated with
+-- the GPIO pins as specified by the list of 'MockGpioChip's. If any
+-- of the chips' pin ranges overlap, a 'MockFSException' is thrown.
 --
 -- >>> import System.GPIO.Monad
 -- >>> let mockChip = MockGpioChip "chip0" 0 (replicate 16 defaultMockPinState)
@@ -451,25 +427,13 @@ type SysfsGpioMockIO = SysfsGpioT SysfsMockIO
 runSysfsGpioMockIO :: SysfsGpioMockIO a -> MockWorld -> [MockGpioChip] -> IO (a, MockWorld)
 runSysfsGpioMockIO a = runSysfsMockIO (runSysfsGpioT a)
 
--- | Run a 'SysfsGpioMockIO' computation with an initial mock world
--- and list of 'MockGpioChip's, and return the computation's value,
--- discarding the final state.
---
--- Before running the computation, the mock filesystem is populated
--- with the GPIO pins as specified by the list of 'MockGpioChip's. If
--- any of the chips in the list are already present in the filesystem,
--- or if any of the chips' pin ranges overlap, an error is returned.
+-- | Like 'runSysfsGpioMockIO', but returns only the computation's
+-- value.
 evalSysfsGpioMockIO :: SysfsGpioMockIO a -> MockWorld -> [MockGpioChip] -> IO a
 evalSysfsGpioMockIO a = evalSysfsMockIO (runSysfsGpioT a)
 
--- | Run a 'SysfsGpioMockIO' computation with an initial mock world
--- and list of 'MockGpioChip's, and return the final 'MockWorld',
--- discarding the computation's value.
---
--- Before running the computation, the mock filesystem is populated
--- with the GPIO pins as specified by the list of 'MockGpioChip's. If
--- any of the chips in the list are already present in the filesystem,
--- or if any of the chips' pin ranges overlap, an error is returned.
+-- | Like 'runSysfsGpioMockIO', but returns only the final
+-- 'MockWorld'.
 execSysfsGpioMockIO :: SysfsGpioMockIO a -> MockWorld -> [MockGpioChip] -> IO MockWorld
 execSysfsGpioMockIO a = execSysfsMockIO (runSysfsGpioT a)
 
@@ -478,10 +442,9 @@ execSysfsGpioMockIO a = execSysfsMockIO (runSysfsGpioT a)
 --
 -- Note that, as much as is reasonably possible, when an error occurs,
 -- the mock filesystem implementation throws the same exception as
--- would occur in an actual @sysfs@ filesystem, so callers should
--- expect to encounter 'IOError's when errors occur in the mock
--- filesystem. However, in a few cases, there are exceptions that are
--- specific to the mock @sysfs@ implementation; in these cases, a
+-- would occur in an actual @sysfs@ filesystem (i.e., 'IOError's).
+-- However, in a few cases, there are exceptions that are specific to
+-- the mock @sysfs@ implementation; in these cases, a
 -- 'MockFSException' is thrown.
 data MockFSException
   = GpioChipOverlap Pin

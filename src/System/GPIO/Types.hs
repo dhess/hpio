@@ -73,17 +73,18 @@ instance Arbitrary Pin where
 pinNumber :: Pin -> Int
 pinNumber (Pin n) = n
 
--- | Input pins may support a number of different physical
--- configurations.
+-- | GPIO pins may support a number of different physical
+-- configurations when used as a digital input.
 --
 -- Pins that are capable of input will at least support the
--- 'InputDefault' mode.
---
--- Note that in 'InputDefault' mode, under the covers the pin's actual
--- input mode is most likely one of the other, more specific modes. By
--- using 'InputDefault' mode, you are simply saying that you don't
--- care about the pin's physical configuration, just that the pin is
--- being used for input.
+-- 'InputDefault' mode. 'InputDefault' mode is special in that, unlike
+-- the other input modes, it does not represent a unique physical
+-- configuration, but is simply a pseudonym for another (actual) input
+-- mode. Exactly which mode is used by the hardware when
+-- 'InputDefault' mode is specified is platform-dependent. By using
+-- 'InputDefaut' mode, you are saying that you don't care about the
+-- pin's actual configuration, other than the fact that it's being
+-- used for input.
 data PinInputMode
   = InputDefault
     -- ^ The pin's default input mode, i.e., the mode used when a more
@@ -102,17 +103,18 @@ data PinInputMode
     -- high-impedance node, its physical value will be 'Low'
   deriving (Bounded,Enum,Eq,Ord,Data,Read,Show,Generic,Typeable)
 
--- | Output pins may support a number of different physical
--- configurations.
+-- | GPIO pins may support a number of different physical
+-- configurations when used as a digital output.
 --
 -- Pins that are capable of output will at least support the
--- 'OutputDefault' mode.
---
--- Note that in 'OutputDefault' mode, under the covers the pin's
--- actual input mode is most likely one of the other, more specific
--- modes. By using 'OutputDefault' mode, you are simply saying that
--- you don't care about the pin's physical configuration, just that
--- the pin is being used for output.
+-- 'OutputDefault' mode. 'OutputDefault' mode is special in that,
+-- unlike the other output modes, it does not represent a unique
+-- physical configuration, but is simply a pseudonym for another
+-- (actual) output mode. Exactly which mode is used by the hardware
+-- when 'OutputDefault' mode is specified is platform-dependent. By
+-- using 'OutputDefaut' mode, you are saying that you don't care about
+-- the pin's actual configuration, other than the fact that it's being
+-- used for output.
 data PinOutputMode
   = OutputDefault
     -- ^ The pin's default output mode, i.e., the mode used when a
@@ -136,9 +138,9 @@ data PinOutputMode
 -- | Catalog a pin's capabilities.
 data PinCapabilities =
   PinCapabilities {_inputModes :: Set PinInputMode
-                   -- ^ Which input modes does the pin support?
+                   -- ^ The set of input modes that the pin supports
                   ,_outputModes :: Set PinOutputMode
-                   -- ^ Which output modes does the pin support?
+                   -- ^ The set of output modes that the pin supports
                   ,_interrupts :: Bool
                    -- ^ Does the pin support interrupts in input mode?
                   }

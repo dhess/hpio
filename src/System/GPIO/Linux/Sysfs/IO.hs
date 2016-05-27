@@ -66,7 +66,7 @@ import System.GPIO.Linux.Sysfs.Monad (MonadSysfs(..))
 -- Note that the C FFI bits in this implementation are marked as
 -- 'interruptible', so that, on versions of GHC later than 7.8.1,
 -- functions such as 'Control.Concurent.throwTo' will work properly
--- when targeting a Haskell thread which is using this implementation.
+-- when targeting a Haskell thread that uses this implementation.
 --
 -- (On Haskell implementations other than GHC, the threading
 -- implications are unknown; see the implementation's notes on how its

@@ -34,9 +34,9 @@ module System.GPIO.Linux.Sysfs.Util
          -- (@\\n@). When writing their contents, the attribute files
          -- will accept their (ASCII-encoded) new value either with or
          -- without a trailing newline character. For consistency (and
-         -- for the sake of isomorphic conversions back-and-forth), we
-         -- always use a trailing newline when encoding the ASCII
-         -- value from the Haskell value.
+         -- for the sake of isomorphic conversions back-and-forth),
+         -- these functions always use a trailing newline when
+         -- encoding the ASCII value from the Haskell value.
        , pinDirectionToBS
        , pinDirectionValueToBS
        , bsToPinDirection
@@ -85,7 +85,7 @@ unexportFileName = sysfsPath </> "unexport"
 
 -- | Exporting a GPIO pin via @sysfs@ creates a control directory
 -- corresponding to that pin. 'pinDirName' gives the name of that
--- directory for a given pin number.
+-- directory for a given 'Pin'.
 --
 -- >>> pinDirName (Pin 16)
 -- "/sys/class/gpio/gpio16"
@@ -102,7 +102,7 @@ pinActiveLowFileName p = pinDirName p </> "active_low"
 
 -- | Pins whose direction can be controlled via @sysfs@ provide a
 -- @direction@ attribute file. 'pinDirectionFileName' gives the name
--- of that file for a given pin number. Note that some pins' direction
+-- of that file for a given 'Pin'. Note that some pins' direction
 -- cannot be set. In these cases, the file named by this function does
 -- not actually exist.
 --
@@ -113,7 +113,7 @@ pinDirectionFileName p = pinDirName p </> "direction"
 
 -- | Pins that can be configured as interrupt-generating inputs
 -- provide an @edge@ attribute file. 'pinEdgeFileName' gives the name
--- of that file for a given pin number. Note that some pins' edge
+-- of that file for a given 'Pin'. Note that some pins' edge
 -- configuration cannot be set. In these cases, the file named by this
 -- function does not actually exist.
 --

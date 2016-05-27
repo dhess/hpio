@@ -17,7 +17,7 @@ the terminology used in this module.
 
 The @sysfs@ GPIO implementation in this module uses the same pin
 numbering scheme as the @sysfs@ GPIO filesystem. For example,
-'System.GPIO.Types.Pin' 13 corresponds to @gpio13@ in the @sysfs@
+'System.GPIO.Types.Pin' @13@ corresponds to @gpio13@ in the @sysfs@
 filesystem. Note that the @sysfs@ pin numbering scheme is almost
 always different than the pin numbering scheme given by the
 platform/hardware documentation. Consult your platform documentation
@@ -40,26 +40,24 @@ module System.GPIO.Linux.Sysfs
          -- 'System.GPIO.Linux.Sysfs.Monad.MonadSysfs' monad type
          -- class. Primarily, this abstraction exists in order to more
          -- easily test @sysfs@ GPIO programs on non-Linux systems, or
-         -- on Linux systems which lack actual GPIO functionality. For
-         -- real GPIO programs on real GPIO systems, you'll want to
-         -- use the 'SysfsIOT' monad transformer as the @sysfs@
-         -- back-end, which is designed to run on an actual Linux host
-         -- and perform real GPIO operations. For the straightforward
+         -- on Linux systems which lack actual GPIO functionality. To
+         -- run GPIO programs on real GPIO-capable Linux systems,
+         -- you'll want to combine the 'SysfsGpioT' transformer with
+         -- the 'SysfsIOT' monad transformer. For the straightforward
          -- case of running @sysfs@ GPIO operations directly in 'IO',
-         -- use the provided 'runSysfsGpioIO' wrapper, which takes
-         -- care of all of this for you; for more complicated
-         -- transformer stacks based on the
-         -- 'Control.Monad.IO.Class.MonadIO' interface, use the
-         -- 'runSysfsGpioT' and 'runSysfsIOT' wrappers.
+         -- use the provided 'runSysfsGpioIO' wrapper; for more
+         -- complicated transformer stacks, compose the
+         -- 'runSysfsGpioT' and 'runSysfsIOT' wrappers. (See the
+         -- "System.GPIO.Tutorial" module for details.)
          --
-         -- (For testing purposes, you can use the
+         -- For testing purposes, you can use the
          -- 'System.GPIO.Linux.Sysfs.Mock.SysfsMock' monad (or its
          -- corresponding 'System.GPIO.Linux.Sysfs.Mock.SysfsMockT'
          -- monad transformer) as the @sysfs@ back-end, which allows
          -- you to run (mock) GPIO programs on any system. Note that
          -- the testing monads are not exported from this module; you
          -- must import the "System.GPIO.Linux.Sysfs.Mock" module
-         -- directly.)
+         -- directly.
          SysfsGpioT
        , runSysfsGpioT
        , SysfsGpioIO

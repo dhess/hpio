@@ -116,9 +116,10 @@ class (Monad m) => MonadSysfs m where
   writeFile :: FilePath -> ByteString -> m ()
   -- | @sysfs@ control files which are global shared resources may be
   -- written simultaneously by multiple threads. This is fine --
-  -- @sysfs@ can handle this -- but Haskell's writeFile cannot, as it
-  -- locks the file and prevents multiple writers. We don't want this
-  -- behavior, so we use low-level operations to get around it.
+  -- @sysfs@ can handle this -- but Haskell's
+  -- 'Data.ByteString.writeFile' cannot, as it locks the file and
+  -- prevents multiple writers. We don't want this behavior, so we use
+  -- low-level operations to get around it.
   unlockedWriteFile :: FilePath -> ByteString -> m ()
   -- | Poll a @sysfs@ file for reading, as in POSIX.1-2001 @poll(2)@.
   --
@@ -378,7 +379,7 @@ activeLowToActiveLevel True = ActiveLow
 sysfsIsPresent :: (MonadSysfs m) => m Bool
 sysfsIsPresent = doesDirectoryExist sysfsPath
 
--- | Test whether the given pin is already exported.
+-- | Test whether the pin is already exported.
 pinIsExported :: (MonadSysfs m) => Pin -> m Bool
 pinIsExported = doesDirectoryExist . pinDirName
 
@@ -451,10 +452,10 @@ unexportPinChecked pin@(Pin n) =
       | isPermissionError e = throwM $ PermissionDenied pin
       | otherwise = throwM e
 
--- | Test whether the given pin's direction can be set via the @sysfs@
--- GPIO filesystem. (Some pins have a hard-wired direction, in which
--- case their direction must be determined by some other mechanism, as
--- the @direction@ attribute does not exist for such pins.)
+-- | Test whether the pin's direction can be set via the @sysfs@ GPIO
+-- filesystem. (Some pins have a hard-wired direction, in which case
+-- their direction must be determined by some other mechanism, as the
+-- @direction@ attribute does not exist for such pins.)
 pinHasDirection :: (MonadSysfs m, MonadThrow m) => Pin -> m Bool
 pinHasDirection p =
   do exported <- pinIsExported p
@@ -462,7 +463,7 @@ pinHasDirection p =
         then doesFileExist (pinDirectionFileName p)
         else throwM $ NotExported p
 
--- | Read the given pin's direction.
+-- | Read the pin's direction.
 --
 -- It is an error to call this action if the pin has no @direction@
 -- attribute.
@@ -485,7 +486,7 @@ readPinDirection p =
       | isPermissionError e = throwM $ PermissionDenied p
       | otherwise = throwM e
 
--- | Set the given pin's direction.
+-- | Set the pin's direction.
 --
 -- It is an error to call this action if the pin has no @direction@
 -- attribute.
@@ -615,12 +616,12 @@ pollPinValue p =
 -- 'maxBound'.
 --
 -- If the pin has no @edge@ attribute, then this action's behavior is
--- undefined. (Most likely, it will time out after the specified wait
--- time and return 'Nothing'.)
+-- undefined. (Most likely, it will time out after the specified delay
+-- and return 'Nothing'.)
 --
 -- NB: the curent implementation of this action limits the timeout
 -- precision to 1 millisecond, rather than 1 microsecond as the
--- interface promises.
+-- timeout parameter implies.
 pollPinValueTimeout :: (Functor m, MonadSysfs m, MonadThrow m, MonadCatch m) => Pin -> Int -> m (Maybe PinValue)
 pollPinValueTimeout p timeout =
   catchIOError
@@ -661,7 +662,7 @@ pinHasEdge p =
         then doesFileExist (pinEdgeFileName p)
         else throwM $ NotExported p
 
--- | Read the given pin's @edge@ attribute.
+-- | Read the pin's @edge@ attribute.
 --
 -- It is an error to call this action when the pin has no @edge@
 -- attribute.
@@ -686,7 +687,7 @@ readPinEdge p =
       | isPermissionError e = throwM $ PermissionDenied p
       | otherwise = throwM e
 
--- | Write the given pin's @edge@ attribute.
+-- | Write the pin's @edge@ attribute.
 --
 -- It is an error to call this action when the pin has no @edge@
 -- attribute, or when the pin is configured for output.
@@ -707,7 +708,7 @@ writePinEdge p v =
       | isPermissionError e = throwM $ PermissionDenied p
       | otherwise = throwM e
 
--- | Read the given pin's @active_low@ attribute.
+-- | Read the pin's @active_low@ attribute.
 readPinActiveLow :: (MonadSysfs m, MonadThrow m, MonadCatch m) => Pin -> m Bool
 readPinActiveLow p =
   catchIOError
@@ -723,7 +724,7 @@ readPinActiveLow p =
       | isPermissionError e = throwM $ PermissionDenied p
       | otherwise = throwM e
 
--- | Write the given pin's @active_low@ attribute.
+-- | Write the pin's @active_low@ attribute.
 writePinActiveLow :: (MonadSysfs m, MonadCatch m) => Pin -> Bool -> m ()
 writePinActiveLow p v =
   catchIOError

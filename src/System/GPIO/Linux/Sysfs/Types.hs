@@ -146,8 +146,7 @@ data SysfsException
     -- ^ An unexpected value was read from the pin's @active_low@
     -- attribute
   | UnexpectedContents FilePath String
-    -- ^ An unexpected value was read from the pin's @active_low@
-    -- attribute
+    -- ^ An unexpected value was read from the specified file
   | InternalError String
     -- ^ An internal error has occurred in the interpreter, something
     -- which should "never happen" and should be reported to the

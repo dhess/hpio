@@ -16,7 +16,7 @@ Synopsis:               Monads for GPIO in Haskell
 Description:
   This package provides an embedded DSL for writing cross-platform
   GPIO programs in Haskell. Currently only Linux is supported (via the
-  @sysfs@ filesystem), but other UNIX GPIO platforms will be supported
+  @sysfs@ filesystem), but other Unix GPIO platforms will be supported
   in the future.
   .
   Monads and low-level actions are also provided for each supported
