@@ -12,10 +12,6 @@ import qualified Data.Set as Set (empty, fromList)
 import System.GPIO.Linux.Sysfs.Mock
 import System.GPIO.Linux.Sysfs.Types (SysfsEdge(..), SysfsException(..))
 import System.GPIO.Monad
-import System.GPIO.Types
-       (Pin(..), PinInputMode(..), PinOutputMode(..), PinCapabilities(..),
-        PinActiveLevel(..), PinDirection(..), PinInterruptMode(..),
-        PinValue(..), SomeGpioException)
 
 import Test.Hspec
 

@@ -21,7 +21,6 @@ import Data.Foldable (for_)
 import Options.Applicative
 import System.GPIO.Linux.Sysfs (SysfsIOT, SysfsGpioT, runSysfsGpioT, runSysfsIOT, runSysfsGpioIO)
 import System.GPIO.Monad
-import System.GPIO.Types
 
 -- Only one for now.
 data Interpreter =

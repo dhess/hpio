@@ -19,9 +19,24 @@ A monadic context for GPIO computations.
 {-# LANGUAGE Safe #-}
 
 module System.GPIO.Monad
-       ( -- * MonadGpio class
-         MonadGpio(..)
+       ( -- * GPIO types
+         --
+         -- | For your convenience, the following types are
+         -- re-exported from the "System.GPIO.Types" module.
+         Pin(..)
+       , pinNumber
+       , PinInputMode(..)
+       , PinOutputMode(..)
+       , PinCapabilities(..)
+       , PinDirection(..)
+       , PinActiveLevel(..)
+       , PinValue(..)
+       , PinInterruptMode(..)
+
+         -- * MonadGpio class
+       , MonadGpio(..)
        , withPin
+
          -- * Safer types
          --
          -- | Native GPIO APIs, as a rule, provide more or less the
@@ -97,6 +112,13 @@ module System.GPIO.Monad
        , getOutputPinActiveLevel
        , setOutputPinActiveLevel
        , toggleOutputPinActiveLevel
+
+         -- * The GPIO exception hierarchy
+         --
+         -- | Re-exported from "System.GPIO.Types".
+       , SomeGpioException(..)
+       , gpioExceptionToException
+       , gpioExceptionFromException
        ) where
 
 import Prelude ()
@@ -118,9 +140,10 @@ import qualified Control.Monad.Trans.Writer.Lazy as LazyWriter (WriterT)
 import qualified Control.Monad.Trans.Writer.Strict as StrictWriter (WriterT)
 
 import System.GPIO.Types
-       (Pin, PinInputMode(..), PinOutputMode(..), PinCapabilities(..),
+       (Pin(..), PinInputMode(..), PinOutputMode(..), PinCapabilities(..),
         PinActiveLevel(..), PinDirection(..), PinInterruptMode(..),
-        PinValue(..))
+        PinValue(..), SomeGpioException(..), gpioExceptionToException,
+        gpioExceptionFromException, pinNumber)
 
 -- | A monad type class for GPIO computations. The type class
 -- specifies a DSL for writing portable GPIO programs, and instances

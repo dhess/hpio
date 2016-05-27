@@ -51,16 +51,15 @@ import Control.Monad.Catch (MonadMask, MonadThrow, MonadCatch)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Reader (MonadReader(..), ReaderT(..), asks)
-import System.GPIO.Monad (MonadGpio(..), withPin)
+import System.GPIO.Monad
+       (MonadGpio(..), Pin(..), PinInputMode(..), PinOutputMode(..),
+        PinActiveLevel(..), PinDirection(..), PinValue(..),
+        PinInterruptMode(..), SomeGpioException, withPin)
 import System.GPIO.Linux.Sysfs.Monad (SysfsGpioT(..))
 import System.GPIO.Linux.Sysfs.Mock
        (MockGpioChip(..), MockPinState(..), SysfsMockT, SysfsGpioMock, SysfsGpioMockIO,
         defaultMockPinState, initialMockWorld, evalSysfsGpioMockIO, evalSysfsMockT)
 import System.GPIO.Linux.Sysfs.Types (SysfsException(..))
-import System.GPIO.Types
-       (Pin(..), PinInputMode(..), PinOutputMode(..), PinActiveLevel(..),
-        PinDirection(..), PinValue(..), PinInterruptMode(..),
-        SomeGpioException)
 
 -- $setup
 -- >>> :set -XFlexibleContexts
