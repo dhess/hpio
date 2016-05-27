@@ -11,7 +11,6 @@ A monadic context for GPIO computations.
 
 -}
 
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE LambdaCase #-}
@@ -98,13 +97,11 @@ module System.GPIO.Monad
        , getOutputPinActiveLevel
        , setOutputPinActiveLevel
        , toggleOutputPinActiveLevel
-         -- * Exceptions
-       , GpioException(..)
        ) where
 
 import Prelude ()
 import Prelude.Compat
-import Control.Monad.Catch (Exception(..), MonadMask, MonadThrow, bracket, throwM)
+import Control.Monad.Catch (MonadMask, MonadThrow, bracket)
 import Control.Monad.Catch.Pure (CatchT)
 import Control.Monad.Trans.Cont (ContT)
 import Control.Monad.Trans.Except (ExceptT)
@@ -119,12 +116,11 @@ import qualified Control.Monad.Trans.State.Lazy as LazyState (StateT)
 import qualified Control.Monad.Trans.State.Strict as StrictState (StateT)
 import qualified Control.Monad.Trans.Writer.Lazy as LazyWriter (WriterT)
 import qualified Control.Monad.Trans.Writer.Strict as StrictWriter (WriterT)
-import Data.Data
 
 import System.GPIO.Types
        (Pin, PinInputMode(..), PinOutputMode(..), PinCapabilities(..),
         PinActiveLevel(..), PinDirection(..), PinInterruptMode(..),
-        PinValue(..), gpioExceptionToException, gpioExceptionFromException)
+        PinValue(..))
 
 -- | A monad type class for GPIO computations. The type class
 -- specifies a DSL for writing portable GPIO programs, and instances
@@ -333,13 +329,13 @@ class Monad m => MonadGpio h m | m -> h where
 
   -- | Get the pin's interrupt mode.
   --
-  -- Some pins may not support edge- or level-triggered blocking
-  -- reads. In such cases, this action returns 'Nothing'.
+  -- If the pin does not support interrupts, it is an error to call
+  -- this action.
   --
   -- (Note that 'RisingEdge' and 'FallingEdge' are relative to the
   -- pin's active level; i.e., they refer to the pin's /logical/
   -- signal edges, not its physical signal edges.)
-  getPinInterruptMode :: h -> m (Maybe PinInterruptMode)
+  getPinInterruptMode :: h -> m PinInterruptMode
 
   -- | Set the pin's interrupt mode (only when the pin is configured
   -- for input).
@@ -771,22 +767,9 @@ setInterruptPinInputMode p =
   setPinInputMode (_interruptHandle p)
 
 -- | Like 'getPinInterruptMode'.
---
--- Note that, unlike 'getPinInterruptMode', this action does not wrap
--- its result in a 'Maybe', because the only way to get a valid
--- 'InterruptPin' handle is via 'withInterruptPin', and that action
--- will fail in the first place if the pin does not support
--- interrupts.
---
--- (However, in the (theoretically impossible) case that the pin
--- suddenly stops supporting interrupts after the fact, this action
--- will throw a 'GpioException', which explains the 'MonadThrow' @m@
--- constraint.)
 getInterruptPinInterruptMode :: (MonadThrow m, MonadGpio h m) => InterruptPin h -> m PinInterruptMode
 getInterruptPinInterruptMode p =
-  getPinInterruptMode (_interruptHandle p) >>= \case
-    Just mode -> return mode
-    Nothing -> throwM $ GpioInternalError "The specified InterruptPin does not support interrupts"
+  getPinInterruptMode (_interruptHandle p)
 
 -- | Like 'setPinInterruptMode'.
 setInterruptPinInterruptMode :: (MonadGpio h m) => InterruptPin h -> PinInterruptMode -> m ()
@@ -878,15 +861,3 @@ setOutputPinActiveLevel p =
 toggleOutputPinActiveLevel :: (MonadGpio h m) => OutputPin h -> m PinActiveLevel
 toggleOutputPinActiveLevel p =
   togglePinActiveLevel (_outputHandle p)
-
--- | Exceptions that are thrown at the 'MonadGpio' DSL layer.
-data GpioException
-  = GpioInternalError String
-    -- ^ An internal error has occurred in the 'MonadGpio' DSL,
-    -- something which should "never happen" and should be reported to
-    -- the package maintainer.
-  deriving (Eq,Show,Typeable)
-
-instance Exception GpioException where
-    toException = gpioExceptionToException
-    fromException = gpioExceptionFromException

@@ -31,7 +31,7 @@ testOpenClose =
   do h <- openPin (Pin 1)
      closePin h
 
-testSetInterruptMode :: (MonadGpio h m) => m (Maybe PinInterruptMode, Maybe PinInterruptMode, Maybe PinInterruptMode, Maybe PinInterruptMode)
+testSetInterruptMode :: (MonadGpio h m) => m (PinInterruptMode, PinInterruptMode, PinInterruptMode, PinInterruptMode)
 testSetInterruptMode =
   do d <- openPin (Pin 1)
      setPinInputMode d InputDefault
@@ -46,7 +46,7 @@ testSetInterruptMode =
      closePin d
      return (t1, t2, t3, t4)
 
-testSetInterruptModeIdempotent :: (MonadGpio h m) => m (Maybe PinInterruptMode, Maybe PinInterruptMode)
+testSetInterruptModeIdempotent :: (MonadGpio h m) => m (PinInterruptMode, PinInterruptMode)
 testSetInterruptModeIdempotent =
   do d <- openPin (Pin 1)
      setPinInputMode d InputDefault
@@ -328,18 +328,18 @@ spec =
        do it "gets the pin's interrupt mode" $
             let testChip = MockGpioChip "testChip" 1 [defaultMockPinState {_edge = Just Falling}]
             in
-              do evalSysfsGpioMock' (withPin (Pin 1) getPinInterruptMode) initialMockWorld [chip0] `shouldBe` Right (Just Disabled)
-                 evalSysfsGpioMock' (withPin (Pin 1) getPinInterruptMode) initialMockWorld [testChip] `shouldBe` Right (Just FallingEdge)
+              do evalSysfsGpioMock' (withPin (Pin 1) getPinInterruptMode) initialMockWorld [chip0] `shouldBe` Right Disabled
+                 evalSysfsGpioMock' (withPin (Pin 1) getPinInterruptMode) initialMockWorld [testChip] `shouldBe` Right FallingEdge
 
-          it "returns Nothing when the pin's interrupt mode is not settable" $
+          it "fails when the pin's interrupt mode is not settable" $
             let testChip = MockGpioChip "testChip" 1 [defaultMockPinState {_edge = Nothing}]
-            in evalSysfsGpioMock' (withPin (Pin 1) getPinInterruptMode) initialMockWorld [testChip] `shouldBe` Right Nothing
+            in evalSysfsGpioMock' (withPin (Pin 1) getPinInterruptMode) initialMockWorld [testChip] `shouldBe` Left (Just $ NoEdgeAttribute (Pin 1))
 
      describe "setPinInterruptMode" $
        do it "sets the pin's interrupt mode" $
-            evalSysfsGpioMock' testSetInterruptMode initialMockWorld [chip0] `shouldBe` Right (Just Disabled, Just RisingEdge, Just FallingEdge, Just Level)
+            evalSysfsGpioMock' testSetInterruptMode initialMockWorld [chip0] `shouldBe` Right (Disabled, RisingEdge, FallingEdge, Level)
           it "is idempotent" $
-            evalSysfsGpioMock' testSetInterruptModeIdempotent initialMockWorld [chip0] `shouldBe` Right (Just FallingEdge, Just FallingEdge)
+            evalSysfsGpioMock' testSetInterruptModeIdempotent initialMockWorld [chip0] `shouldBe` Right (FallingEdge, FallingEdge)
           it "fails when the pin's interrupt mode is not settable" $
             let testChip = MockGpioChip "testChip" 1 [defaultMockPinState {_edge = Nothing}, defaultMockPinState]
             in evalSysfsGpioMock' testSetInterruptMode initialMockWorld [testChip] `shouldBe` Left (Just $ NoEdgeAttribute (Pin 1))

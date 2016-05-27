@@ -522,7 +522,7 @@ runTests =
                        setPinInterruptMode h Disabled
                        trigger4 <- getPinInterruptMode h
                        return (trigger1, trigger2, trigger3, trigger4))
-                `shouldReturn` (Just RisingEdge, Just FallingEdge, Just Level, Just Disabled)
+                `shouldReturn` (RisingEdge, FallingEdge, Level, Disabled)
               it "setPinInterruptMode should fail on an output pin" $
                 runSysfsGpioIO
                   (withPin testPin2 $ \h ->

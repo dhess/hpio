@@ -341,8 +341,8 @@ instance (Functor m, MonadCatch m, MonadMask m, MonadThrow m, MonadSysfs m) => M
        return newVal
 
   getPinInterruptMode (PinDescriptor p) =
-    do edge <- lift $ getPinEdge p
-       return $ toPinInterruptMode <$> edge
+    do edge <- lift $ readPinEdge p
+       return $ toPinInterruptMode edge
 
   setPinInterruptMode (PinDescriptor p) mode =
     lift $ writePinEdge p $ toSysfsEdge mode
@@ -366,14 +366,6 @@ activeLevelToActiveLow ActiveHigh = False
 activeLowToActiveLevel :: Bool -> PinActiveLevel
 activeLowToActiveLevel False = ActiveHigh
 activeLowToActiveLevel True = ActiveLow
-
-getPinEdge :: (MonadSysfs m, MonadThrow m, MonadCatch m) => Pin -> m (Maybe SysfsEdge)
-getPinEdge p =
-    pinHasEdge p >>= \case
-      False -> return Nothing
-      True ->
-        do edge <- readPinEdge p
-           return $ Just edge
 
 -- | Test whether the @sysfs@ GPIO filesystem is available.
 sysfsIsPresent :: (MonadSysfs m) => m Bool
@@ -540,10 +532,19 @@ writePinDirectionWithValue p v =
 
 resetEdge :: (MonadSysfs m, MonadCatch m) => Pin -> m ()
 resetEdge p =
-  getPinEdge p >>= \case
+  maybeReadPinEdge >>= \case
     Nothing -> return ()
     Just None -> return ()
     _ -> writePinEdge p None
+  where
+    maybeReadPinEdge :: (MonadSysfs m, MonadCatch m) => m (Maybe SysfsEdge)
+    maybeReadPinEdge =
+        pinHasEdge p >>= \case
+          False -> return Nothing
+          True ->
+            do edge <- readPinEdge p
+               return $ Just edge
+
 
 writeDirection :: (MonadSysfs m, MonadCatch m) => Pin -> ByteString -> m ()
 writeDirection p bs =

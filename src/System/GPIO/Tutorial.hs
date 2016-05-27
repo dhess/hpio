@@ -501,13 +501,13 @@ interrupt mode via the 'getPinInterruptMode' action:
      do setPinInputMode h InputDefault
         getPinInterruptMode h
  :}
- Just Disabled
+ Disabled
 
 >>> runTutorial $ withPin (Pin 16) $ getPinInterruptMode
-Nothing
+*** Exception: NoEdgeAttribute (Pin 16)
 
-If 'getPinInterruptMode' returns 'Nothing', as it does for 'Pin' @16@ in
-our example, then the pin does not support interrupts.
+In our example, 'Pin' @16@ does not support interrupts, so
+'getPinInterruptMode' throws an exception.
 
 You might be wondering, what is the difference between 'Just'
 'Disabled' and 'Nothing'? As explained above, 'Nothing' means the pin
@@ -526,7 +526,7 @@ for input before we do so:
         setPinInterruptMode h Level
         getPinInterruptMode h
  :}
- Just Level
+ Level
 
 If the pin does not support interrupts, or if the pin is configured
 for output, it is an error to attempt to set its interrupt mode:
