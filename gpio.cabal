@@ -1,5 +1,5 @@
 Name:                   gpio
-Version:                0.6.0
+Version:                0.7.0.0
 Cabal-Version:          >= 1.10
 Build-Type:             Simple
 Author:                 Drew Hess <src@drewhess.com>
@@ -250,4 +250,4 @@ Source-Repository head
 Source-Repository this
   Type:                 git
   Location:             git://github.com/dhess/gpio.git
-  Tag:                  0.6.0
+  Tag:                  v0.7.0.0
