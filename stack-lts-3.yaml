@@ -1,6 +1,6 @@
 require-stack-version: ">= 0.1.5"
 pvp-bounds: both
-resolver: lts-3.22
+resolver: lts-3
 packages:
 - .
 extra-deps:
