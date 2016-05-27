@@ -42,11 +42,18 @@ Flag linux-bbone-tests
   Default: False
   Manual: True
 
+-- Build doctests
 Flag test-doctests
   Default: True
   Manual: True
 
+-- Build hlint test
 Flag test-hlint
+  Default: True
+  Manual: True
+
+-- Build the example programs
+Flag examples
   Default: True
   Manual: True
 
@@ -110,7 +117,10 @@ Library
 Executable gpio-sysfs-example
   Main-Is:              Sysfs.hs
   HS-Source-Dirs:       examples
-  Build-Depends:        base
+  If !flag(examples)
+    Buildable: False
+  Else
+    Build-Depends:      base
                       , async                >= 2.0.2  && < 2.2
                       , base-compat
                       , gpio
@@ -125,7 +135,10 @@ Executable gpio-sysfs-example
 Executable gpio-example
   Main-Is:              Gpio.hs
   HS-Source-Dirs:       examples
-  Build-Depends:        base
+  If !flag(examples)
+    Buildable: False
+  Else
+    Build-Depends:      base
                       , async
                       , base-compat
                       , exceptions
@@ -135,7 +148,6 @@ Executable gpio-example
                       , optparse-applicative
                       , transformers
                       , transformers-compat
-
   Default-Language:     Haskell2010
   Ghc-Options:          -Wall -threaded
   If impl(ghc > 8)
@@ -144,7 +156,10 @@ Executable gpio-example
 Executable gpio-reader-example
   Main-Is:              GpioReader.hs
   HS-Source-Dirs:       examples
-  Build-Depends:        base
+  If !flag(examples)
+    Buildable: False
+  Else
+    Build-Depends:      base
                       , async
                       , base-compat
                       , exceptions
