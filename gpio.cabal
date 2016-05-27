@@ -33,7 +33,6 @@ Extra-Source-Files:     .travis.yml
                       , shell.nix
                       , stack.yaml
                       , stack-lts-2.yaml
-                      , stack-lts-3.yaml                                
 
 -- Enable Linux BeagleBone-specific tests. See
 -- test/System/GPIO/Linux/Sysfs/BeagleBoneSpec.hs for requirements.
