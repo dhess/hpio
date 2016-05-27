@@ -2,50 +2,63 @@
 {-# OPTIONS_GHC -fno-warn-unused-imports -fno-warn-unused-binds #-}
 
 module System.GPIO.Tutorial (
-    -- * Introduction
-    -- $introduction
+      -- * Introduction
+      -- $introduction
 
-    -- * Terminology and types
-    --
-    -- Let's define some terms that will be used throughout this tutorial.
-    -- $pin
+      -- * Terminology and types
+      --
+      -- Let's define some terms that will be used throughout this tutorial.
+      -- $pin
       Pin(..)
 
-    -- $pin_value
+      -- $pin_value
     , PinValue(..)
     , PinActiveLevel(..)
 
-    -- $pin_direction
+      -- $pin_direction
     , PinDirection(..)
     , PinInputMode(..)
     , PinOutputMode(..)
 
-    -- $pin_interrupt_mode
+      -- $pin_interrupt_mode
     , PinInterruptMode(..)
 
-    -- $pin_capabilities
+      -- $pin_capabilities
     , PinCapabilities(..)
 
-    -- * Interpreters
-    -- $interpreters
+      -- * Interpreters
+      -- $interpreters
 
-    -- * A mock interpreter
-    -- $mock_interpreter
+      -- * A mock interpreter
+      -- $mock_interpreter
     , runTutorial
 
-    -- * Basic pin operations
-    -- $basic_pin_operations
+      -- * Basic pin operations
+      -- $basic_pin_operations
 
-    -- * Reading and writing pins
-    -- $reading_and_writing
+      -- * Reading and writing pins
+      -- $reading_and_writing
 
-    -- * Advanced topics
-    -- $advanced_topics
+      -- * Better type-safety
+      -- $pin_types
+
+    , InputPin
+    , withInputPin
+      -- $input_pins
+    , InterruptPin
+    , withInterruptPin
+      -- $interrupt_pins
+    , OutputPin
+    , withOutputPin
+      -- $output_pins
+
+      -- * Advanced topics
+      -- $advanced_topics
     , TutorialEnv
     , TutorialReaderGpioIO
 
-    -- * Copyright
-    -- $copyright
+      -- * Copyright
+      -- $copyright
     ) where
 
 import Control.Concurrent (threadDelay)
@@ -59,7 +72,12 @@ import qualified Data.ByteString as BS (readFile, writeFile)
 import System.GPIO.Monad
        (MonadGpio(..), Pin(..), PinCapabilities(..), PinInputMode(..),
         PinOutputMode(..), PinActiveLevel(..), PinDirection(..),
-        PinValue(..), PinInterruptMode(..), SomeGpioException, withPin)
+        PinValue(..), PinInterruptMode(..), SomeGpioException, InputPin,
+        OutputPin, InterruptPin, withPin, withInputPin, readInputPin,
+        withOutputPin, readOutputPin, writeOutputPin, toggleOutputPin,
+        withInterruptPin, readInterruptPin, pollInterruptPin,
+        pollInterruptPinTimeout, getInterruptPinInterruptMode,
+        setInterruptPinInterruptMode)
 import System.GPIO.Linux.Sysfs.Monad (SysfsGpioT(..))
 import System.GPIO.Linux.Sysfs.Mock
        (MockGpioChip(..), MockPinState(..), SysfsMockT, SysfsGpioMock, SysfsGpioMockIO,
@@ -870,6 +888,136 @@ compiler's documentation. Also, if you're using a compiler other than
 GHC on Linux, see the documentation for the
 'System.GPIO.Linux.Sysfs.IO.SysfsIOT' monad transformer for details on
 how it uses the C FFI, and its implications for multi-threading.
+
+-}
+
+{- $pin_types
+
+You may have noticed that, while describing the various DSL actions
+above, we spent almost as much time talking about error conditions as
+we did properly-functioning code. Primarily, this is due to the low-level nature
+of native GPIO APIs.
+
+Native GPIO APIs, as a rule, provide more or less the same interface
+for all GPIO pins, regardless of their actual capabilities or
+configuration. For example, a pin configured for input is typically
+represented by the system as the same type as a pin configured for
+output, even though the set of actions that can legally be performed
+on each pin is different.
+
+One advantage of this approach is that it is quite flexible. It is,
+for example, possible to re-configure a given pin "on the fly" for
+input, output, interrupts, etc. However, a drawback of this approach
+is that it's easy to make a mistake, e.g., by waiting for interrupts
+on a pin that has been configured for output (an operation which, on
+Linux, at least, will not raise an error but will block forever).
+
+The primary goal of the @gpio@ cross-platform DSL is to make available
+to the Haskell programmer as much of the low-level capabilities of a
+typical GPIO platform as possible. As such, it retains both the
+flexibility of this one-pin-fits-all approach, and its disadvantages.
+The disadvantages are apparent by the number of ways you can cause an
+exception by performing an invalid operation on a pin.
+
+By trading some of that flexibility for more restricted types, we can
+make GPIO programming safer. The @gpio@ cross-platform DSL therefore
+provides 3 additional types for representing pins in a particular
+configuration state (input, interrupt-capable input, or output), and
+then defines the subset of GPIO actions that can safely be performed
+on a pin in that state. This makes it possible to write GPIO programs
+which, given a particular pin type, cannot perform an illegal
+action on that pin.
+
+The 3 safer pin types are 'InputPin', 'OutputPin', and 'InterruptPin'.
+The constructors for these types are not exported. You can only create
+instances of these types by calling their corresponding @with*@
+action. Each type's @with*@ action attempts to configure the pin as
+requested; if it cannot, the @with*@ action throws an exception, but
+if it can, you can use the returned instance safely.
+
+(Note: all of these safer pin types support actions which query or
+change their active level, but as these actions are effectively
+identical to the more general 'getPinActiveLevel' and
+'setPinActiveLevel' actions, examples of their use are not given here.)
+
+-}
+
+{- $input_pins
+
+== Input pins
+
+Input pins can be read with a non-blocking read via the 'readInputPin'
+action:
+
+>>> :{
+runTutorial $
+  withInputPin (Pin 2) InputDefault Nothing $ \h ->
+    readInputPin h
+:}
+Low
+
+-}
+
+{- $interrupt_pins
+
+== Interrupt pins
+
+Interrupt pins can be read with a non-blocking read via the
+'readInterruptPin' action:
+
+>>> :{
+runTutorial $
+  withInterruptPin (Pin 2) InputDefault Level Nothing $ \h ->
+    readInterruptPin h
+:}
+Low
+
+They also, of course, support interrupts (blocking reads). Because the
+mock interpreter cannot emulate interrupts, no working examples are
+given here, but see the 'pollInterruptPin' and
+'pollInterruptPinTimeout' actions for details.
+
+Changing an interrupt pin's interrupt mode is generally a safe
+operation, so the DSL provides the 'getInterruptPinInterruptMode' and
+'setInterruptPinInterruptMode' actions:
+
+>>> :{
+runTutorial $
+  withInterruptPin (Pin 2) InputDefault RisingEdge Nothing $ \h ->
+    do m1 <- getInterruptPinInterruptMode h
+       setInterruptPinInterruptMode h FallingEdge
+       m2 <- getInterruptPinInterruptMode h
+       return (m1,m2)
+:}
+(RisingEdge,FallingEdge)
+
+-}
+
+{- $output_pins
+
+== Output pins
+
+Output pins can be both read ('readOutputPin') and written
+('writeOutputPin'):
+
+>>> :{
+runTutorial $
+  withOutputPin (Pin 8) OutputDefault Nothing Low $ \h ->
+    do v1 <- readOutputPin h
+       writeOutputPin h High
+       v2 <- readOutputPin h
+       return (v1,v2)
+:}
+(Low,High)
+
+The pin's value can also be toggled via 'toggleOutputPin':
+
+>>> :{
+runTutorial $
+  withOutputPin (Pin 8) OutputDefault Nothing Low $ \h ->
+    toggleOutputPin h
+    :}
+High
 
 -}
 

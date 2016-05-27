@@ -39,35 +39,12 @@ module System.GPIO.Monad
 
          -- * Safer types
          --
-         -- | Native GPIO APIs, as a rule, provide more or less the
-         -- same interface for all GPIO pins, regardless of their
-         -- actual capabilities or configuration. For example, pins
-         -- which support interrupts and pins which do not are
-         -- typically not represented by the system as a separate
-         -- types.
-         --
-         -- One advantage of this approach is that it is quite
-         -- flexible. It is, for example, possible to re-configure a
-         -- given pin "on the fly" for input, output, interrupts, etc.
-         -- However, a drawback of this approach is that it's easy to
-         -- make a mistake, e.g., by waiting for interrupts on a pin
-         -- that has been configured for output (an operation which,
-         -- on Linux, at least, will not raise an error but will block
-         -- forever).
-         --
-         -- The primary goal of the 'MonadGpio' DSL is to make
-         -- available to the Haskell programmer as much of the
-         -- low-level capabilities of a typical GPIO platform as
-         -- possible. As such, it retains both the flexibility of this
-         -- one-pin-fits-all approach, and its disadvantages. The
-         -- disadvantages are apparent by the number of error
-         -- conditions mentioned in the 'MonadGpio' documentation.
-         --
-         -- However, by trading some of that flexibility for more
-         -- restricted types, we can make GPIO programming safer. The
-         -- types and actions described below are defined on top of
-         -- the 'MonadGpio' DSL and eliminate a whole class of
-         -- configuration-related errors.
+         -- | If you can restrict your use of a particular pin to just
+         -- one mode of operation (input, interrupt-driven input, or
+         -- output), you can achieve better type-safety than is
+         -- possible with the fully-general 'Pin' type by using the
+         -- one of the following more limited types and its
+         -- corresponding actions.
          --
          -- == A caveat
          --
