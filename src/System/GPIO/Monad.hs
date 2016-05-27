@@ -71,6 +71,8 @@ module System.GPIO.Monad
        , InputPin
        , withInputPin
        , readInputPin
+       , getInputPinInputMode
+       , setInputPinInputMode
        , getInputPinActiveLevel
        , setInputPinActiveLevel
        , toggleInputPinActiveLevel
@@ -79,6 +81,8 @@ module System.GPIO.Monad
        , readInterruptPin
        , pollInterruptPin
        , pollInterruptPinTimeout
+       , getInterruptPinInputMode
+       , setInterruptPinInputMode
        , getInterruptPinInterruptMode
        , setInterruptPinInterruptMode
        , getInterruptPinActiveLevel
@@ -89,6 +93,8 @@ module System.GPIO.Monad
        , writeOutputPin
        , toggleOutputPin
        , readOutputPin
+       , getOutputPinOutputMode
+       , setOutputPinOutputMode
        , getOutputPinActiveLevel
        , setOutputPinActiveLevel
        , toggleOutputPinActiveLevel
@@ -685,6 +691,16 @@ readInputPin :: (MonadGpio h m) => InputPin h -> m PinValue
 readInputPin p =
   readPin (_inputHandle p)
 
+-- | Like 'getPinInputMode'.
+getInputPinInputMode :: (MonadGpio h m) => InputPin h -> m PinInputMode
+getInputPinInputMode p =
+  getPinInputMode (_inputHandle p)
+
+-- | Like 'setPinInputMode'.
+setInputPinInputMode :: (MonadGpio h m) => InputPin h -> PinInputMode -> m ()
+setInputPinInputMode p =
+  setPinInputMode (_inputHandle p)
+
 -- | Like 'getPinActiveLevel'.
 getInputPinActiveLevel :: (MonadGpio h m) => InputPin h -> m PinActiveLevel
 getInputPinActiveLevel p =
@@ -743,6 +759,16 @@ pollInterruptPin p =
 pollInterruptPinTimeout :: (MonadGpio h m) => InterruptPin h -> Int -> m (Maybe PinValue)
 pollInterruptPinTimeout p =
   pollPinTimeout (_interruptHandle p)
+
+-- | Like 'getPinInputMode'.
+getInterruptPinInputMode :: (MonadGpio h m) => InterruptPin h -> m PinInputMode
+getInterruptPinInputMode p =
+  getPinInputMode (_interruptHandle p)
+
+-- | Like 'setPinInputMode'.
+setInterruptPinInputMode :: (MonadGpio h m) => InterruptPin h -> PinInputMode -> m ()
+setInterruptPinInputMode p =
+  setPinInputMode (_interruptHandle p)
 
 -- | Like 'getPinInterruptMode'.
 --
@@ -827,6 +853,16 @@ toggleOutputPin p =
 readOutputPin :: (MonadGpio h m) => OutputPin h -> m PinValue
 readOutputPin p =
   readPin (_outputHandle p)
+
+-- | Like 'getPinOutputMode'.
+getOutputPinOutputMode :: (MonadGpio h m) => OutputPin h -> m PinOutputMode
+getOutputPinOutputMode p =
+  getPinOutputMode (_outputHandle p)
+
+-- | Like 'setPinOutputMode'.
+setOutputPinOutputMode :: (MonadGpio h m) => OutputPin h -> PinOutputMode -> PinValue -> m ()
+setOutputPinOutputMode p =
+  setPinOutputMode (_outputHandle p)
 
 -- | Like 'getPinActiveLevel'.
 getOutputPinActiveLevel :: (MonadGpio h m) => OutputPin h -> m PinActiveLevel

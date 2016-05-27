@@ -520,6 +520,14 @@ spec =
                          evalSysfsMock' (doesDirectoryExist "/sys/class/gpio/gpio2") world [] `shouldBe` Right False
                          Map.lookup (Pin 1) (mockWorldPins world) `shouldBe` Just defaultMockPinState {_direction = In}
                          Map.lookup (Pin 2) (mockWorldPins world) `shouldBe` Just defaultMockPinState {_direction = In}
+               it "sets the pin's input mode" $
+                 evalSysfsGpioMock'
+                     (withInputPin (Pin 1) InputDefault Nothing $ \h ->
+                        getInputPinInputMode h
+                     )
+                     initialMockWorld
+                     [chip0]
+                   `shouldBe` Right InputDefault
                it "sets (or doesn't) the pin's active level" $
                      let testChip = MockGpioChip "testChip" 1 [defaultMockPinState {_activeLow = True}, defaultMockPinState {_activeLow = True}]
                          (Right world) =
@@ -557,6 +565,24 @@ spec =
                        [testChip]
                      `shouldBe`
                      Right (High,High)
+          context "get/setInputPinInputMode" $
+            do it "gets/sets the pin's input mode" $
+                 evalSysfsGpioMock'
+                    (withInputPin (Pin 1) InputDefault Nothing $ \h ->
+                       do setInputPinInputMode h InputDefault
+                          getInputPinInputMode h
+                    )
+                    initialMockWorld
+                    [chip0]
+                  `shouldBe` Right InputDefault
+               it "fails when the input mode is unsupported" $
+                 evalSysfsGpioMock'
+                   (withInputPin (Pin 1) InputDefault Nothing $ \h ->
+                      setInputPinInputMode h InputPullDown
+                   )
+                   initialMockWorld
+                   [chip0]
+                 `shouldBe` Left (Just (UnsupportedInputMode InputPullDown (Pin 1)))
           context "get/setInputPinActiveLevel" $
              do it "gets/sets the pin's active level" $
                   let (Right (result, world)) =
@@ -653,6 +679,24 @@ spec =
                         [testChip]
                       `shouldBe`
                       Right (High,High)
+           context "get/setInterruptPinInputMode" $
+             do it "gets/sets the pin's input mode" $
+                  evalSysfsGpioMock'
+                     (withInterruptPin (Pin 1) InputDefault Disabled Nothing $ \h ->
+                        do setInterruptPinInputMode h InputDefault
+                           getInterruptPinInputMode h
+                     )
+                     initialMockWorld
+                     [chip0]
+                   `shouldBe` Right InputDefault
+                it "fails when the input mode is unsupported" $
+                  evalSysfsGpioMock'
+                    (withInterruptPin (Pin 1) InputDefault Disabled Nothing $ \h ->
+                       setInterruptPinInputMode h InputPullDown
+                    )
+                    initialMockWorld
+                    [chip0]
+                  `shouldBe` Left (Just (UnsupportedInputMode InputPullDown (Pin 1)))
            context "get/setInterruptPinActiveLevel" $
               do it "gets/sets the pin's active level" $
                    let (Right (result, world)) =
@@ -814,6 +858,24 @@ spec =
                          Map.lookup (Pin 2) (mockWorldPins world) `shouldBe` Just defaultMockPinState {_direction = Out, _activeLow = True, _value = Low}
                          Map.lookup (Pin 3) (mockWorldPins world) `shouldBe` Just defaultMockPinState {_direction = Out, _value = Low}
                          Map.lookup (Pin 4) (mockWorldPins world) `shouldBe` Just defaultMockPinState {_direction = Out, _value = High}
+           context "get/setOutputPinOutputMode" $
+             do it "gets/sets the pin's input mode" $
+                  evalSysfsGpioMock'
+                     (withOutputPin (Pin 1) OutputDefault Nothing Low $ \h ->
+                        do setOutputPinOutputMode h OutputDefault Low
+                           getOutputPinOutputMode h
+                     )
+                     initialMockWorld
+                     [chip0]
+                   `shouldBe` Right OutputDefault
+                it "fails when the input mode is unsupported" $
+                  evalSysfsGpioMock'
+                    (withOutputPin (Pin 1) OutputDefault Nothing Low $ \h ->
+                       setOutputPinOutputMode h OutputOpenSourcePullDown Low
+                    )
+                    initialMockWorld
+                    [chip0]
+                  `shouldBe` Left (Just (UnsupportedOutputMode OutputOpenSourcePullDown (Pin 1)))
            context "get/setOutputPinActiveLevel" $
               do it "gets/sets the pin's active level" $
                    let (Right (result, world)) =
