@@ -23,6 +23,9 @@ module System.GPIO.Tutorial (
     -- $pin_interrupt_mode
     , PinInterruptMode(..)
 
+    -- $pin_capabilities
+    , PinCapabilities(..)
+
     -- * Interpreters
     -- $interpreters
 
@@ -51,11 +54,12 @@ import Control.Monad.Catch (MonadMask, MonadThrow, MonadCatch)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Reader (MonadReader(..), ReaderT(..), asks)
+import qualified Data.ByteString as BS (readFile, writeFile)
 
 import System.GPIO.Monad
-       (MonadGpio(..), Pin(..), PinInputMode(..), PinOutputMode(..),
-        PinActiveLevel(..), PinDirection(..), PinValue(..),
-        PinInterruptMode(..), SomeGpioException, withPin)
+       (MonadGpio(..), Pin(..), PinCapabilities(..), PinInputMode(..),
+        PinOutputMode(..), PinActiveLevel(..), PinDirection(..),
+        PinValue(..), PinInterruptMode(..), SomeGpioException, withPin)
 import System.GPIO.Linux.Sysfs.Monad (SysfsGpioT(..))
 import System.GPIO.Linux.Sysfs.Mock
        (MockGpioChip(..), MockPinState(..), SysfsMockT, SysfsGpioMock, SysfsGpioMockIO,
@@ -69,7 +73,21 @@ import System.GPIO.Linux.Sysfs.Types (SysfsException(..))
 {- $introduction
 
 The @gpio@ package is a collection of monads for writing GPIO programs
-directly in Haskell.
+in Haskell.
+
+For each supported GPIO platform, @gpio@ provides two contexts for
+writing GPIO programs: a cross-platform domain-specific language
+(DSL), and a platform-specific DSL. Programs written in the
+cross-platform DSL will run on any supported platform, but as the
+cross-platform DSL must take a "least-common denominator" approach,
+cross-platform programs may not be capable of taking advantage of all
+of the features of a particular GPIO platform. On the other hand,
+programs written for a platform-specific DSL can use all of those
+platform-specific features, but will not work on other GPIO platforms.
+
+Primarily, this tutorial focuses on the cross-platform DSL.
+
+== Requirements
 
 Though Haskell is a much more capable programming language than, say,
 <http://wiring.org.co Wiring>, this power comes with a few trade-offs.
@@ -80,24 +98,6 @@ platforms, such as the <https://www.raspberrypi.org Raspberry Pi platform>,
 or the <http://beagleboard.org Beagle platform>, which
 marry a 32- or 64-bit CPU core with GPIO functionality.
 
-For each supported GPIO platform, @gpio@ provides two contexts for
-writing GPIO programs: a cross-platform domain-specific language
-(DSL), and a platform-specific DSL. Programs written in the
-cross-platform DSL will run on any @gpio@-supported platform, but as
-the cross-platform DSL must take a "least-common denominator"
-approach, cross-platform programs may not be capable of taking
-advantage of all of the features of a particular GPIO platform. On the
-other hand, programs written for a platform-specific DSL can use all
-of those platform-specific features, but will not work on other GPIO
-platforms.
-
-(Currently, this is not really an issue, as @gpio@ only supports the
-Linux @sysfs@ GPIO platform, and the cross-platform DSL has been
-modeled on that platform's capabilities. However, future support for
-other Unix-based GPIO platforms is planned.)
-
-Primarily, this tutorial focuses on the cross-platform DSL.
-
 -}
 
 {- $pin
@@ -105,11 +105,11 @@ Primarily, this tutorial focuses on the cross-platform DSL.
 == GPIO
 
 /General-purpose input\/output/. A GPIO /pin/ is a user-programmable,
-serial (i.e., a single-bit wide) interface from the system to the
-external world. GPIO pins can usually be configured either for input
-(for reading external signals) or for output (for driving signals to
-external devices), though sometimes a pin may be hard-wired to one
-direction or the other.
+serial (i.e., a single-bit wide) interface from the system to an
+external device or circuit. GPIO pins can usually be configured either
+for input (for reading external signals) or for output (for driving
+signals to external devices), though sometimes a pin may be hard-wired
+to one direction or the other.
 
 Some platforms may reserve one or more GPIO pins for their own use,
 e.g., to drive an external storage interface. Typically these pins are
@@ -118,8 +118,8 @@ but you should always consult your hardware documentation to make sure
 you don't accidentally use a system-reserved pin.
 
 GPIO pins are often physically expressed on a circuit board as a male
-or female <https://www.google.com/#q=gpio+pin+header breakout header>, which
-is a bank of pins (male) or sockets (female) for hooking up to
+or female <https://www.google.com/#q=gpio+pin+header breakout header>,
+which is a bank of pins (male) or sockets (female) for connecting
 individual wires or low-density molded connectors. However, on
 platforms with a large number of GPIO pins, it is typically the case
 that just a handful of pins are accessible via such a header, while
@@ -185,25 +185,22 @@ In @gpio@, the 'PinValue' type represents a pin's value, and
 == Pin direction and pin input / output modes
 
 We say a pin's /direction/ is either /in/ (for input) or /out/ (for
-output).
-
-However, not all inputs and outputs are necessarily the same. On some
-GPIO platforms, it's possible to configure an input or output pin in
-various /modes/ which change the behavior of the pin under certain
-conditions.
+output). However, not all inputs and outputs are necessarily the same.
+On some GPIO platforms, it's possible to configure an input or output
+pin in various /modes/ which change the behavior of the pin under
+certain conditions.
 
 For example, consider an input pin. If the pin is not connected to a
-source, what is its value?
-
-If the input pin is a /floating/ mode (sometimes called /tri-state/ or
-/high-impedance/ mode), then its value in this scenario may "float,"
-or vary, from moment to moment. Perhaps your application can tolerate
-this indeterminacy, in which case the floating mode is fine, and
-probably uses less power than other input modes, to boot. But if your
-application requires that a disconnected pin maintain a predictable,
-constant state, and your GPIO platform supports it, you can set the
-input pin's mode to /pull-up/ or /pull-down/ to give the disconnected
-pin an always-high or always-low value, respectively.
+source, what is its value? If the input pin is in /floating/ mode
+(sometimes called /tri-state/ or /high-impedance/ mode), then its
+value when disconnected may "float," or vary, from moment to moment.
+Perhaps your application can tolerate this indeterminacy, in which
+case floating mode is fine, and probably uses less power than other
+input modes, to boot. But if your application requires that a
+disconnected pin maintain a predictable, constant state, and your GPIO
+platform supports it, you can set the input pin's mode to /pull-up/ or
+/pull-down/ to give the disconnected pin an always-high or always-low
+value, respectively.
 
 Output pin modes are even more complicated due to the fact that
 multiple output pins are often connected together to drive a single
@@ -232,9 +229,8 @@ types represent modes for input and output pins, respectively.
 
 In logic programming, it's often useful to block the program's
 execution on an input pin until its value changes. Furthermore, you
-may want to wait for a particular change: when the signal transitions
-from low to high (its /rising edge/), or from high to low (its
-/falling edge/).
+may want to wait until the signal transitions from low to high (its
+/rising edge/), or from high to low (its /falling edge/).
 
 The @gpio@ cross-platform DSL supports this functionality. You can
 block the current Haskell thread on a GPIO input pin until a rising
@@ -251,6 +247,15 @@ DSL provides a mechanism to query a pin to see whether it's supported.
 
 The 'PinInterruptMode' type represents the type of event which
 triggers an interrupt.
+
+-}
+
+{- $pin_capabilities
+
+== Pin capabilities
+
+To help you determine which modes a particular pin supports, @gpio@
+provides the 'PinCapabilities' type.
 
 -}
 
@@ -274,19 +279,18 @@ program, will execute the program on its GPIO platform.
 {- $mock_interpreter
 
 Testing GPIO programs is inconvenient. The target system is often
-under-powered compared to our development environment, and is possibly
-a completely different architecture (and cross-compiling Haskell
-programs is, circa 2016, still somewhat problematic). It's also not
-uncommon for our development environments not to have any GPIO
-capabilities at all.
+under-powered compared to our development environment, and may use a
+completely different processor architecture and / or operating system (and
+cross-compiling Haskell programs is, circa 2016, still somewhat
+problematic). It's also not uncommon for our development environments
+not to have any GPIO capabilities at all.
 
 For your convenience, @gpio@ provides a reasonably complete, entirely
 software-based "mock" GPIO implementation that can run on any system
 where Haskell programs can run, irrespective of that system's GPIO
 capabilities or operating system. This particular implementation mocks
 the Linux @sysfs@ GPIO filesystem and is capable of emulating much of
-that platform's functionality. (The most significant unimplemented
-functionality is the ability to wait for input pin interrupts.)
+that platform's functionality.
 
 In this tutorial, we will make use of this mock GPIO implementation in
 many of the code examples, meaning that those examples can be run on
@@ -300,14 +304,14 @@ how to use the @gpio@ cross-platform DSL. (Using an interpreter for a
 real GPIO platform is much simpler.) To avoid getting bogged down in
 the details, we'll supply a wrapper, named 'runTutorial', which sets
 up a mock GPIO environment with 17 pins and runs a @gpio@ program in
-that environment. The first 16 pins, numbered 0-15, support all the
-functionality that the @gpio@ cross-platform DSL does (save
-interrupts, see note above). Pin 17 is a special-case pin that we'll
-use to demonstrate failure modes and other quirks.
+that environment. The first 16 pins, numbered 0-15, are fully-general
+pins. Pin 17 is a special-case pin that we'll use to demonstrate
+failure modes and other quirks.
 
-(Don't worry about the 'SysfsGpioMockIO' type for now. We'll explain
-it later. For now, suffice it to say that it's the type of our @gpio@
-programs when run in this particular mock interpreter.)
+(Don't worry about the details of the 'SysfsGpioMockIO' type for the
+moment. We'll explain it later. For now, suffice it to say that it's
+the type of our @gpio@ programs when run in this particular mock
+interpreter.)
 
 __Note__: in our examples, each time we use 'runTutorial' we are
 creating a new mock environment from scratch, so any changes made to
@@ -334,13 +338,30 @@ To get the list of all pins available on the system, use the 'pins' command:
 >>> runTutorial pins
 [Pin 0,Pin 1,Pin 2,Pin 3,Pin 4,Pin 5,Pin 6,Pin 7,Pin 8,Pin 9,Pin 10,Pin 11,Pin 12,Pin 13,Pin 14,Pin 15,Pin 16]
 
+== Querying a pin's capabilities
+
+To see which modes a pin supports, use the 'pinCapabilities' command:
+
+>>> runTutorial $ pinCapabilities (Pin 1)
+PinCapabilities {_inputModes = fromList [InputDefault], _outputModes = fromList [OutputDefault], _interrupts = True}
+
+>>> runTutorial $ pinCapabilities (Pin 16)
+PinCapabilities {_inputModes = fromList [], _outputModes = fromList [], _interrupts = False}
+
+Here we can see that 'Pin' @1@ can support both input and output --
+though not any specific input or output modes, only the defaults --
+and also interrupts. 'Pin' @16@, on the other hand, is effectively
+useless, as it's capable of neither input nor output. ('Pin' @16@ is
+pathalogical, and you wouldn't expect to see a pin like this on an
+actual system.)
+
 == Pin resource management
 
 Before you can operate on a GPIO pin, you must signal your intention
-to the system by /opening/ it. Opening the pin returns a /handle/,
-which you then use to operate on that pin. Then, when you're finished
-with a GPIO pin, you should allow the system to clean up any
-pin-related resources by /closing/ it.
+to the system by /opening/ that pin. Opening the pin returns a
+/handle/, which you then use to operate on the pin. Then, when you're
+finished with the pin, you should allow the system to clean up any
+pin-related resources by /closing/ the pin.
 
 Opening and closing a pin are performed by the 'openPin' and
 'closePin' DSL actions, respectively:
@@ -425,14 +446,13 @@ Out
 If 'getPinDirection' fails, as it does for 'Pin' @16@ in our example,
 then the pin's direction is not queryable in a cross-platform way, in
 which case you'll need another (platform-specific) method for
-determining its hard-wired direction. (This is a relatively rare
-occurrence.)
+determining its hard-wired direction.
 
 To configure a pin for input or output, we must specify not only its
 direction, but also its input / output mode, as discussed earlier.
 Therefore, there is no @setPinDirection@ action. Instead, you set the
 pin's direction and mode simultaneously using the 'setPinInputMode'
-and 'setPinOutputMode' actions:
+or 'setPinOutputMode' actions:
 
 >>> :{
 runTutorial $
@@ -453,6 +473,44 @@ Out
 Note that when we configure a pin for output, we must also supply an
 initial output value for the pin. (This value is relative to the pin's
 active level, i.e., it is a logical value.)
+
+If we want to know more about the pin's input or output configuration
+than just its direction, we can query its input or output mode:
+
+>>> :{
+runTutorial $
+  withPin (Pin 5) $ \h ->
+    do setPinInputMode h InputDefault
+       getPinInputMode h
+:}
+InputDefault
+
+>>> :{
+runTutorial $
+  withPin (Pin 7) $ \h ->
+    do setPinOutputMode h OutputDefault Low
+       getPinOutputMode h
+:}
+OutputDefault
+
+It's an error to query a pin's input mode when the pin is configured
+for output, and vice versa:
+
+ >>> :{
+ runTutorial $
+   withPin (Pin 5) $ \h ->
+     do setPinInputMode h InputDefault
+        getPinOutputMode h
+ :}
+ *** Exception: InvalidOperation (Pin 5)
+
+ >>> :{
+ runTutorial $
+   withPin (Pin 7) $ \h ->
+     do setPinOutputMode h OutputDefault Low
+        getPinInputMode h
+ :}
+ *** Exception: InvalidOperation (Pin 7)
 
 If we attempt to use a mode that the pin doesn't support, we get an
 error:
@@ -508,11 +566,6 @@ interrupt mode via the 'getPinInterruptMode' action:
 
 In our example, 'Pin' @16@ does not support interrupts, so
 'getPinInterruptMode' throws an exception.
-
-You might be wondering, what is the difference between 'Just'
-'Disabled' and 'Nothing'? As explained above, 'Nothing' means the pin
-does not support interrupts at all, whereas 'Just' 'Disabled' means
-that, while the pin supports interrupts, they're currently disabled.
 
 If the pin supports interrupts, you can change its interrupt mode
 using 'setPinInterruptMode'. In this example, we configure 'Pin' @5@
@@ -670,11 +723,11 @@ signal level, per se, but the mock interpreter does keep track of the
   :}
   (Low,Low)
 
-(Note that in a real circuit, the signal level seen on an output pin
-may be different than the value your program writes to it, depending
-on what type of output pin it is, what other elements are attached to
-the pin, etc. A discussion of these factors is outside the scope of
-this tutorial.)
+(Note that in a real circuit, the value returned by 'readPin' or
+'togglePin' on an output pin may be different than the value your
+program last wrote to it, depending on the pin's output mode, what
+other elements are attached to the pin, etc. A discussion of these
+factors is outside the scope of this tutorial.)
 
 == Waiting for interrupts
 
@@ -769,8 +822,8 @@ from 'Low' to 'High', as @pollInput@ is waiting for 'RisingEdge' events
 on the input pin.
 
 If we now flip the read timeout and toggle delay values, we can see
-that @pollInput@ times out every 1/4-second until the event is
-triggered again:
+that @pollInput@ times out every 1/4-second until the rising edge
+occurs again:
 
 > -- interrupt.hs
 > main =
@@ -828,8 +881,9 @@ Using the Linux @sysfs@ GPIO interpreter is complicated by the fact
 that it supports both actual Linux systems, and the mock environment
 that we've used throughout most of this tutorial.
 
-Strictly speaking, you don't need to understand how it's implemented,
-but understanding helps motivate why using seems a bit convoluted.
+Strictly speaking, you don't need to understand how the @sysfs@ GPIO
+interpreter implemented, but understanding it does help motivate why
+using it seems a bit convoluted.
 
 In Linux @sysfs@ GPIO, userspace GPIO operations are performed on
 virtual files in the @sysfs@ filesystem. See the
@@ -851,7 +905,7 @@ unexported, the kernel removes the pin's @sysfs@ subdirectory.
 The @gpio@ interpreter for the Linux @sysfs@ GPIO system translates
 actions in the cross-platform DSL to @sysfs@ filesystem operations.
 The most straightforward way to implement this interpreter is to use
-filesystem actions such as 'readFile' and 'writeFile' directly.
+filesystem actions such as 'BS.readFile' and 'BS.writeFile' directly.
 However, by adding a level of abstraction at the filesystem layer, we
 can substitute a @sysfs@ filesystem emulator for the real thing, and
 the interpreter's none the wiser. Because we're only implementing the
@@ -866,8 +920,8 @@ filesystem actions, and a low-level piece which implements those
 filesystem actions. It then provides two low-level implementations:
 one which maps the abstract filesystem actions onto real filesystem
 operations, and one which implements a subset of the @sysfs@
-filesystem as an in-memory "filesystem" for mocking the Linux kernel's
-@sysfs@ GPIO behavior.
+filesystem as an in-memory mock filesystem for emulating the Linux
+kernel's @sysfs@ GPIO behavior.
 
 To use this implementation, you don't need to worry about these
 details; you just need to know how to compose the two interpreters. If
@@ -1001,7 +1055,7 @@ case of a "real" GPIO program that runs on an actual Linux system,
 'System.GPIO.Linux.Sysfs.SyfsIOT' and
 'System.GPIO.Linux.Sysfs.runSysfsIOT'). The 'SysfsMockT' transformer
 maps @sysfs@ GPIO operations in the 'runSysfsGpioT' interpreter onto
-mock @sysfs@ filesystem actions; and the 'runSysfsMockT' interpreter
+mock @sysfs@ filesystem actions; and the 'evalSysfsMockT' interpreter
 provides the in-memory implementation of those mock @sysfs@ filesystem
 actions.
 
@@ -1010,7 +1064,7 @@ GPIO transformer stack, the 'System.GPIO.Linux.Sysfs.SyfsIOT'
 transformer and its 'System.GPIO.Linux.Sysfs.runSysfsIOT' interpreter
 map abstract @sysfs@ GPIO operations in the 'runSysfsGpioT'
 interpreter onto /actual/ @sysfs@ filesystem actions using Haskell's
-standard filesystem actions ('readFile', 'writeFile', etc.)
+standard filesystem actions ('BS.readFile', 'BS.writeFile', etc.)
 
 (If you're curious about the interface between the two @sysfs@
 interpreter layers, see the 'System.GPIO.Linux.Sysfs.Monad.MonadSysfs'
@@ -1070,12 +1124,14 @@ pure environment, without 'IO', so long as the inner monad is an
 instance of both 'MonadThrow' and 'MonadCatch'.
 
 In fact, the @exceptions@ package provides the
-'Control.Monad.Catch.Pure.Catch' monad for just such occasions, and
-@gpio@'s mock @sysfs@ implementation provides a convenient type alias
-for an interpreter which runs @gpio@ computations in a pure mock GPIO
-environment. That interpreter expresses GPIO errors as 'Left' values
-rather than throwing exceptions in 'IO'. See 'SysfsGpioMock' and its
-interpreters for details.
+'Control.Monad.Catch.Pure.Catch' monad, which satisfies both of those
+constraints, and @gpio@'s mock @sysfs@ implementation provides a
+convenient type alias for an interpreter which runs @gpio@
+computations in a pure mock GPIO environment, using
+'Control.Monad.Catch.Pure.Catch' as the outer-most monad, rather than
+'IO'. That interpreter expresses GPIO errors as 'Left' values instead
+of throwing exceptions. See 'SysfsGpioMock' and its interpreters for
+details.
 
 However, in this tutorial, we're only using the mock @sysfs@ GPIO
 interpreter out of necessity, and we prefer to keep the examples as
@@ -1127,19 +1183,18 @@ about monad @m@:
 * It must be an instance of 'MonadIO' because it calls 'putStrLn'
 and 'threadDelay'.
 
-* It must be an instance of 'MonadGpio' because it uses actions from
-the @gpio@ cross-platform DSL. (By the way, the @h@ parameter to
-'MonadGpio' represents a pin handle, which may be different from
-platform to platform.)
-
 * It must be an instance of 'MonadReader' 'TutorialEnv' because it
 uses 'asks' to extract its configuration from a 'TutorialEnv'.
 
+* It must be an instance of 'MonadGpio' because it uses actions from
+the @gpio@ cross-platform DSL. (By the way, the @h@ type parameter to
+'MonadGpio' represents an implementation-dependent pin handle type.)
+
 Our mock transformer stack satisfies all of these requirements, so
-it's capable of running this program. The "real" transformer stack we
-defined earlier is also capable of running this program, and as future
-GPIO platforms are added to @gpio@, any of those interpreters will be
-able to run this program, as well!
+it's capable of running this program. The "real GPIO" transformer
+stack we defined earlier is also capable of running this program, and
+as future GPIO platforms are added to @gpio@, any of those
+interpreters will be able to run this program, as well!
 
 -}
 
