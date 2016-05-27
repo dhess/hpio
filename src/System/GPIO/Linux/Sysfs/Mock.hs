@@ -104,6 +104,8 @@ import Data.Typeable (Typeable)
 import Foreign.C.Types (CInt(..))
 import GHC.IO.Exception (IOErrorType(..))
 import System.FilePath ((</>), splitFileName)
+import System.IO.Error (mkIOError)
+
 import System.GPIO.Linux.Sysfs.Mock.Internal
        (Directory, File(..), FileType(..), MockFSZipper(..), directory,
         dirName, files, subdirs, findFile)
@@ -120,7 +122,6 @@ import System.GPIO.Linux.Sysfs.Util
 import System.GPIO.Types
        (Pin(..), PinDirection(..), PinValue(..), gpioExceptionToException,
         gpioExceptionFromException, invertValue)
-import System.IO.Error (mkIOError)
 
 -- | A mock pin.
 --

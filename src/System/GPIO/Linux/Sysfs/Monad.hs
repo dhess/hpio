@@ -85,14 +85,21 @@ import qualified Data.Set as Set (empty, fromList)
 import Foreign.C.Types (CInt(..))
 import qualified GHC.IO.Exception as IO (IOErrorType(..))
 import System.FilePath ((</>), takeFileName)
-
-import System.GPIO.Linux.Sysfs.Types (SysfsEdge(..), SysfsException(..), toPinInterruptMode, toSysfsEdge)
-import System.GPIO.Linux.Sysfs.Util
-import System.GPIO.Monad (MonadGpio(..), withPin)
-import System.GPIO.Types
 import System.IO.Error
        (ioeGetErrorType, isAlreadyInUseError, isDoesNotExistError,
         isPermissionError)
+
+import System.GPIO.Linux.Sysfs.Types (SysfsEdge(..), SysfsException(..), toPinInterruptMode, toSysfsEdge)
+import System.GPIO.Linux.Sysfs.Util
+       (intToBS, pinActiveLowFileName, pinDirectionFileName,
+        pinEdgeFileName, pinValueFileName, pinDirName, activeLowToBS,
+        pinDirectionToBS, pinDirectionValueToBS, sysfsEdgeToBS,
+        pinValueToBS, sysfsPath, exportFileName, unexportFileName)
+import System.GPIO.Monad (MonadGpio(..), withPin)
+import System.GPIO.Types
+       (Pin(..), PinActiveLevel(..), PinCapabilities(..),
+        PinDirection(..), PinInputMode(..), PinOutputMode(..),
+        PinValue(..), invertValue)
 
 -- | A type class for monads which implement (or mock) low-level Linux
 -- @sysfs@ GPIO operations.

@@ -56,6 +56,7 @@ import Data.ByteString.Builder (toLazyByteString, intDec)
 import qualified Data.ByteString.Char8 as C8 (readInt)
 import qualified Data.ByteString.Lazy as LBS (toStrict)
 import System.FilePath ((</>))
+
 import System.GPIO.Types (Pin(..), PinDirection(..), PinValue(..))
 import System.GPIO.Linux.Sysfs.Types (SysfsEdge(..))
 

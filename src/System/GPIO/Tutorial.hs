@@ -51,6 +51,7 @@ import Control.Monad.Catch (MonadMask, MonadThrow, MonadCatch)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Reader (MonadReader(..), ReaderT(..), asks)
+
 import System.GPIO.Monad
        (MonadGpio(..), Pin(..), PinInputMode(..), PinOutputMode(..),
         PinActiveLevel(..), PinDirection(..), PinValue(..),

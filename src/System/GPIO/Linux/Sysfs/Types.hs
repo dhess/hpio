@@ -27,8 +27,11 @@ module System.GPIO.Linux.Sysfs.Types
 import Control.Monad.Catch (Exception(..))
 import Data.Data
 import GHC.Generics
-import System.GPIO.Types
 import Test.QuickCheck (Arbitrary(..), arbitraryBoundedEnum, genericShrink)
+
+import System.GPIO.Types
+       (Pin, PinInputMode, PinOutputMode, PinInterruptMode(..),
+        gpioExceptionToException, gpioExceptionFromException)
 
 -- | Linux GPIO pins that can be configured to generate inputs have an
 -- @edge@ attribute in the @sysfs@ GPIO filesystem. This type
