@@ -46,11 +46,11 @@ matrix:
 
   # The Stack builds. We can pass in arbitrary Stack arguments via the ARGS
   # variable, such as using --stack-yaml to point to a different file.
-  - env: BUILD=stack STACK_YAML=stack-lts-2.yaml
+  - env: BUILD=stack ARGS="--resolver lts-2" STACK_YAML=stack-lts-2.yaml
     compiler: ": #stack 7.8.4"
     addons: {apt: {packages: [ghc-7.8.4], sources: [hvr-ghc]}}
 
-  - env: BUILD=stack STACK_YAML=stack-lts-3.yaml
+  - env: BUILD=stack ARGS="--resolver lts-3" STACK_YAML=stack-lts-2.yaml
     compiler: ": #stack 7.10.2"
     addons: {apt: {packages: [ghc-7.10.2], sources: [hvr-ghc]}}
 
@@ -58,7 +58,7 @@ matrix:
     compiler: ": #stack 7.10.3"
     addons: {apt: {packages: [ghc-7.10.3], sources: [hvr-ghc]}}
 
-  - env: BUILD=stack
+  - env: BUILD=stack ARGS="--resolver lts-6"
     compiler: ": #stack 7.10.3"
     addons: {apt: {packages: [ghc-7.10.3], sources: [hvr-ghc]}}
 
@@ -69,11 +69,11 @@ matrix:
 
   # Build on OS X in addition to Linux.
   # OS X builds are much slower, so we only test a few configurations here.
-  - env: BUILD=stack STACK_YAML=stack-lts-2.yaml
+  - env: BUILD=stack ARGS="--resolver lts-2" STACK_YAML=stack-lts-2.yaml
     compiler: ": #stack 7.8.4 osx"
     os: osx
 
-  - env: BUILD=stack
+  - env: BUILD=stack ARGS="--resolver lts-6"
     compiler: ": #stack 7.10.3 osx"
     os: osx
 
