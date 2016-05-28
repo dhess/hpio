@@ -53,9 +53,9 @@ module System.GPIO.Monad
          -- pins can be opened and configured by any number of
          -- processes on the system other than our own programs.
          -- Therefore, even when using these safer types, a robust
-         -- @gpio@ program should still be prepared to deal with
+         -- @hpio@ program should still be prepared to deal with
          -- configuration-related errors in case another process
-         -- re-configures a pin while the @gpio@ program is using it.
+         -- re-configures a pin while the @hpio@ program is using it.
          --
          -- In other words, even when using these safer types, you
          -- should still be prepared to handle the full range of

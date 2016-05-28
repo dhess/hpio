@@ -154,5 +154,5 @@ main = execParser opts >>= run
     opts =
       info (helper <*> cmds)
            (fullDesc <>
-            progDesc "Example gpio programs." <>
-            header "gpio-example - run gpio demonstrations.")
+            progDesc "Example hpio programs." <>
+            header "hpio-reader-example - run hpio demonstrations.")

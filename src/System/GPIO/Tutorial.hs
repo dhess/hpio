@@ -90,10 +90,10 @@ import System.GPIO.Linux.Sysfs.Types (SysfsException(..))
 
 {- $introduction
 
-The @gpio@ package is a collection of monads for writing GPIO programs
+The @hpio@ package is a collection of monads for writing GPIO programs
 in Haskell.
 
-For each supported GPIO platform, @gpio@ provides two contexts for
+For each supported GPIO platform, @hpio@ provides two contexts for
 writing GPIO programs: a cross-platform domain-specific language
 (DSL), and a platform-specific DSL. Programs written in the
 cross-platform DSL will run on any supported platform, but as the
@@ -111,7 +111,7 @@ Though Haskell is a much more capable programming language than, say,
 <http://wiring.org.co Wiring>, this power comes with a few trade-offs.
 Whereas a program written in Wiring (or even C) can run directly on a
 low-cost microcontroller, a program written in Haskell cannot.
-Therefore, @gpio@ is intended for use with more powerful GPIO-capable
+Therefore, @hpio@ is intended for use with more powerful GPIO-capable
 platforms, such as the <https://www.raspberrypi.org Raspberry Pi platform>,
 or the <http://beagleboard.org Beagle platform>, which
 marry a 32- or 64-bit CPU core with GPIO functionality.
@@ -131,7 +131,7 @@ to one direction or the other.
 
 Some platforms may reserve one or more GPIO pins for their own use,
 e.g., to drive an external storage interface. Typically these pins are
-not visible to the user and therefore cannot be programmed by @gpio@,
+not visible to the user and therefore cannot be programmed by @hpio@,
 but you should always consult your hardware documentation to make sure
 you don't accidentally use a system-reserved pin.
 
@@ -152,11 +152,11 @@ Unfortunately, it is often the case that the pin number used in the
 system's hardware documentation is different than the pin number used
 by the software to identify the same pin.
 
-In @gpio@, a pin's number refers to the number used by the system
+In @hpio@, a pin's number refers to the number used by the system
 software to identify the pin. Consult your hardware documentation (or
 Google) for the hardware-to-software pin mapping.
 
-@gpio@ uses the 'Pin' type to identify GPIO pins.
+@hpio@ uses the 'Pin' type to identify GPIO pins.
 
 -}
 
@@ -179,21 +179,21 @@ pin is low (or grounded).
 
 When designing logic, or programs to interface with logic, it's often
 easier to think of a signal as being active or inactive, rather than
-worrying about its physical voltage. Therefore, the @gpio@
+worrying about its physical voltage. Therefore, the @hpio@
 cross-platform DSL supports, on a pin-by-pin basis, both types of
 logic: active-high and active-low. When writing your programs, you can
 simply use the values 'High' and 'Low', and then set a per-pin active
 level before running your program, depending on whether you're
 interfacing with active-high or active-low logic.
 
-In the @gpio@ documentation, and in this tutorial, whenever you see a
+In the @hpio@ documentation, and in this tutorial, whenever you see a
 reference to a "pin value" or "signal level," unless otherwise noted,
 we mean the abstract notion of the pin being "on" or "off,"
 independent of the voltage level seen on the physical pin. We refer to
 this notion as the pin's /logical value/, as opposed to
 its /physical value/.
 
-In @gpio@, the 'PinValue' type represents a pin's value, and
+In @hpio@, the 'PinValue' type represents a pin's value, and
 'PinActiveLevel' represents its active-level setting:
 
 -}
@@ -227,7 +227,7 @@ whether the devices involved use positive or negative logic.
 
 A full discussion of the various input and output modes, and when you
 should use them, is outside the scope of this tutorial. We simply
-point out here that the @gpio@ cross-platform DSL provides the ability
+point out here that the @hpio@ cross-platform DSL provides the ability
 to set many of these modes on your input and output pins, provided
 that your hardware supports them.
 
@@ -235,7 +235,7 @@ For simple needs, the DSL provides default input and output mode
 values, which set whatever mode the target platform uses by default.
 These are the values we'll use in this tutorial.
 
-In @gpio@, the 'PinDirection' type represents a pin's direction (a
+In @hpio@, the 'PinDirection' type represents a pin's direction (a
 simple "in" or "out"), while the 'PinInputMode' and 'PinOutputMode'
 types represent modes for input and output pins, respectively.
 
@@ -250,7 +250,7 @@ execution on an input pin until its value changes. Furthermore, you
 may want to wait until the signal transitions from low to high (its
 /rising edge/), or from high to low (its /falling edge/).
 
-The @gpio@ cross-platform DSL supports this functionality. You can
+The @hpio@ cross-platform DSL supports this functionality. You can
 block the current Haskell thread on a GPIO input pin until a rising
 edge, falling edge, or either edge (a /level trigger/), is visible on
 the pin -- effectively, a programmable interrupt. Which type event of
@@ -272,19 +272,19 @@ triggers an interrupt.
 
 == Pin capabilities
 
-To help you determine which modes a particular pin supports, @gpio@
+To help you determine which modes a particular pin supports, @hpio@
 provides the 'PinCapabilities' type.
 
 -}
 
 {- $interpreters
 
-The @gpio@ cross-platform DSL is defined by the 'MonadGpio' type
+The @hpio@ cross-platform DSL is defined by the 'MonadGpio' type
 class. Each method of the 'MonadGpio' type class describes an action
 that can be performed on a GPIO pin (or on the GPIO system as a
 whole).
 
-For each supported platform, @gpio@ provides an instance of the
+For each supported platform, @hpio@ provides an instance of the
 'MonadGpio' type class. The platform-specific instance maps actions in
 the cross-platform DSL to actions on that particular GPIO platform.
 You can therefore think of each 'MonadGpio' instance as a
@@ -303,7 +303,7 @@ cross-compiling Haskell programs is, circa 2016, still somewhat
 problematic). It's also not uncommon for our development environments
 not to have any GPIO capabilities at all.
 
-For your convenience, @gpio@ provides a reasonably complete, entirely
+For your convenience, @hpio@ provides a reasonably complete, entirely
 software-based "mock" GPIO implementation that can run on any system
 where Haskell programs can run, irrespective of that system's GPIO
 capabilities or operating system. This particular implementation mocks
@@ -318,17 +318,17 @@ cases will be called out.
 
 To use the mock interpreter, you must supply its mock GPIO state, and
 this is a bit complicated, not to mention irrelevant to understanding
-how to use the @gpio@ cross-platform DSL. (Using an interpreter for a
+how to use the @hpio@ cross-platform DSL. (Using an interpreter for a
 real GPIO platform is much simpler.) To avoid getting bogged down in
 the details, we'll supply a wrapper, named 'runTutorial', which sets
-up a mock GPIO environment with 17 pins and runs a @gpio@ program in
+up a mock GPIO environment with 17 pins and runs a @hpio@ program in
 that environment. The first 16 pins, numbered 0-15, are fully-general
 pins. Pin 17 is a special-case pin that we'll use to demonstrate
 failure modes and other quirks.
 
 (Don't worry about the details of the 'SysfsGpioMockIO' type for the
 moment. We'll explain it later. For now, suffice it to say that it's
-the type of our @gpio@ programs when run in this particular mock
+the type of our @hpio@ programs when run in this particular mock
 interpreter.)
 
 __Note__: in our examples, each time we use 'runTutorial' we are
@@ -342,7 +342,7 @@ chip0 = MockGpioChip "chip0" 0 (replicate 16 defaultMockPinState)
 chip1 :: MockGpioChip
 chip1 = MockGpioChip "chip1" 16 [defaultMockPinState {_direction = In, _userVisibleDirection = False, _value = High, _edge = Nothing}]
 
--- | Run a @gpio@ program on a mock system with 17 GPIO pins.
+-- | Run a @hpio@ program on a mock system with 17 GPIO pins.
 runTutorial :: SysfsGpioMockIO a -> IO a
 runTutorial program =
   evalSysfsGpioMockIO program initialMockWorld [chip0, chip1]
@@ -560,10 +560,10 @@ runTutorial $
 
 The 'NoDirectionAttribute' exception value refers to the Linux @sysfs@
 GPIO per-pin @direction@ attribute, which is used to configure the
-pin's direction. Exception types in @gpio@ are platform-specific -- in
+pin's direction. Exception types in @hpio@ are platform-specific -- in
 this case, specific to Linux @sysfs@ GPIO, as we're using the mock
 @sysfs@ GPIO interpreter -- and vary based on which particular
-interpreter you're using, but all @gpio@ exception types are instances
+interpreter you're using, but all @hpio@ exception types are instances
 of the 'SomeGpioException' type class.
 
 Finally, some pins, /when configured for input/, may support edge- or
@@ -767,7 +767,7 @@ not support interrupts, so we do not provide a runnable example in
 this tutorial. However, here is an example from an actual Linux system
 which demonstrates the use of 'pollPinTimeout' (a
 <https://github.com/dhess/gpio/blob/master/examples/Gpio.hs similar program>
-is included in @gpio@'s source distribution):
+is included in @hpio@'s source distribution):
 
 > -- interrupt.hs
 >
@@ -883,7 +883,7 @@ Because they block the current thread, in order to use 'pollPin' and
 'pollPinTimeout', you must compile your program such that the Haskell
 runtime supports multiple threads. On GHC, use the @-threaded@
 compile-time flag. Other Haskell compilers have not been tested with
-@gpio@, so we cannot provide guidance for them; consult your
+@hpio@, so we cannot provide guidance for them; consult your
 compiler's documentation. Also, if you're using a compiler other than
 GHC on Linux, see the documentation for the
 'System.GPIO.Linux.Sysfs.IO.SysfsIOT' monad transformer for details on
@@ -912,7 +912,7 @@ is that it's easy to make a mistake, e.g., by waiting for interrupts
 on a pin that has been configured for output (an operation which, on
 Linux, at least, will not raise an error but will block forever).
 
-The primary goal of the @gpio@ cross-platform DSL is to make available
+The primary goal of the @hpio@ cross-platform DSL is to make available
 to the Haskell programmer as much of the low-level capabilities of a
 typical GPIO platform as possible. As such, it retains both the
 flexibility of this one-pin-fits-all approach, and its disadvantages.
@@ -920,7 +920,7 @@ The disadvantages are apparent by the number of ways you can cause an
 exception by performing an invalid operation on a pin.
 
 By trading some of that flexibility for more restricted types, we can
-make GPIO programming safer. The @gpio@ cross-platform DSL therefore
+make GPIO programming safer. The @hpio@ cross-platform DSL therefore
 provides 3 additional types for representing pins in a particular
 configuration state (input, interrupt-capable input, or output), and
 then defines the subset of GPIO actions that can safely be performed
@@ -1050,7 +1050,7 @@ direction, reading and writing its pin value, etc.
 number to the @\/sys\/class\/gpio\/unexport@ file. When the pin is
 unexported, the kernel removes the pin's @sysfs@ subdirectory.
 
-The @gpio@ interpreter for the Linux @sysfs@ GPIO system translates
+The @hpio@ interpreter for the Linux @sysfs@ GPIO system translates
 actions in the cross-platform DSL to @sysfs@ filesystem operations.
 The most straightforward way to implement this interpreter is to use
 filesystem actions such as 'BS.readFile' and 'BS.writeFile' directly.
@@ -1061,7 +1061,7 @@ subset of filesystem functionality required by the Linux @sysfs@ GPIO
 interpreter (and certainly not an entire real filesystem!), there are
 only a handful of actions we need to emulate.
 
-So that is the approach used by @gpio@'s @sysfs@ interprefer. It
+So that is the approach used by @hpio@'s @sysfs@ interprefer. It
 breaks the Linux @sysfs@ GPIO interpreter into two pieces: a
 high-level piece which maps cross-platform GPIO operations to abstract
 filesystem actions, and a low-level piece which implements those
@@ -1094,13 +1094,13 @@ action, which conveniently composes these two interpreters for you.)
 Most of the examples shown up to this point in the tutorial have run
 directly on top of the 'IO' monad (via 'MonadIO'). However, in the
 event that you want to integrate GPIO computations into more
-complicated monad transformer stacks, @gpio@ has you covered!
+complicated monad transformer stacks, @hpio@ has you covered!
 
-Each @gpio@ interpreter is implemented as a monad transformer, and
+Each @hpio@ interpreter is implemented as a monad transformer, and
 each is also an instance of the monad type classes defined in the
 <https://hackage.haskell.org/package/mtl mtl> package, so long as its
 implementation satisfies the laws of that particular @mtl@ type class.
-This makes it easy to integrate @gpio@ interpreters into @mtl@-style
+This makes it easy to integrate @hpio@ interpreters into @mtl@-style
 monad transformer stacks.
 
 Additionally, the 'MonadGpio' type class provides instances of itself
@@ -1113,7 +1113,7 @@ monad and the mock @sysfs@ GPIO interpreter. (A
 <https://github.com/dhess/gpio/blob/master/examples/GpioReader.hs more sophisticated example>
 of using 'MonadGpio' with a reader transformer
 stack and a real (as opposed to mock) GPIO platform is provided in the
-@gpio@ source distribution.)
+@hpio@ source distribution.)
 
 First, let's define the reader environment and give our transformer
 stack a type alias:
@@ -1187,7 +1187,7 @@ Here we see 2 layers of the transformer stack: at the core is the
 monad actions such as 'asks' inside our @program@.
 
 The next layer up is the 'SysfsGpioT' transformer, which we execute
-via the 'runSysfsGpioT' interpreter. This layer makes the @gpio@
+via the 'runSysfsGpioT' interpreter. This layer makes the @hpio@
 cross-platform DSL actions available to our @program@ -- actions such
 as 'readPin' and 'writePin'.
 
@@ -1228,7 +1228,7 @@ in-memory mock filesystem (the directory structure, the contents of
 the various files, etc.).
 
 For testing purposes, it's often useful to retrieve the final mock
-state along with the final result of a mock @gpio@ computation, so
+state along with the final result of a mock @hpio@ computation, so
 just as 'Control.Monad.State.Strict.StateT' does, the 'SysfsMockT'
 transformer provides three different interpreters. Which interpreter
 you choose depends on whether you want the final mock state of the
@@ -1251,7 +1251,7 @@ state on a real system.)
 By composing the 'runSysfsGpioT' and 'evalSysfsMockT' interpreters
 (or, in the case of a real Linux system, the 'runSysfsGpioT' and
 'System.GPIO.Linux.Sysfs.runSysfsIOT' interpreters), we create a
-complete @gpio@ cross-platform DSL interpreter.
+complete @hpio@ cross-platform DSL interpreter.
 
 The final, outer-most layer of our transformer stack is 'IO'. You may
 be wondering why, as we're using the mock @sysfs@ interpreter here
@@ -1264,7 +1264,7 @@ They /do/, however, need to be stacked on top of a monad which is an
 instance of 'MonadThrow'. Additionally, 'SysfsGpioT' requires its
 inner monad to be an instance of 'MonadCatch'. GPIO computations --
 even mock ones -- can throw exceptions, and we need a way to express
-them "out of band." @gpio@ uses the excellent
+them "out of band." @hpio@ uses the excellent
 <https://hackage.haskell.org/package/exceptions exceptions> package,
 which provides the 'MonadThrow' and 'MonadCatch' abstractions and
 makes it possible for the mock @sysfs@ GPIO interpreter to run in a
@@ -1273,8 +1273,8 @@ instance of both 'MonadThrow' and 'MonadCatch'.
 
 In fact, the @exceptions@ package provides the
 'Control.Monad.Catch.Pure.Catch' monad, which satisfies both of those
-constraints, and @gpio@'s mock @sysfs@ implementation provides a
-convenient type alias for an interpreter which runs @gpio@
+constraints, and @hpio@'s mock @sysfs@ implementation provides a
+convenient type alias for an interpreter which runs @hpio@
 computations in a pure mock GPIO environment, using
 'Control.Monad.Catch.Pure.Catch' as the outer-most monad, rather than
 'IO'. That interpreter expresses GPIO errors as 'Left' values instead
@@ -1335,13 +1335,13 @@ and 'threadDelay'.
 uses 'asks' to extract its configuration from a 'TutorialEnv'.
 
 * It must be an instance of 'MonadGpio' because it uses actions from
-the @gpio@ cross-platform DSL. (By the way, the @h@ type parameter to
+the @hpio@ cross-platform DSL. (By the way, the @h@ type parameter to
 'MonadGpio' represents an implementation-dependent pin handle type.)
 
 Our mock transformer stack satisfies all of these requirements, so
 it's capable of running this program. The "real GPIO" transformer
 stack we defined earlier is also capable of running this program, and
-as future GPIO platforms are added to @gpio@, any of those
+as future GPIO platforms are added to @hpio@, any of those
 interpreters will be able to run this program, as well!
 
 -}

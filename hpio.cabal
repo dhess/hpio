@@ -1,11 +1,11 @@
-Name:                   gpio
+Name:                   hpio
 Version:                0.7.0.0
 Cabal-Version:          >= 1.10
 Build-Type:             Simple
 Author:                 Drew Hess <src@drewhess.com>
 Maintainer:             Drew Hess <src@drewhess.com>
-Homepage:               https://github.com/dhess/gpio
-Bug-Reports:            https://github.com/dhess/gpio/issues/
+Homepage:               https://github.com/dhess/hpio
+Bug-Reports:            https://github.com/dhess/hpio/issues/
 Stability:              experimental
 License:                BSD3
 License-File:           LICENSE
@@ -114,7 +114,7 @@ Library
   C-Sources:            src/System/GPIO/Linux/Sysfs/pollSysfs.c
   CC-Options:           -Wall
 
-Executable gpio-sysfs-example
+Executable hpio-sysfs-example
   Main-Is:              Sysfs.hs
   HS-Source-Dirs:       examples
   If !flag(examples)
@@ -123,7 +123,7 @@ Executable gpio-sysfs-example
     Build-Depends:      base
                       , async                >= 2.0.2  && < 2.2
                       , base-compat
-                      , gpio
+                      , hpio
                       , mtl
                       , mtl-compat
                       , optparse-applicative >= 0.11.0 && < 0.13
@@ -132,7 +132,7 @@ Executable gpio-sysfs-example
   Default-Language:     Haskell2010
   Ghc-Options:          -Wall -threaded
 
-Executable gpio-example
+Executable hpio-example
   Main-Is:              Gpio.hs
   HS-Source-Dirs:       examples
   If !flag(examples)
@@ -142,7 +142,7 @@ Executable gpio-example
                       , async
                       , base-compat
                       , exceptions
-                      , gpio
+                      , hpio
                       , mtl
                       , mtl-compat
                       , optparse-applicative
@@ -153,7 +153,7 @@ Executable gpio-example
   If impl(ghc > 8)
     GHC-Options:        -Wcompat -Wnoncanonical-monad-instances -Wnoncanonical-monadfail-instances -fno-warn-redundant-constraints -fno-warn-redundant-constraints
 
-Executable gpio-reader-example
+Executable hpio-reader-example
   Main-Is:              GpioReader.hs
   HS-Source-Dirs:       examples
   If !flag(examples)
@@ -163,7 +163,7 @@ Executable gpio-reader-example
                       , async
                       , base-compat
                       , exceptions
-                      , gpio
+                      , hpio
                       , mtl
                       , mtl-compat
                       , optparse-applicative
@@ -245,9 +245,9 @@ Test-Suite spec
 
 Source-Repository head
   Type:                 git
-  Location:             git://github.com/dhess/gpio.git
+  Location:             git://github.com/dhess/hpio.git
 
 Source-Repository this
   Type:                 git
-  Location:             git://github.com/dhess/gpio.git
+  Location:             git://github.com/dhess/hpio.git
   Tag:                  v0.7.0.0

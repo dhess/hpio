@@ -127,5 +127,5 @@ main =execParser opts >>= run
     opts =
       info (helper <*> cmds)
            (fullDesc <>
-            progDesc "Example sysfs GPIO programs." <>
-            header "gpio-sysfs-example - run sysfs GPIO demonstrations.")
+            progDesc "Example sysfs hpio programs." <>
+            header "hpio-sysfs-example - run sysfs hpio demonstrations.")
