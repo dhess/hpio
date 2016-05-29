@@ -239,6 +239,12 @@ Test-Suite spec
                       , System.GPIO.Monad
                       , System.GPIO.Tutorial
                       , System.GPIO.Types
+                      , Spec
+                      , System.GPIO.TypesSpec
+                      , System.GPIO.Linux.Sysfs.LinuxBboneSpec
+                      , System.GPIO.Linux.Sysfs.MockInternalSpec
+                      , System.GPIO.Linux.Sysfs.MockSpec
+                      , System.GPIO.Linux.Sysfs.SysfsGpioMockSpec
   C-Sources:            src/System/GPIO/Linux/Sysfs/pollSysfs.c
   If flag(linux-bbone-tests)
     cpp-options: -DRUN_LINUX_BBONE_TESTS=1
