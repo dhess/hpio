@@ -104,35 +104,56 @@ before_install:
     curl -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
   fi
 
+# Use the more reliable S3 mirror of Hackage
+mkdir -p $HOME/.cabal
+echo 'remote-repo: hackage.haskell.org:http://hackage.fpcomplete.com/' > $HOME/.cabal/config
+echo 'remote-repo-cache: $HOME/.cabal/packages' >> $HOME/.cabal/config  
+
+if [ "$CABALVER" != "1.16" ]
+then
+  echo 'jobs: $ncpus' >> $HOME/.cabal/config
+fi
+
+# Get the list of packages from the stack.yaml file
+- PACKAGES=$(stack --install-ghc query locals | grep '^ *path' | sed 's@^ *path:@@')
+
 install:
 - echo "$(ghc --version) [$(ghc --print-project-git-commit-id 2> /dev/null || echo '?')]"
 - if [ -f configure.ac ]; then autoreconf -i; fi
 - |
+  set -ex
   case "$BUILD" in
     stack)
-      stack --no-terminal --install-ghc $ARGS test --only-dependencies
+      stack --no-terminal --install-ghc $ARGS test --bench --only-dependencies
       ;;
     cabal)
       cabal --version
       travis_retry cabal update
-      cabal install --only-dependencies --enable-tests --enable-benchmarks --force-reinstalls --ghc-options=-O0 --reorder-goals --max-backjumps=-1 $CABALARGS
+      cabal install --only-dependencies --enable-tests --enable-benchmarks --force-reinstalls --ghc-options=-O0 --reorder-goals --max-backjumps=-1 $CABALARGS $PACKAGES
       ;;
   esac
+  set +ex
 
 script:
 - |
+  set -ex
   case "$BUILD" in
     stack)
-      stack --no-terminal $ARGS test --haddock --no-haddock-deps
+      stack --no-terminal $ARGS test --bench --no-run-benchmarks --haddock --no-haddock-deps
       ;;
     cabal)
-      cabal configure --enable-tests --enable-benchmarks -v2 --ghc-options="-O0 -Werror"
-      cabal build
-      cabal check || [ "$CABALVER" == "1.16" ]
-      cabal test
-      cabal sdist
-      cabal copy
-      SRC_TGZ=$(cabal info . | awk '{print $2;exit}').tar.gz && \
-        (cd dist && cabal install --force-reinstalls "$SRC_TGZ")
+      cabal install --enable-tests --enable-benchmarks --force-reinstalls --ghc-options=-O0 --reorder-goals --max-backjumps=-1 $CABALARGS $PACKAGES
+
+      ORIGDIR=$(pwd)
+      for dir in $PACKAGES
+      do
+        cd $dir
+        cabal check || [ "$CABALVER" == "1.16" ]
+        cabal sdist
+        SRC_TGZ=$(cabal info . | awk '{print $2;exit}').tar.gz && \
+          (cd dist && cabal install --force-reinstalls "$SRC_TGZ")
+        cd $ORIGDIR
+      done
       ;;
   esac
+  set +ex
