@@ -29,6 +29,7 @@ Description:
 Extra-Doc-Files:        README.md
 Extra-Source-Files:     .travis.yml
                       , Hlint.hs
+                      , changelog.md
                       , default.nix
                       , shell.nix
                       , stack.yaml
