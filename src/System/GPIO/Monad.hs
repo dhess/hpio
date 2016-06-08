@@ -15,6 +15,7 @@ A monadic context for GPIO computations.
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE PackageImports #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE Safe #-}
 
@@ -105,7 +106,7 @@ import Control.Monad.Trans.Except (ExceptT)
 import Control.Monad.Trans.Reader (ReaderT)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Identity (IdentityT)
-import Control.Monad.Trans.List (ListT)
+import "transformers" Control.Monad.Trans.List (ListT)
 import Control.Monad.Trans.Maybe (MaybeT)
 import qualified Control.Monad.Trans.RWS.Lazy as LazyRWS (RWST)
 import qualified Control.Monad.Trans.RWS.Strict as StrictRWS (RWST)

@@ -15,6 +15,7 @@ Monad type classes and instances for Linux @sysfs@ GPIO operations.
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PackageImports #-}
 {-# LANGUAGE Trustworthy #-}
 
 module System.GPIO.Linux.Sysfs.Monad
@@ -69,7 +70,7 @@ import Control.Monad.RWS (MonadRWS)
 import Control.Monad.State (MonadState)
 import Control.Monad.Trans.Class (MonadTrans, lift)
 import Control.Monad.Trans.Identity (IdentityT)
-import Control.Monad.Trans.List (ListT)
+import "transformers" Control.Monad.Trans.List (ListT)
 import Control.Monad.Trans.Maybe (MaybeT)
 import qualified Control.Monad.Trans.RWS.Lazy as LazyRWS (RWST)
 import qualified Control.Monad.Trans.RWS.Strict as StrictRWS (RWST)
