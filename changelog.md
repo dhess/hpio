@@ -1,3 +1,4 @@
+## 0.8.0.3 (2016-07-15)
 
 Fixes:
   - Bump QuickCheck bounds.
