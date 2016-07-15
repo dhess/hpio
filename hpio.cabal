@@ -97,7 +97,7 @@ Library
                       , Trustworthy
                       , TypeSynonymInstances
                       , UndecidableInstances
-  Build-Depends:        QuickCheck          >= 2.7.6  && < 2.9
+  Build-Depends:        QuickCheck          >= 2.7.6  && < 2.10
                       , base                >= 4.7.0  && < 5
                       , base-compat         >= 0.6.0  && < 1
                       , bytestring          >= 0.10.4 && < 0.11
