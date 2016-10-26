@@ -18,6 +18,7 @@ import Control.Exception (bracket_)
 import Control.Monad (forever, void)
 import Control.Monad.IO.Class (liftIO)
 import Data.Foldable (for_)
+import Data.Monoid ((<>))
 import Options.Applicative
 import System.GPIO.Linux.Sysfs.IO (SysfsIOT(..))
 import System.GPIO.Linux.Sysfs.Monad

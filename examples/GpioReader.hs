@@ -18,6 +18,7 @@ import Control.Monad.Catch (MonadMask)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Reader (MonadReader(..), ReaderT(..), asks)
 import Data.Foldable (for_)
+import Data.Monoid ((<>))
 import Options.Applicative
 import System.GPIO.Linux.Sysfs (SysfsIOT, SysfsGpioT, runSysfsGpioT, runSysfsIOT, runSysfsGpioIO)
 import System.GPIO.Monad

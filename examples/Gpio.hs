@@ -9,6 +9,7 @@ import Control.Monad (forever, void)
 import Control.Monad.Catch (MonadMask)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.Foldable (for_)
+import Data.Monoid ((<>))
 import Options.Applicative
 import System.GPIO.Linux.Sysfs (runSysfsGpioIO)
 import System.GPIO.Monad

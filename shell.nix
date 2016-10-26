@@ -38,6 +38,13 @@ let
                        then pkgs.haskellPackages
                        else pkgs.haskell.packages.${compiler};
 
+  # Test with optparse-applicative-0.13.0.0.
+  # modifiedHaskellPackages = haskellPackages.override {
+  #     overrides = self: super: {
+  #       optparse-applicative = self.optparse-applicative_0_13_0_0;
+  #     };
+  # };
+  #drv = modifiedHaskellPackages.callPackage f {};
   drv = haskellPackages.callPackage f {};
 
 in
