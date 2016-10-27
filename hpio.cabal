@@ -220,7 +220,7 @@ Test-Suite spec
                       , directory
                       , exceptions
                       , filepath
-                      , hspec               >= 2.1.7 && < 2.3
+                      , hspec               >= 2.1.7 && < 2.4
                       , mtl
                       , mtl-compat
                       , text

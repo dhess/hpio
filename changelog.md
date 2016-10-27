@@ -1,3 +1,9 @@
+## 0.8.0.4 (2016-10-26)
+
+Fixes:
+  - Support for optparse-applicative 0.13.x.
+  - Bump hspec bounds.
+
 ## 0.8.0.3 (2016-07-15)
 
 Fixes:
