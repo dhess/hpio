@@ -1,3 +1,8 @@
+## 0.8.0.5 (2017-01-11)
+
+Fixes:
+  - Bump directory bounds.
+
 ## 0.8.0.4 (2016-10-26)
 
 Fixes:
