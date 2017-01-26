@@ -1,3 +1,8 @@
+## 0.8.0.6 (2017-01-25)
+
+Fixes:
+  - Remove hspec upper bounds.
+
 ## 0.8.0.5 (2017-01-11)
 
 Fixes:
