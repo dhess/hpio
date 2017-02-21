@@ -1,3 +1,9 @@
+## 0.8.0.7 (2017-02-21)
+
+Fixes:
+  - Fix hlint tests.
+  - Note GHC 8.0.2 compatibility in cabal file.
+
 ## 0.8.0.6 (2017-01-25)
 
 Fixes:

@@ -1,5 +1,5 @@
 Name:                   hpio
-Version:                0.8.0.6
+Version:                0.8.0.7
 Cabal-Version:          >= 1.10
 Build-Type:             Simple
 Author:                 Drew Hess <src@drewhess.com>
@@ -10,7 +10,7 @@ Stability:              experimental
 License:                BSD3
 License-File:           LICENSE
 Copyright:              Copyright (c) 2016, Drew Hess
-Tested-With:            GHC == 7.8.4, GHC == 7.10.2, GHC == 7.10.3, GHC == 8.0.1
+Tested-With:            GHC == 7.8.4, GHC == 7.10.2, GHC == 7.10.3, GHC == 8.0.1, GHC == 8.0.2
 Category:               System
 Synopsis:               Monads for GPIO in Haskell
 Description:
@@ -257,4 +257,4 @@ Source-Repository head
 Source-Repository this
   Type:                 git
   Location:             git://github.com/dhess/hpio.git
-  Tag:                  v0.8.0.6
+  Tag:                  v0.8.0.7
