@@ -1,7 +1,7 @@
 {-|
 Module      : System.GPIO.Linux
 Description : Linux GPIO
-Copyright   : (c) 2016, Drew Hess
+Copyright   : (c) 2017, Quixoftic, LLC
 License     : BSD3
 Maintainer  : Drew Hess <src@drewhess.com>
 Stability   : experimental

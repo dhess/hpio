@@ -9,7 +9,7 @@ Bug-Reports:            https://github.com/dhess/hpio/issues/
 Stability:              experimental
 License:                BSD3
 License-File:           LICENSE
-Copyright:              Copyright (c) 2016, Drew Hess
+Copyright:              Copyright (c) 2017, Quixoftic, LLC
 Tested-With:            GHC == 7.8.4, GHC == 7.10.2, GHC == 7.10.3, GHC == 8.0.1, GHC == 8.0.2
 Category:               System
 Synopsis:               Monads for GPIO in Haskell
