@@ -5,7 +5,7 @@
 }:
 mkDerivation {
   pname = "hpio";
-  version = "0.8.0.8";
+  version = "0.8.0.9";
   src = ./.;
   isLibrary = true;
   isExecutable = true;

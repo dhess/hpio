@@ -1,5 +1,5 @@
 Name:                   hpio
-Version:                0.8.0.8
+Version:                0.8.0.9
 Cabal-Version:          >= 1.10
 Build-Type:             Simple
 Author:                 Drew Hess <dhess-src@quixoftic.com>
@@ -257,4 +257,4 @@ Source-Repository head
 Source-Repository this
   Type:                 git
   Location:             git://github.com/quixoftic/hpio.git
-  Tag:                  v0.8.0.8
+  Tag:                  v0.8.0.9

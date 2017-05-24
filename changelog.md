@@ -1,3 +1,8 @@
+## 0.8.0.9 (2017-05-24)
+
+Fixes:
+  - Fix project URLs.
+
 ## 0.8.0.8 (2017-05-24)
 
 No changes; copyright for the project has been assigned to Quixoftic, LLC.
