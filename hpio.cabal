@@ -2,8 +2,8 @@ Name:                   hpio
 Version:                0.8.0.7
 Cabal-Version:          >= 1.10
 Build-Type:             Simple
-Author:                 Drew Hess <src@drewhess.com>
-Maintainer:             Drew Hess <src@drewhess.com>
+Author:                 Drew Hess <dhess-src@quixoftic.com>
+Maintainer:             Drew Hess <dhess-src@quixoftic.com>
 Homepage:               https://github.com/dhess/hpio
 Bug-Reports:            https://github.com/dhess/hpio/issues/
 Stability:              experimental

@@ -3,7 +3,7 @@ Module      : System.GPIO.Linux.Sysfs.Types
 Description : Types for Linux @sysfs@ GPIO
 Copyright   : (c) 2017, Quixoftic, LLC
 License     : BSD3
-Maintainer  : Drew Hess <src@drewhess.com>
+Maintainer  : Drew Hess <dhess-src@quixoftic.com>
 Stability   : experimental
 Portability : non-portable
 

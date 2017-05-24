@@ -3,7 +3,7 @@ Module      : System.GPIO.Types
 Description : Basic GPIO types
 Copyright   : (c) 2017, Quixoftic, LLC
 License     : BSD3
-Maintainer  : Drew Hess <src@drewhess.com>
+Maintainer  : Drew Hess <dhess-src@quixoftic.com>
 Stability   : experimental
 Portability : non-portable
 
