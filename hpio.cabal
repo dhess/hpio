@@ -4,8 +4,8 @@ Cabal-Version:          >= 1.10
 Build-Type:             Simple
 Author:                 Drew Hess <dhess-src@quixoftic.com>
 Maintainer:             Drew Hess <dhess-src@quixoftic.com>
-Homepage:               https://github.com/dhess/hpio
-Bug-Reports:            https://github.com/dhess/hpio/issues/
+Homepage:               https://github.com/quixoftic/hpio
+Bug-Reports:            https://github.com/quixoftic/hpio/issues/
 Stability:              experimental
 License:                BSD3
 License-File:           LICENSE
@@ -252,9 +252,9 @@ Test-Suite spec
 
 Source-Repository head
   Type:                 git
-  Location:             git://github.com/dhess/hpio.git
+  Location:             git://github.com/quixoftic/hpio.git
 
 Source-Repository this
   Type:                 git
-  Location:             git://github.com/dhess/hpio.git
+  Location:             git://github.com/quixoftic/hpio.git
   Tag:                  v0.8.0.8

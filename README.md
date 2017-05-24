@@ -11,4 +11,4 @@ support for other Unix GPIO platforms is planned.
 For details on usage, see the included tutorial module, or the
 `examples` directory in the source distribution.
 
-[![Travis CI build status](https://travis-ci.org/dhess/hpio.svg?branch=master)](https://travis-ci.org/dhess/hpio)
+[![Travis CI build status](https://travis-ci.org/quixoftic/hpio.svg?branch=master)](https://travis-ci.org/quixoftic/hpio)

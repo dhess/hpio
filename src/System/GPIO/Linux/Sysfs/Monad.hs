@@ -603,7 +603,7 @@ pollPinValue p =
      -- (-1) timeout value above means the poll must either wait
      -- forever or fail; so this indicates a major problem.
      Nothing -> throwM $
-       InternalError "pollPinValue timed out, and it should not have. Please file a bug at https://github.com/dhess/gpio"
+       InternalError "pollPinValue timed out, and it should not have. Please file a bug at https://github.com/quixoftic/gpio"
 
 -- | Same as 'pollPinValue', except that a timeout value,
 -- specified in microseconds, is provided. If no event occurs before
