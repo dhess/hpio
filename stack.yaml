@@ -1,6 +1,6 @@
 require-stack-version: ">= 1.1.0"
 pvp-bounds: both
-resolver: lts-7.15
+resolver: lts-8.20
 packages:
 - .
 flags:
