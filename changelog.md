@@ -1,3 +1,10 @@
+## 0.8.0.10 (2017-06-28)
+
+Fixes:
+  - Bump QuickCheck bounds.
+  - Bump optparse-applicative bounds.
+  - Stack: update to lts-8.20.
+
 ## 0.8.0.9 (2017-05-24)
 
 Fixes:
