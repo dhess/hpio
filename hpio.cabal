@@ -97,7 +97,7 @@ Library
                       , Trustworthy
                       , TypeSynonymInstances
                       , UndecidableInstances
-  Build-Depends:        QuickCheck          >= 2.7.6  && < 2.10
+  Build-Depends:        QuickCheck          >= 2.7.6  && < 2.11
                       , base                >= 4.7.0  && < 5
                       , base-compat         >= 0.6.0  && < 1
                       , bytestring          >= 0.10.4 && < 0.11
@@ -127,7 +127,7 @@ Executable hpio-sysfs-example
                       , hpio
                       , mtl
                       , mtl-compat
-                      , optparse-applicative >= 0.11.0 && < 0.14
+                      , optparse-applicative >= 0.11.0 && < 0.15
                       , transformers
                       , transformers-compat
   Default-Language:     Haskell2010
