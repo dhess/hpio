@@ -1,0 +1,234 @@
+name:        hpio
+version:     0.8.0.10
+synopsis:    Monads for GPIO in Haskell
+category:    System
+stability:   experimental
+author:      Drew Hess <dhess-src@quixoftic.com>
+maintainer:  Drew Hess <dhess-src@quixoftic.com>
+copyright:   Copyright (c) 2017, Quixoftic, LLC
+license:     BSD3
+github:      quixoftic/hpio
+
+description: ! 'This package provides an embedded DSL for writing cross-platform
+
+  GPIO programs in Haskell. Currently only Linux is supported (via the
+
+  @sysfs@ filesystem), but other Unix GPIO platforms will be supported
+
+  in the future.
+
+
+  Monads and low-level actions are also provided for each supported
+
+  platform''s native GPIO API, if you want to program directly to
+
+  the platform API.
+
+
+  Example programs are provided in the ''examples'' directory of the
+
+  source code distribution. There is also a "System.GPIO.Tutorial"
+
+  module, which explains how to use the cross-platform DSL.'
+
+tested-with: GHC==7.8.4 GHC==7.10.2 GHC==7.10.3 GHC==8.0.1 GHC==8.0.2 GHC==8.2.1
+
+flags:
+  test-hlint:
+    description: Build hlint test
+    manual: true
+    default: true
+  test-doctests:
+    description: Build doctests
+    manual: true
+    default: true
+  linux-bbone-tests:
+    description: >
+      Enable Linux BeagleBone-specific tests. Disabled by default. See
+      test/System/GPIO/Linux/Sysfs/BeagleBoneSpec.hs for requirements.
+      Run with "cabal test -flinux-bbone-tests".
+    manual: true
+    default: false
+  examples:
+    description: Build the example programs
+    manual: true
+    default: true
+
+ghc-options:
+  - -Wall
+  - -Wincomplete-uni-patterns
+  - -Wincomplete-record-updates
+
+library:
+  when:
+    - condition: impl(ghc >= 8.0)
+      then:
+        ghc-options:
+          - -Wcompat
+          - -Wnoncanonical-monad-instances
+          - -Wnoncanonical-monadfail-instances
+      else:
+        # provide/emulate `Control.Monad.Fail` and `Data.Semigroups` API for pre-GHC8
+        dependencies:
+          - fail       == 4.9.*
+          - semigroups == 0.18.*
+  source-dirs: src
+  c-sources:
+    - src/System/GPIO/Linux/Sysfs/pollSysfs.c
+  cc-options:
+    - -Wall
+  other-extensions:
+    - CPP
+    - DeriveDataTypeable
+    - DeriveGeneric
+    - ExistentialQuantification
+    - FlexibleContexts
+    - FlexibleInstances
+    - FunctionalDependencies
+    - GADTs
+    - GeneralizedNewtypeDeriving
+    - InterruptibleFFI
+    - KindSignatures
+    - LambdaCase
+    - MultiParamTypeClasses
+    - OverloadedStrings
+    - PackageImports
+    - QuasiQuotes
+    - Safe
+    - TemplateHaskell
+    - Trustworthy
+    - TypeSynonymInstances
+    - UndecidableInstances
+  other-modules:
+    - System.GPIO.Linux.Sysfs.Mock.Internal
+  dependencies:
+    - QuickCheck          >=2.7.6  && <2.11
+    - base                >=4.7.0  && <5
+    - base-compat         >=0.6.0  && <1
+    - bytestring          >=0.10.4 && <0.11
+    - containers          >=0.5.5  && <0.6
+    - directory           >=1.2.1  && <1.4
+    - exceptions          >=0.8.0  && <1
+    - filepath            >=1.3.0  && <1.5
+    - mtl                 >=2.1.3  && <2.3
+    - mtl-compat          >=0.2.1  && <0.3
+    - text                >=1.2.0  && <1.3
+    - transformers        >=0.3.0  && <0.6
+    - transformers-compat >=0.4.0  && <1
+    - unix                >=2.7.0  && <2.8
+    - unix-bytestring     >=0.3.7  && <0.4
+
+executables:
+  hpio-reader-example: &executable
+    main: GpioReader.hs
+    source-dirs: examples
+    other-modules: []
+    ghc-options:
+      - -threaded
+    when:
+      - condition: "!(flag(examples))"
+        then:
+          buildable: false
+        else:
+          dependencies:
+          - base
+          - async >=2.0.2 && <2.2
+          - base-compat
+          - exceptions
+          - hpio
+          - mtl
+          - mtl-compat
+          - optparse-applicative >=0.11.0 && <0.15
+          - transformers
+          - transformers-compat
+      - condition: impl(ghc >= 8.0)
+        ghc-options:
+          - -Wcompat
+          - -Wnoncanonical-monad-instances
+          - -Wnoncanonical-monadfail-instances
+          - -fno-warn-redundant-constraints
+          - -fno-warn-redundant-constraints
+  hpio-sysfs-example:
+    <<: *executable
+    main: Sysfs.hs
+  hpio-example:
+    <<: *executable
+    main: Gpio.hs
+
+tests:
+  hlint:
+    main: hlint.hs
+    source-dirs: test
+    other-modules: []
+    ghc-options:
+      - -w
+      - -threaded
+    when:
+    - condition: "!(flag(test-hlint))"
+      then:
+        buildable: false
+      else:
+        dependencies:
+          - base
+          - hlint
+  doctest:
+    main: doctest.hs
+    source-dirs: test
+    other-modules: []
+    ghc-options:
+      - -threaded
+    when:
+    - condition: (!(flag(test-doctests))) || (impl(ghc <7.10))
+      then:
+        buildable: false
+      else:
+        dependencies:
+          - base
+          - doctest
+          - filepath
+  spec:
+    main: Spec.hs
+    source-dirs:
+      - test
+      - src
+    ghc-options:
+      - -threaded
+    dependencies:
+      - QuickCheck
+      - base
+      - async
+      - base-compat
+      - bytestring
+      - containers
+      - directory
+      - exceptions
+      - filepath
+      - hspec                >=2.1.7
+      - mtl
+      - mtl-compat
+      - text
+      - transformers
+      - transformers-compat
+      - unix
+      - unix-bytestring
+    when:
+      - condition: impl(ghc >= 8.0)
+        ghc-options:
+          - -Wcompat
+          - -Wnoncanonical-monad-instances
+          - -Wnoncanonical-monadfail-instances
+          - -fno-warn-redundant-constraints
+          - -fno-warn-redundant-constraints
+      - condition: flag(linux-bbone-tests)
+        cpp-options:
+          -DRUN_LINUX_BBONE_TESTS=1
+
+extra-source-files:
+  - .travis.yml
+  - Hlint.hs
+  - README.md
+  - changelog.md
+  - default.nix
+  - shell.nix
+  - stack.yaml
+  - stack-lts-2.yaml

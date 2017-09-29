@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -fno-warn-incomplete-patterns -fno-warn-incomplete-uni-patterns #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module System.GPIO.Linux.Sysfs.SysfsGpioMockSpec (spec) where
+module Test.System.GPIO.Linux.Sysfs.SysfsGpioMockSpec (spec) where
 
 import Control.Exception (fromException)
 import Control.Monad (void)

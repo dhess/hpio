@@ -5,7 +5,7 @@
 #define MIN_VERSION_base(x,y,z) 1
 #endif
 
-module System.GPIO.TypesSpec (spec) where
+module Test.System.GPIO.TypesSpec (spec) where
 
 import System.GPIO.Types
 

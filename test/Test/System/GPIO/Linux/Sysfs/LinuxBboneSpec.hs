@@ -2,7 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -fno-warn-unused-binds #-}
 
-module System.GPIO.Linux.Sysfs.LinuxBboneSpec (spec) where
+module Test.System.GPIO.Linux.Sysfs.LinuxBboneSpec (spec) where
 
 import Control.Concurrent (forkIO, threadDelay)
 import Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar)

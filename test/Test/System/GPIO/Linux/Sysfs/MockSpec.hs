@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -fno-warn-incomplete-patterns -fno-warn-incomplete-uni-patterns #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module System.GPIO.Linux.Sysfs.MockSpec (spec) where
+module Test.System.GPIO.Linux.Sysfs.MockSpec (spec) where
 
 import Prelude hiding (readFile, writeFile)
 import Control.Exception (fromException)
