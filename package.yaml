@@ -80,6 +80,7 @@ library:
   other-extensions:
     - ConstraintKinds
     - CPP
+    - DefaultSignatures
     - DeriveDataTypeable
     - DeriveGeneric
     - ExistentialQuantification

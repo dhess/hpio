@@ -68,7 +68,7 @@ flag test-hlint
 library
   hs-source-dirs:
       src
-  other-extensions: ConstraintKinds CPP DeriveDataTypeable DeriveGeneric ExistentialQuantification FlexibleContexts FlexibleInstances FunctionalDependencies GADTs GeneralizedNewtypeDeriving InterruptibleFFI KindSignatures LambdaCase MultiParamTypeClasses OverloadedStrings PackageImports QuasiQuotes Safe TemplateHaskell Trustworthy TypeSynonymInstances UndecidableInstances
+  other-extensions: ConstraintKinds CPP DefaultSignatures DeriveDataTypeable DeriveGeneric ExistentialQuantification FlexibleContexts FlexibleInstances FunctionalDependencies GADTs GeneralizedNewtypeDeriving InterruptibleFFI KindSignatures LambdaCase MultiParamTypeClasses OverloadedStrings PackageImports QuasiQuotes Safe TemplateHaskell Trustworthy TypeSynonymInstances UndecidableInstances
   ghc-options: -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates
   cc-options: -Wall
   c-sources:
