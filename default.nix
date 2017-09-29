@@ -23,7 +23,7 @@ mkDerivation {
     exceptions filepath hlint hspec mtl mtl-compat QuickCheck text
     transformers transformers-compat unix unix-bytestring
   ];
-  homepage = "https://github.com/quixoftic/hpio";
+  homepage = "https://github.com/quixoftic/hpio#readme";
   description = "Monads for GPIO in Haskell";
   license = stdenv.lib.licenses.bsd3;
 }
