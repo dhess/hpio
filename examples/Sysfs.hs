@@ -20,10 +20,15 @@ import Control.Monad.IO.Class (liftIO)
 import Data.Foldable (for_)
 import Data.Monoid ((<>))
 import Options.Applicative
+       (Parser, argument, auto, command, execParser, fullDesc, header,
+        help, helper, hsubparser, info, long, metavar, option, progDesc,
+        short, showDefault, value)
 import System.GPIO.Linux.Sysfs.IO (SysfsIOT(..))
 import System.GPIO.Linux.Sysfs.Monad
-import System.GPIO.Linux.Sysfs.Types
-import System.GPIO.Types
+       (availablePins, exportPin, pollPinValueTimeout, readPinValue,
+        unexportPin, writePinDirection, writePinEdge, writePinValue)
+import System.GPIO.Linux.Sysfs.Types (SysfsEdge(..))
+import System.GPIO.Types (Pin, PinDirection(..), invertValue)
 
 data GlobalOptions =
   GlobalOptions {_cmd :: !Command}

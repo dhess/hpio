@@ -11,8 +11,15 @@ import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.Foldable (for_)
 import Data.Monoid ((<>))
 import Options.Applicative
+       (Parser, argument, auto, command, execParser, fullDesc, header,
+        help, helper, hsubparser, info, long, metavar, option, progDesc,
+        short, showDefault, value)
 import System.GPIO.Linux.Sysfs (runSysfsGpioIO)
 import System.GPIO.Monad
+       (MonadGpio, Pin, PinInputMode(..), PinInterruptMode(..),
+        PinOutputMode(..), PinValue(..), pins, pollPinTimeout,
+        setPinInputMode, setPinInterruptMode, setPinOutputMode, togglePin,
+        withPin)
 
 -- Only one for now.
 data Interpreter =
