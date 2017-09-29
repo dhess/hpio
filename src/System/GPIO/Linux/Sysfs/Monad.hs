@@ -12,12 +12,14 @@ Monad type classes and instances for Linux @sysfs@ GPIO operations.
 -}
 
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PackageImports #-}
 {-# LANGUAGE Trustworthy #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module System.GPIO.Linux.Sysfs.Monad
        ( -- * MonadSysfs class
@@ -110,16 +112,22 @@ import System.GPIO.Types
 -- | A type class for monads which implement (or mock) low-level Linux
 -- @sysfs@ GPIO operations.
 class (Monad m) => MonadSysfs m where
+
   -- | Equivalent to 'System.Directory.doesDirectoryExist'.
   doesDirectoryExist :: FilePath -> m Bool
+
   -- | Equivalent to 'System.Directory.doesFileExist'.
   doesFileExist :: FilePath -> m Bool
+
   -- | Equivalent to 'System.Directory.getDirectoryContents'.
   getDirectoryContents :: FilePath -> m [FilePath]
+
   -- | Equivalent to 'Data.ByteString.readFile'.
   readFile :: FilePath -> m ByteString
+
   -- | Equivalent to 'Data.ByteString.writeFile'.
   writeFile :: FilePath -> ByteString -> m ()
+
   -- | @sysfs@ control files which are global shared resources may be
   -- written simultaneously by multiple threads. This is fine --
   -- @sysfs@ can handle this -- but Haskell's
@@ -127,6 +135,7 @@ class (Monad m) => MonadSysfs m where
   -- prevents multiple writers. We don't want this behavior, so we use
   -- low-level operations to get around it.
   unlockedWriteFile :: FilePath -> ByteString -> m ()
+
   -- | Poll a @sysfs@ file for reading, as in POSIX.1-2001 @poll(2)@.
   --
   -- Note that the implementation of this action is only guaranteed to
@@ -134,122 +143,50 @@ class (Monad m) => MonadSysfs m where
   -- readiness for reads. Do not use it for any other purpose.
   pollFile :: FilePath -> Int -> m CInt
 
-instance (MonadSysfs m) => MonadSysfs (IdentityT m) where
-  doesDirectoryExist = lift . doesDirectoryExist
-  doesFileExist = lift . doesFileExist
-  getDirectoryContents = lift . getDirectoryContents
-  readFile = lift . readFile
-  writeFile fn bs = lift $ writeFile fn bs
-  unlockedWriteFile fn bs = lift $ unlockedWriteFile fn bs
-  pollFile fn timeout = lift $ pollFile fn timeout
+  default doesDirectoryExist :: (MonadTrans t, MonadSysfs m', t m' ~ m) =>
+    FilePath -> m Bool
+  default doesFileExist :: (MonadTrans t, MonadSysfs m', t m' ~ m) =>
+    FilePath -> m Bool
+  default getDirectoryContents :: (MonadTrans t, MonadSysfs m', t m' ~ m) =>
+    FilePath -> m [FilePath]
+  default readFile :: (MonadTrans t, MonadSysfs m', t m' ~ m) =>
+    FilePath -> m ByteString
+  default writeFile :: (MonadTrans t, MonadSysfs m', t m' ~ m) =>
+    FilePath -> ByteString -> m ()
+  default unlockedWriteFile :: (MonadTrans t, MonadSysfs m', t m' ~ m) =>
+    FilePath -> ByteString -> m ()
+  default pollFile :: (MonadTrans t, MonadSysfs m', t m' ~ m) =>
+    FilePath -> Int -> m CInt
 
-instance (MonadSysfs m) => MonadSysfs (ContT r m) where
   doesDirectoryExist = lift . doesDirectoryExist
+  {-# INLINE doesDirectoryExist #-}
   doesFileExist = lift . doesFileExist
+  {-# INLINE doesFileExist #-}
   getDirectoryContents = lift . getDirectoryContents
+  {-# INLINE getDirectoryContents #-}
   readFile = lift . readFile
+  {-# INLINE readFile #-}
   writeFile fn bs = lift $ writeFile fn bs
+  {-# INLINE writeFile #-}
   unlockedWriteFile fn bs = lift $ unlockedWriteFile fn bs
+  {-# INLINE unlockedWriteFile #-}
   pollFile fn timeout = lift $ pollFile fn timeout
+  {-# INLINE pollFile #-}
 
-instance (MonadSysfs m) => MonadSysfs (CatchT m) where
-  doesDirectoryExist = lift . doesDirectoryExist
-  doesFileExist = lift . doesFileExist
-  getDirectoryContents = lift . getDirectoryContents
-  readFile = lift . readFile
-  writeFile fn bs = lift $ writeFile fn bs
-  unlockedWriteFile fn bs = lift $ unlockedWriteFile fn bs
-  pollFile fn timeout = lift $ pollFile fn timeout
 
-instance (MonadSysfs m) => MonadSysfs (ExceptT e m) where
-  doesDirectoryExist = lift . doesDirectoryExist
-  doesFileExist = lift . doesFileExist
-  getDirectoryContents = lift . getDirectoryContents
-  readFile = lift . readFile
-  writeFile fn bs = lift $ writeFile fn bs
-  unlockedWriteFile fn bs = lift $ unlockedWriteFile fn bs
-  pollFile fn timeout = lift $ pollFile fn timeout
-
-instance (MonadSysfs m) => MonadSysfs (ListT m) where
-  doesDirectoryExist = lift . doesDirectoryExist
-  doesFileExist = lift . doesFileExist
-  getDirectoryContents = lift . getDirectoryContents
-  readFile = lift . readFile
-  writeFile fn bs = lift $ writeFile fn bs
-  unlockedWriteFile fn bs = lift $ unlockedWriteFile fn bs
-  pollFile fn timeout = lift $ pollFile fn timeout
-
-instance (MonadSysfs m) => MonadSysfs (MaybeT m) where
-  doesDirectoryExist = lift . doesDirectoryExist
-  doesFileExist = lift . doesFileExist
-  getDirectoryContents = lift . getDirectoryContents
-  readFile = lift . readFile
-  writeFile fn bs = lift $ writeFile fn bs
-  unlockedWriteFile fn bs = lift $ unlockedWriteFile fn bs
-  pollFile fn timeout = lift $ pollFile fn timeout
-
-instance (MonadSysfs m) => MonadSysfs (ReaderT r m) where
-  doesDirectoryExist = lift . doesDirectoryExist
-  doesFileExist = lift . doesFileExist
-  getDirectoryContents = lift . getDirectoryContents
-  readFile = lift . readFile
-  writeFile fn bs = lift $ writeFile fn bs
-  unlockedWriteFile fn bs = lift $ unlockedWriteFile fn bs
-  pollFile fn timeout = lift $ pollFile fn timeout
-
-instance (MonadSysfs m, Monoid w) => MonadSysfs (LazyRWS.RWST r w s m) where
-  doesDirectoryExist = lift . doesDirectoryExist
-  doesFileExist = lift . doesFileExist
-  getDirectoryContents = lift . getDirectoryContents
-  readFile = lift . readFile
-  writeFile fn bs = lift $ writeFile fn bs
-  unlockedWriteFile fn bs = lift $ unlockedWriteFile fn bs
-  pollFile fn timeout = lift $ pollFile fn timeout
-
-instance (MonadSysfs m, Monoid w) => MonadSysfs (StrictRWS.RWST r w s m) where
-  doesDirectoryExist = lift . doesDirectoryExist
-  doesFileExist = lift . doesFileExist
-  getDirectoryContents = lift . getDirectoryContents
-  readFile = lift . readFile
-  writeFile fn bs = lift $ writeFile fn bs
-  unlockedWriteFile fn bs = lift $ unlockedWriteFile fn bs
-  pollFile fn timeout = lift $ pollFile fn timeout
-
-instance (MonadSysfs m) => MonadSysfs (LazyState.StateT s m) where
-  doesDirectoryExist = lift . doesDirectoryExist
-  doesFileExist = lift . doesFileExist
-  getDirectoryContents = lift . getDirectoryContents
-  readFile = lift . readFile
-  writeFile fn bs = lift $ writeFile fn bs
-  unlockedWriteFile fn bs = lift $ unlockedWriteFile fn bs
-  pollFile fn timeout = lift $ pollFile fn timeout
-
-instance (MonadSysfs m) => MonadSysfs (StrictState.StateT s m) where
-  doesDirectoryExist = lift . doesDirectoryExist
-  doesFileExist = lift . doesFileExist
-  getDirectoryContents = lift . getDirectoryContents
-  readFile = lift . readFile
-  writeFile fn bs = lift $ writeFile fn bs
-  unlockedWriteFile fn bs = lift $ unlockedWriteFile fn bs
-  pollFile fn timeout = lift $ pollFile fn timeout
-
-instance (MonadSysfs m, Monoid w) => MonadSysfs (LazyWriter.WriterT w m) where
-  doesDirectoryExist = lift . doesDirectoryExist
-  doesFileExist = lift . doesFileExist
-  getDirectoryContents = lift . getDirectoryContents
-  readFile = lift . readFile
-  writeFile fn bs = lift $ writeFile fn bs
-  unlockedWriteFile fn bs = lift $ unlockedWriteFile fn bs
-  pollFile fn timeout = lift $ pollFile fn timeout
-
-instance (MonadSysfs m, Monoid w) => MonadSysfs (StrictWriter.WriterT w m) where
-  doesDirectoryExist = lift . doesDirectoryExist
-  doesFileExist = lift . doesFileExist
-  getDirectoryContents = lift . getDirectoryContents
-  readFile = lift . readFile
-  writeFile fn bs = lift $ writeFile fn bs
-  unlockedWriteFile fn bs = lift $ unlockedWriteFile fn bs
-  pollFile fn timeout = lift $ pollFile fn timeout
+instance (MonadSysfs m) => MonadSysfs (IdentityT m)
+instance (MonadSysfs m) => MonadSysfs (ContT r m)
+instance (MonadSysfs m) => MonadSysfs (CatchT m)
+instance (MonadSysfs m) => MonadSysfs (ExceptT e m)
+instance (MonadSysfs m) => MonadSysfs (ListT m)
+instance (MonadSysfs m) => MonadSysfs (MaybeT m)
+instance (MonadSysfs m) => MonadSysfs (ReaderT r m)
+instance (MonadSysfs m, Monoid w) => MonadSysfs (LazyRWS.RWST r w s m)
+instance (MonadSysfs m, Monoid w) => MonadSysfs (StrictRWS.RWST r w s m)
+instance (MonadSysfs m) => MonadSysfs (LazyState.StateT s m)
+instance (MonadSysfs m) => MonadSysfs (StrictState.StateT s m)
+instance (MonadSysfs m, Monoid w) => MonadSysfs (LazyWriter.WriterT w m)
+instance (MonadSysfs m, Monoid w) => MonadSysfs (StrictWriter.WriterT w m)
 
 -- | The @sysfs@ pin handle type. Currently it's just a newtype
 -- wrapper around a 'Pin'. The constructor is exported for
