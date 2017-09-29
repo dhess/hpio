@@ -125,6 +125,7 @@ executables:
     source-dirs: examples
     other-modules: []
     other-extensions:
+      - ConstraintKinds
       - FlexibleContexts
       - LambdaCase
       - OverloadedStrings
@@ -164,6 +165,7 @@ executables:
     <<: *executable
     main: Gpio.hs
     other-extensions:
+      - ConstraintKinds
       - LambdaCase
       - OverloadedStrings
 

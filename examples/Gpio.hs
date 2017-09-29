@@ -1,3 +1,4 @@
+{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -94,16 +95,20 @@ run (GlobalOptions SysfsIO (PollPin (PollPinOptions period trigger to inputPin o
       (runSysfsGpioIO $ driveOutput outputPin period)
 run (GlobalOptions SysfsIO ListPins) = runSysfsGpioIO listPins
 
-output :: (MonadIO m) => String -> m ()
+-- | Define a constraint that can work with multiple 'MonadGpio'
+-- interpreters.
+type GpioM h m = (MonadMask m, MonadIO m, MonadGpio h m)
+
+output :: (GpioM h m) => String -> m ()
 output = liftIO . putStrLn
 
-listPins :: (MonadIO m, MonadGpio h m) => m ()
+listPins :: (GpioM h m) => m ()
 listPins =
   pins >>= \case
     [] -> output "No GPIO pins found on this system"
     ps -> for_ ps $ liftIO . print
 
-pollInput :: (MonadMask m, MonadIO m, MonadGpio h m) => Pin -> PinInterruptMode -> Int -> m ()
+pollInput :: (GpioM h m) => Pin -> PinInterruptMode -> Int -> m ()
 pollInput p trigger to =
   withPin p $ \h ->
     do setPinInputMode h InputDefault
@@ -114,7 +119,7 @@ pollInput p trigger to =
               Nothing -> output ("readPin timed out after " ++ show to ++ " microseconds")
               Just v -> output ("Input: " ++ show v)
 
-driveOutput :: (MonadMask m, MonadIO m, MonadGpio h m) => Pin -> Int -> m ()
+driveOutput :: (GpioM h m) => Pin -> Int -> m ()
 driveOutput p delay =
   withPin p $ \h ->
     do setPinOutputMode h OutputDefault Low

@@ -5,6 +5,7 @@ a transformer stack.
 
 -}
 
+{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -125,13 +126,18 @@ run (GlobalOptions SysfsIO ListPins) = runSysfsGpioIO listPins
 output :: (MonadIO m) => String -> m ()
 output = liftIO . putStrLn
 
-listPins :: (MonadIO m, MonadGpio h m) => m ()
+-- | Define some constraint types that work with multiple 'MonadGpio'
+-- interpreters.
+type GpioM h m = (MonadMask m, MonadIO m, MonadGpio h m)
+type GpioReaderM h m = (MonadMask m, MonadIO m, MonadGpio h m, MonadReader Config m)
+
+listPins :: (GpioM h m) => m ()
 listPins =
   pins >>= \case
     [] -> output "No GPIO pins found on this system"
-    ps -> for_ ps $ liftIO . print
+    ps -> for_ ps $ output . show
 
-pollInput :: (MonadMask m, MonadIO m, MonadGpio h m, MonadReader Config m) => m ()
+pollInput :: (GpioReaderM h m) => m ()
 pollInput =
   do p <- asks pin
      mode <- asks trigger
@@ -145,7 +151,7 @@ pollInput =
                  Nothing -> output ("readPin timed out after " ++ show timeout ++ " microseconds")
                  Just v -> output ("Input: " ++ show v)
 
-driveOutput :: (MonadMask m, MonadIO m, MonadGpio h m, MonadReader Config m) => m ()
+driveOutput :: (GpioReaderM h m) => m ()
 driveOutput =
   do p <- asks pin
      delay <- asks wait

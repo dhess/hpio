@@ -115,7 +115,7 @@ executable hpio-example
   main-is: Gpio.hs
   hs-source-dirs:
       examples
-  other-extensions: LambdaCase OverloadedStrings
+  other-extensions: ConstraintKinds LambdaCase OverloadedStrings
   ghc-options: -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates -threaded
   if !(flag(examples))
     buildable: False
@@ -139,7 +139,7 @@ executable hpio-reader-example
   main-is: GpioReader.hs
   hs-source-dirs:
       examples
-  other-extensions: FlexibleContexts LambdaCase OverloadedStrings
+  other-extensions: ConstraintKinds FlexibleContexts LambdaCase OverloadedStrings
   ghc-options: -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates -threaded
   if !(flag(examples))
     buildable: False
