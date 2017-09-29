@@ -367,43 +367,43 @@ class Monad m => MonadGpio h m | m -> h where
   -- | Toggle the pin's active level. Returns the pin's new level.
   togglePinActiveLevel :: h -> m PinActiveLevel
 
-  default pins :: (MonadTrans t, MonadGpio h' m', t m' ~ m, h' ~ h) =>
+  default pins :: (MonadTrans t, MonadGpio h m', t m' ~ m) =>
     m [Pin]
-  default pinCapabilities :: (MonadTrans t, MonadGpio h' m', t m' ~ m, h' ~ h) =>
+  default pinCapabilities :: (MonadTrans t, MonadGpio h m', t m' ~ m) =>
     Pin -> m PinCapabilities
-  default openPin :: (MonadTrans t, MonadGpio h' m', t m' ~ m, h' ~ h) =>
+  default openPin :: (MonadTrans t, MonadGpio h m', t m' ~ m) =>
     Pin -> m h
-  default closePin :: (MonadTrans t, MonadGpio h' m', t m' ~ m, h' ~ h) =>
+  default closePin :: (MonadTrans t, MonadGpio h m', t m' ~ m) =>
     h -> m ()
-  default getPinDirection :: (MonadTrans t, MonadGpio h' m', t m' ~ m, h' ~ h) =>
+  default getPinDirection :: (MonadTrans t, MonadGpio h m', t m' ~ m) =>
     h -> m PinDirection
-  default getPinInputMode :: (MonadTrans t, MonadGpio h' m', t m' ~ m, h' ~ h) =>
+  default getPinInputMode :: (MonadTrans t, MonadGpio h m', t m' ~ m) =>
     h -> m PinInputMode
-  default setPinInputMode :: (MonadTrans t, MonadGpio h' m', t m' ~ m, h' ~ h) =>
+  default setPinInputMode :: (MonadTrans t, MonadGpio h m', t m' ~ m) =>
     h -> PinInputMode -> m ()
-  default getPinOutputMode :: (MonadTrans t, MonadGpio h' m', t m' ~ m, h' ~ h) =>
+  default getPinOutputMode :: (MonadTrans t, MonadGpio h m', t m' ~ m) =>
     h -> m PinOutputMode
-  default setPinOutputMode :: (MonadTrans t, MonadGpio h' m', t m' ~ m, h' ~ h) =>
+  default setPinOutputMode :: (MonadTrans t, MonadGpio h m', t m' ~ m) =>
     h -> PinOutputMode -> PinValue -> m ()
-  default readPin :: (MonadTrans t, MonadGpio h' m', t m' ~ m, h' ~ h) =>
+  default readPin :: (MonadTrans t, MonadGpio h m', t m' ~ m) =>
     h -> m PinValue
-  default pollPin :: (MonadTrans t, MonadGpio h' m', t m' ~ m, h' ~ h) =>
+  default pollPin :: (MonadTrans t, MonadGpio h m', t m' ~ m) =>
     h -> m PinValue
-  default pollPinTimeout :: (MonadTrans t, MonadGpio h' m', t m' ~ m, h' ~ h) =>
+  default pollPinTimeout :: (MonadTrans t, MonadGpio h m', t m' ~ m) =>
     h -> Int -> m (Maybe PinValue)
-  default writePin :: (MonadTrans t, MonadGpio h' m', t m' ~ m, h' ~ h) =>
+  default writePin :: (MonadTrans t, MonadGpio h m', t m' ~ m) =>
     h -> PinValue -> m ()
-  default togglePin :: (MonadTrans t, MonadGpio h' m', t m' ~ m, h' ~ h) =>
+  default togglePin :: (MonadTrans t, MonadGpio h m', t m' ~ m) =>
     h -> m PinValue
-  default getPinInterruptMode :: (MonadTrans t, MonadGpio h' m', t m' ~ m, h' ~ h) =>
+  default getPinInterruptMode :: (MonadTrans t, MonadGpio h m', t m' ~ m) =>
     h -> m PinInterruptMode
-  default setPinInterruptMode :: (MonadTrans t, MonadGpio h' m', t m' ~ m, h' ~ h) =>
+  default setPinInterruptMode :: (MonadTrans t, MonadGpio h m', t m' ~ m) =>
     h -> PinInterruptMode -> m ()
-  default getPinActiveLevel :: (MonadTrans t, MonadGpio h' m', t m' ~ m, h' ~ h) =>
+  default getPinActiveLevel :: (MonadTrans t, MonadGpio h m', t m' ~ m) =>
     h -> m PinActiveLevel
-  default setPinActiveLevel :: (MonadTrans t, MonadGpio h' m', t m' ~ m, h' ~ h) =>
+  default setPinActiveLevel :: (MonadTrans t, MonadGpio h m', t m' ~ m) =>
     h -> PinActiveLevel -> m ()
-  default togglePinActiveLevel :: (MonadTrans t, MonadGpio h' m', t m' ~ m, h' ~ h) =>
+  default togglePinActiveLevel :: (MonadTrans t, MonadGpio h m', t m' ~ m) =>
     h -> m PinActiveLevel
 
   pins = lift pins
