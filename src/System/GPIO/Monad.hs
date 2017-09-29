@@ -11,6 +11,7 @@ A monadic context for GPIO computations.
 
 -}
 
+{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -32,6 +33,10 @@ module System.GPIO.Monad
        , PinActiveLevel(..)
        , PinValue(..)
        , PinInterruptMode(..)
+
+         -- * Some convenient constraint synonyms for 'MonadGpio' signatures.
+       , MaskGpioM
+       , ThrowGpioM
 
          -- * MonadGpio class
        , MonadGpio(..)
@@ -633,6 +638,9 @@ instance (MonadGpio h m, Monoid w) => MonadGpio h (StrictWriter.WriterT w m) whe
   setPinActiveLevel h v = lift $ setPinActiveLevel h v
   togglePinActiveLevel = lift . togglePinActiveLevel
 
+type MaskGpioM h m = (MonadMask m, MonadGpio h m)
+type ThrowGpioM h m = (MonadThrow m, MonadGpio h m)
+
 -- | Exception-safe pin management.
 --
 -- 'withPin' opens a pin using 'openPin' and passes the handle to the
@@ -641,7 +649,7 @@ instance (MonadGpio h m, Monoid w) => MonadGpio h (StrictWriter.WriterT w m) whe
 -- handle using 'closePin' and then propagates the result, either by
 -- returning the value of the computation or by re-raising the
 -- exception.
-withPin :: (MonadMask m, MonadGpio h m) => Pin -> (h -> m a) -> m a
+withPin :: (MaskGpioM h m) => Pin -> (h -> m a) -> m a
 withPin p = bracket (openPin p) closePin
 
 -- | A handle to a pin that's been configured for non-blocking reads
@@ -665,7 +673,7 @@ maybeSetPinActiveLevel h (Just v) = setPinActiveLevel h v
 --
 -- It is an error to call this action if the pin cannot be configured
 -- for input, or if it does not support the specified input mode.
-withInputPin :: (MonadMask m, MonadGpio h m) => Pin -> PinInputMode -> Maybe PinActiveLevel -> (InputPin h -> m a) -> m a
+withInputPin :: (MaskGpioM h m) => Pin -> PinInputMode -> Maybe PinActiveLevel -> (InputPin h -> m a) -> m a
 withInputPin p mode l action =
   withPin p $ \h ->
     do setPinInputMode h mode
@@ -719,7 +727,7 @@ newtype InterruptPin h =
 -- * The pin does not support the specified input mode.
 --
 -- * The pin does not support interrupts.
-withInterruptPin :: (MonadMask m, MonadGpio h m) => Pin -> PinInputMode -> PinInterruptMode -> Maybe PinActiveLevel -> (InterruptPin h -> m a) -> m a
+withInterruptPin :: (MaskGpioM h m) => Pin -> PinInputMode -> PinInterruptMode -> Maybe PinActiveLevel -> (InterruptPin h -> m a) -> m a
 withInterruptPin p inputMode interruptMode l action =
   withPin p $ \h ->
     do setPinInputMode h inputMode
@@ -748,7 +756,7 @@ getInterruptPinInputMode p =
   getPinInputMode (_interruptHandle p)
 
 -- | Like 'getPinInterruptMode'.
-getInterruptPinInterruptMode :: (MonadThrow m, MonadGpio h m) => InterruptPin h -> m PinInterruptMode
+getInterruptPinInterruptMode :: (ThrowGpioM h m) => InterruptPin h -> m PinInterruptMode
 getInterruptPinInterruptMode p =
   getPinInterruptMode (_interruptHandle p)
 
@@ -790,7 +798,7 @@ newtype OutputPin h =
 --
 -- It is an error to call this action if the pin cannot be configured
 -- for output, or if it does not support the specified output mode.
-withOutputPin :: (MonadMask m, MonadGpio h m) => Pin -> PinOutputMode -> Maybe PinActiveLevel -> PinValue -> (OutputPin h -> m a) -> m a
+withOutputPin :: (MaskGpioM h m) => Pin -> PinOutputMode -> Maybe PinActiveLevel -> PinValue -> (OutputPin h -> m a) -> m a
 withOutputPin p mode l v action =
   withPin p $ \h ->
     do maybeSetPinActiveLevel h l

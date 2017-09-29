@@ -78,6 +78,7 @@ library:
   cc-options:
     - -Wall
   other-extensions:
+    - ConstraintKinds
     - CPP
     - DeriveDataTypeable
     - DeriveGeneric
