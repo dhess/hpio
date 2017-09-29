@@ -118,7 +118,7 @@ run (GlobalOptions SysfsIO ListPins) = runSysfsGpioIO listPins
 output :: (MonadIO m) => String -> m ()
 output = liftIO . putStrLn
 
-listPins :: (Applicative m, MonadIO m, MonadGpio h m) => m ()
+listPins :: (MonadIO m, MonadGpio h m) => m ()
 listPins =
   pins >>= \case
     [] -> output "No GPIO pins found on this system"
