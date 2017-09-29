@@ -123,6 +123,10 @@ executables:
     main: GpioReader.hs
     source-dirs: examples
     other-modules: []
+    other-extensions:
+      - FlexibleContexts
+      - LambdaCase
+      - OverloadedStrings
     ghc-options:
       - -threaded
     when:
@@ -151,9 +155,16 @@ executables:
   hpio-sysfs-example:
     <<: *executable
     main: Sysfs.hs
+    other-extensions:
+      - FlexibleContexts
+      - LambdaCase
+      - OverloadedStrings
   hpio-example:
     <<: *executable
     main: Gpio.hs
+    other-extensions:
+      - LambdaCase
+      - OverloadedStrings
 
 tests:
   hlint:
