@@ -263,7 +263,7 @@ newtype SysfsGpioT m a =
 instance MonadTrans SysfsGpioT where
   lift = SysfsGpioT
 
-instance (Functor m, MonadCatch m, MonadMask m, MonadThrow m, MonadSysfs m) => MonadGpio PinDescriptor (SysfsGpioT m) where
+instance (MonadCatch m, MonadMask m, MonadThrow m, MonadSysfs m) => MonadGpio PinDescriptor (SysfsGpioT m) where
   pins =
     lift sysfsIsPresent >>= \case
       False -> return []
@@ -595,7 +595,7 @@ readPinValue p =
 --
 -- If the pin has no @edge@ attribute, then this action's behavior is
 -- undefined. (Most likely, it will block indefinitely.)
-pollPinValue :: (Functor m, MonadSysfs m, MonadThrow m, MonadCatch m) => Pin -> m PinValue
+pollPinValue :: (MonadSysfs m, MonadThrow m, MonadCatch m) => Pin -> m PinValue
 pollPinValue p =
   pollPinValueTimeout p (-1) >>= \case
      Just v -> return v
@@ -623,7 +623,7 @@ pollPinValue p =
 -- NB: the curent implementation of this action limits the timeout
 -- precision to 1 millisecond, rather than 1 microsecond as the
 -- timeout parameter implies.
-pollPinValueTimeout :: (Functor m, MonadSysfs m, MonadThrow m, MonadCatch m) => Pin -> Int -> m (Maybe PinValue)
+pollPinValueTimeout :: (MonadSysfs m, MonadThrow m, MonadCatch m) => Pin -> Int -> m (Maybe PinValue)
 pollPinValueTimeout p timeout =
   catchIOError
     (do pollResult <- pollFile (pinValueFileName p) timeout
