@@ -173,7 +173,6 @@ class (Monad m) => MonadSysfs m where
   pollFile fn timeout = lift $ pollFile fn timeout
   {-# INLINE pollFile #-}
 
-
 instance (MonadSysfs m) => MonadSysfs (IdentityT m)
 instance (MonadSysfs m) => MonadSysfs (ContT r m)
 instance (MonadSysfs m) => MonadSysfs (CatchT m)
@@ -500,7 +499,6 @@ resetEdge p =
             do edge <- readPinEdge p
                return $ Just edge
 
-
 writeDirection :: (CatchSysfsM m) => Pin -> ByteString -> m ()
 writeDirection p bs =
   catchIOError
@@ -516,6 +514,7 @@ writeDirection p bs =
                 else throwM $ NotExported p
       | isPermissionError e = throwM $ PermissionDenied p
       | otherwise = throwM e
+
 -- | Read the pin's signal level.
 --
 -- Note that this action never blocks, regardless of the pin's @edge@
