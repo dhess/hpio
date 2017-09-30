@@ -1,7 +1,7 @@
 ## 0.9.0.0 (2017-09-30)
 
 Changes:
-  - This project now uses Protolude. I believe the only visible
+  - This project now uses Protolude (0.2.*). I believe the only visible
     API change is that SysfsException's string type is now Text,
     instead of String.
   - Add monad and transformer instances for transformers-base,
