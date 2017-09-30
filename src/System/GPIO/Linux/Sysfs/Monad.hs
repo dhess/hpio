@@ -13,6 +13,7 @@ Monad type classes and instances for Linux @sysfs@ GPIO operations.
 
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DefaultSignatures #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -20,6 +21,7 @@ Monad type classes and instances for Linux @sysfs@ GPIO operations.
 {-# LANGUAGE PackageImports #-}
 {-# LANGUAGE Trustworthy #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module System.GPIO.Linux.Sysfs.Monad
        ( -- * MonadSysfs class
@@ -79,7 +81,8 @@ import Control.Monad.RWS (MonadRWS)
 import Control.Monad.State (MonadState)
 import Control.Monad.Trans.Class (MonadTrans, lift)
 import Control.Monad.Trans.Control
-       (MonadBaseControl, MonadTransControl(..))
+       (ComposeSt, MonadBaseControl(..), MonadTransControl(..),
+        defaultLiftBaseWith, defaultRestoreM)
 import Control.Monad.Trans.Identity (IdentityT)
 import "transformers" Control.Monad.Trans.List (ListT)
 import Control.Monad.Trans.Maybe (MaybeT)
@@ -210,7 +213,6 @@ newtype SysfsGpioT m a = SysfsGpioT
              , Applicative
              , Monad
              , MonadBase b
-             , MonadBaseControl b
              , MonadFix
              , MonadPlus
              , MonadThrow
@@ -229,6 +231,13 @@ newtype SysfsGpioT m a = SysfsGpioT
 
 instance MonadTrans SysfsGpioT where
   lift = SysfsGpioT
+
+instance MonadBaseControl b m => MonadBaseControl b (SysfsGpioT m) where
+  type StM (SysfsGpioT m) a = ComposeSt SysfsGpioT m a
+  liftBaseWith = defaultLiftBaseWith
+  restoreM = defaultRestoreM
+  {-# INLINABLE liftBaseWith #-}
+  {-# INLINABLE restoreM #-}
 
 instance MonadTransControl SysfsGpioT where
   type StT SysfsGpioT a = a

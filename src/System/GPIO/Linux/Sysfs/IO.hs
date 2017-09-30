@@ -13,13 +13,16 @@ obviously.
 
 -}
 
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE InterruptibleFFI #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PackageImports #-}
 {-# LANGUAGE Trustworthy #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module System.GPIO.Linux.Sysfs.IO
          ( -- * SysfsIOT transformer
@@ -41,7 +44,8 @@ import Control.Monad.RWS (MonadRWS)
 import Control.Monad.State (MonadState)
 import Control.Monad.Trans.Class (MonadTrans(..))
 import Control.Monad.Trans.Control
-       (MonadBaseControl, MonadTransControl(..))
+       (ComposeSt, MonadBaseControl(..), MonadTransControl(..),
+        defaultLiftBaseWith, defaultRestoreM)
 import Control.Monad.Writer (MonadWriter)
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as BS (readFile, writeFile)
@@ -81,7 +85,6 @@ newtype SysfsIOT m a = SysfsIOT
              , Applicative
              , Monad
              , MonadBase b
-             , MonadBaseControl b
              , MonadFix
              , MonadPlus
              , MonadThrow
@@ -100,6 +103,13 @@ newtype SysfsIOT m a = SysfsIOT
 
 instance MonadTrans SysfsIOT where
   lift = SysfsIOT
+
+instance MonadBaseControl b m => MonadBaseControl b (SysfsIOT m) where
+  type StM (SysfsIOT m) a = ComposeSt SysfsIOT m a
+  liftBaseWith = defaultLiftBaseWith
+  restoreM = defaultRestoreM
+  {-# INLINABLE liftBaseWith #-}
+  {-# INLINABLE restoreM #-}
 
 instance MonadTransControl SysfsIOT where
   type StT SysfsIOT a = a

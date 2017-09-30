@@ -16,11 +16,14 @@ filesystem.
 -}
 
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE Trustworthy #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module System.GPIO.Linux.Sysfs.Mock
        ( -- * SysfsMock types
@@ -97,7 +100,9 @@ import Control.Monad.Reader (MonadReader(..))
 import Control.Monad.State.Strict (MonadState(..), StateT(..), gets, execStateT)
 import Control.Monad.Trans.Class (MonadTrans)
 import Control.Monad.Trans.Control
-       (MonadBaseControl, MonadTransControl(..))
+       (ComposeSt, MonadBaseControl(..), MonadTransControl(..),
+        defaultLiftBaseWith, defaultLiftWith, defaultRestoreM,
+        defaultRestoreT)
 import Control.Monad.Writer (MonadWriter(..))
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Char8 as C8 (pack, unlines)
@@ -258,7 +263,6 @@ newtype SysfsMockT m a = SysfsMockT
              , Applicative
              , Monad
              , MonadBase b
-             , MonadBaseControl b
              , MonadFix
              , MonadPlus
              , MonadThrow
@@ -273,8 +277,21 @@ newtype SysfsMockT m a = SysfsMockT
              , MonadLogger
              , MonadLoggerIO
              , MonadTrans
-             , MonadTransControl
              )
+
+instance MonadBaseControl b m => MonadBaseControl b (SysfsMockT m) where
+  type StM (SysfsMockT m) a = ComposeSt SysfsMockT m a
+  liftBaseWith = defaultLiftBaseWith
+  restoreM = defaultRestoreM
+  {-# INLINABLE liftBaseWith #-}
+  {-# INLINABLE restoreM #-}
+
+instance MonadTransControl SysfsMockT where
+  type StT SysfsMockT a = StT (StateT MockWorld) a
+  liftWith = defaultLiftWith SysfsMockT unSysfsMockT
+  restoreT = defaultRestoreT SysfsMockT
+  {-# INLINABLE liftWith #-}
+  {-# INLINABLE restoreT #-}
 
 getZipper :: (Monad m) => SysfsMockT m MockFSZipper
 getZipper = gets _zipper
