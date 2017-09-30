@@ -1,3 +1,22 @@
+## 0.9.0.0 (2017-09-30)
+
+Changes:
+  - This project now uses Protolude. I believe the only visible
+    API change is that SysfsException's string type is now Text,
+    instead of String.
+  - Add monad and transformer instances for transformers-base,
+    monad-control, and monad-logger monads.
+  - Use DefaultSignatures and ConstraintKinds to simplify the
+    implementation.
+  - Use hpack to generate the project's Cabal file.
+
+Fixes:
+  - Add some new compile-time warnings.
+  - Remove redundant Functor and Applicative constraints.
+  - Update Travis-CI config to test against more recent Stackage LTS
+    and GHC releases.
+  - Remove most of the Travis-CI macOS jobs; they're really slow.
+
 ## 0.8.0.10 (2017-06-28)
 
 Fixes:
