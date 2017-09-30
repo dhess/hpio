@@ -12,18 +12,22 @@ implementation directly, without using the
 
 module Main where
 
-import Protolude
+-- Protolude uses <> and options from Semigroups, but
+-- optparse-applicative hasn't caught up yet.
+import Protolude hiding ((<>))
 import Control.Concurrent (threadDelay)
 import Control.Concurrent.Async (concurrently)
 import Control.Exception (bracket_)
 import Control.Monad (forever, void)
 import Control.Monad.IO.Class (liftIO)
+import Data.Monoid ((<>))
 import Data.Foldable (for_)
 import Data.Text (unwords)
 import Options.Applicative
        (Parser, argument, auto, command, execParser, fullDesc, header,
-        help, helper, hsubparser, info, long, metavar, option, progDesc,
-        short, showDefault, value)
+        help, helper, hsubparser, info, long, metavar, progDesc, short,
+        showDefault, value)
+import qualified Options.Applicative as Options (option)
 import System.GPIO.Linux.Sysfs.IO (SysfsIOT(..))
 import System.GPIO.Linux.Sysfs.Monad
        (availablePins, exportPin, pollPinValueTimeout, readPinValue,
@@ -57,23 +61,23 @@ oneSecond = 1 * 1000000
 readEdgeOptions :: Parser ReadEdgeOptions
 readEdgeOptions =
   ReadEdgeOptions <$>
-    option auto (long "period" <>
-                 short 'p' <>
-                 metavar "INT" <>
-                 value oneSecond <>
-                 showDefault <>
-                 help "Delay between output pin value toggles (in microseconds)") <*>
-    option auto (long "edge" <>
-                 short 'e' <>
-                 metavar "None|Rising|Falling|Both" <>
-                 value Both <>
-                 showDefault <>
-                 help "Edge on which to trigger the input pin") <*>
-    option auto (long "timeout" <>
-                 short 'T' <>
-                 metavar "INT" <>
-                 value (-1) <>
-                 help "Use a timeout for readPin (in microseconds)") <*>
+    Options.option auto (long "period" <>
+                         short 'p' <>
+                         metavar "INT" <>
+                         value oneSecond <>
+                         showDefault <>
+                         help "Delay between output pin value toggles (in microseconds)") <*>
+    Options.option auto (long "edge" <>
+                         short 'e' <>
+                         metavar "None|Rising|Falling|Both" <>
+                         value Both <>
+                         showDefault <>
+                         help "Edge on which to trigger the input pin") <*>
+    Options.option auto (long "timeout" <>
+                         short 'T' <>
+                         metavar "INT" <>
+                         value (-1) <>
+                         help "Use a timeout for readPin (in microseconds)") <*>
     argument auto (metavar "INPIN")  <*>
     argument auto (metavar "OUTPIN")
 

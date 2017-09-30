@@ -12,19 +12,23 @@ a transformer stack.
 
 module Main where
 
-import Protolude
+-- Protolude uses <> and options from Semigroups, but
+-- optparse-applicative hasn't caught up yet.
+import Protolude hiding ((<>))
 import Control.Concurrent (threadDelay)
 import Control.Concurrent.Async (concurrently)
 import Control.Monad (forever, void)
 import Control.Monad.Catch (MonadMask)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Reader (MonadReader(..), ReaderT(..), asks)
+import Data.Monoid ((<>))
 import Data.Foldable (for_)
 import Data.Text (unwords)
 import Options.Applicative
        (Parser, argument, auto, command, execParser, fullDesc, header,
-        help, helper, hsubparser, info, long, metavar, option, progDesc,
-        short, showDefault, value)
+        help, helper, hsubparser, info, long, metavar, progDesc, short,
+        showDefault, value)
+import qualified Options.Applicative as Options (option)
 import System.GPIO.Linux.Sysfs (SysfsIOT, SysfsGpioT, runSysfsGpioT, runSysfsIOT, runSysfsGpioIO)
 import System.GPIO.Monad
        (MonadGpio, Pin, PinInputMode(..), PinInterruptMode(..),
@@ -64,35 +68,35 @@ oneSecond = 1 * 1000000
 pollPinOptions :: Parser PollPinOptions
 pollPinOptions =
   PollPinOptions <$>
-    option auto (long "period" <>
-                 short 'p' <>
-                 metavar "INT" <>
-                 value oneSecond <>
-                 showDefault <>
-                 help "Delay between output pin value toggles (in microseconds)") <*>
-    option auto (long "trigger" <>
-                 short 't' <>
-                 metavar "Disabled|RisingEdge|FallingEdge|Level" <>
-                 value Level <>
-                 showDefault <>
-                 help "Event on which to trigger the input pin") <*>
-    option auto (long "timeout" <>
-                 short 'T' <>
-                 metavar "INT" <>
-                 value (-1) <>
-                 help "Poll timeout (in microseconds)") <*>
+    Options.option auto (long "period" <>
+                         short 'p' <>
+                         metavar "INT" <>
+                         value oneSecond <>
+                         showDefault <>
+                         help "Delay between output pin value toggles (in microseconds)") <*>
+    Options.option auto (long "trigger" <>
+                         short 't' <>
+                         metavar "Disabled|RisingEdge|FallingEdge|Level" <>
+                         value Level <>
+                         showDefault <>
+                         help "Event on which to trigger the input pin") <*>
+    Options.option auto (long "timeout" <>
+                         short 'T' <>
+                         metavar "INT" <>
+                         value (-1) <>
+                         help "Poll timeout (in microseconds)") <*>
     argument auto (metavar "INPIN")  <*>
     argument auto (metavar "OUTPIN")
 
 cmds :: Parser GlobalOptions
 cmds =
   GlobalOptions <$>
-    option auto (long "interpreter" <>
-                 short 'i' <>
-                 metavar "SysfsIO" <>
-                 value SysfsIO <>
-                 showDefault <>
-                 help "Choose the GPIO interpreter (system) to use") <*>
+    Options.option auto (long "interpreter" <>
+                         short 'i' <>
+                         metavar "SysfsIO" <>
+                         value SysfsIO <>
+                         showDefault <>
+                         help "Choose the GPIO interpreter (system) to use") <*>
     hsubparser
       (command "listPins" (info listPinsCmd (progDesc "List the GPIO pins available on the system")) <>
        command "pollPin" (info pollPinCmd (progDesc "Drive INPIN using OUTPIN. (Make sure the pins are connected!")))
