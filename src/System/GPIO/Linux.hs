@@ -20,8 +20,7 @@ that implementation would presumably also be exported from here.
 {-# LANGUAGE Safe #-}
 
 module System.GPIO.Linux
-       ( -- * Linux @sysfs@ GPIO
-         module System.GPIO.Linux.Sysfs
+       ( module X
        ) where
 
-import System.GPIO.Linux.Sysfs
+import System.GPIO.Linux.Sysfs as X
