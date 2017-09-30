@@ -7,6 +7,7 @@ extra-deps:
 - fail-4.9.0.0
 - protolude-0.2
 - semigroups-0.18.3
+- transformers-compat-0.5.1.4
 - unix-bytestring-0.3.7.3
 flags:
   hpio:
