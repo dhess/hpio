@@ -45,12 +45,12 @@ module System.GPIO.Types
        , gpioExceptionFromException
        ) where
 
+import Protolude
 import Control.Exception (Exception(..), SomeException)
-import Data.Bits
 import Data.Data
 import Data.Ix
 import Data.Set (Set)
-import GHC.Generics
+import qualified GHC.Show as GHC (Show(..))
 import Test.QuickCheck (Arbitrary(..), arbitraryBoundedEnum, genericShrink)
 
 -- | A GPIO pin, identified by pin number.
@@ -287,7 +287,7 @@ data SomeGpioException = forall e . Exception e => SomeGpioException e
     deriving Typeable
 
 instance Show SomeGpioException where
-    show (SomeGpioException e) = show e
+    show (SomeGpioException e) = GHC.show e
 
 instance Exception SomeGpioException
 

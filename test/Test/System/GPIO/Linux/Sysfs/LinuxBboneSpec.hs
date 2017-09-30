@@ -4,6 +4,7 @@
 
 module Test.System.GPIO.Linux.Sysfs.LinuxBboneSpec (spec) where
 
+import Protolude
 import Control.Concurrent (forkIO, threadDelay)
 import Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar)
 import Control.Monad (void)
@@ -15,6 +16,7 @@ import System.GPIO.Monad (MonadGpio(..), withPin)
 import System.GPIO.Types
        (Pin(..), PinInputMode(..), PinOutputMode(..), PinActiveLevel(..),
         PinDirection(..), PinInterruptMode(..), PinValue(..))
+import System.IO.Error (userError)
 import Test.Hspec
 
 isInvalidPinError :: SysfsException -> Bool

@@ -26,8 +26,7 @@ module System.GPIO.Linux.Sysfs.IO
            SysfsIOT(..)
          ) where
 
-import Prelude ()
-import Prelude.Compat
+import Protolude hiding (bracket)
 import Control.Applicative (Alternative)
 import Control.Monad (MonadPlus, void)
 import Control.Monad.Base (MonadBase)

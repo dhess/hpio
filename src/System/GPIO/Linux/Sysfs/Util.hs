@@ -50,6 +50,8 @@ module System.GPIO.Linux.Sysfs.Util
        , bsToInt
        ) where
 
+import Protolude hiding (show)
+import Prelude (show)
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as BS (empty)
 import Data.ByteString.Builder (toLazyByteString, intDec)

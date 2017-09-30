@@ -103,8 +103,7 @@ module System.GPIO.Monad
        , gpioExceptionFromException
        ) where
 
-import Prelude ()
-import Prelude.Compat
+import Protolude hiding (bracket)
 import Control.Monad.Catch (MonadMask, MonadThrow, bracket)
 import Control.Monad.Catch.Pure (CatchT)
 import Control.Monad.Logger (LoggingT, NoLoggingT)
@@ -429,7 +428,7 @@ class Monad m => MonadGpio h m | m -> h where
   {-# INLINE readPin #-}
   pollPin = lift . readPin
   {-# INLINE pollPin #-}
-  pollPinTimeout h to = lift $ pollPinTimeout h to
+  pollPinTimeout h timeout = lift $ pollPinTimeout h timeout
   {-# INLINE pollPinTimeout #-}
   writePin h v = lift $ writePin h v
   {-# INLINE writePin #-}

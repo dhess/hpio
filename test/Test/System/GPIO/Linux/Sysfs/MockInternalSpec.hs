@@ -3,9 +3,12 @@
 
 module Test.System.GPIO.Linux.Sysfs.MockInternalSpec (spec) where
 
+import Protolude
 import GHC.IO.Exception (IOErrorType(..))
 import System.GPIO.Linux.Sysfs.Mock.Internal
-import System.IO.Error (ioeGetErrorType, isAlreadyExistsError, isDoesNotExistError)
+import System.IO.Error
+       (IOError, ioeGetErrorType, isAlreadyExistsError,
+        isDoesNotExistError)
 import Test.Hspec
 
 isInvalidArgumentErrorType :: IOErrorType -> Bool
@@ -198,59 +201,59 @@ spec =
        describe "mkfile" $
          do it "creates a file in the current directory when clobber is False" $
               do let Right z1 = cd "/sys/class/gpio" sysfsRootZ
-                 let Right (MockFSZipper dir2 (crumb2:_)) = mkfile "gpio1" (Const ["Hey!", "This is gpio1"]) False z1
+                 let Right (MockFSZipper dir2 (crumb2:_)) = mkfile "gpio1" (Constant ["Hey!", "This is gpio1"]) False z1
                  dirName dir2 `shouldBe` "gpio"
                  parentName crumb2 `shouldBe` "class"
                  let file:rest = files dir2
                  _fileName file `shouldBe` "gpio1"
-                 _fileType file `shouldBe` (Const ["Hey!", "This is gpio1"])
+                 _fileType file `shouldBe` (Constant ["Hey!", "This is gpio1"])
                  rest `shouldBe` [File {_fileName = "export", _fileType = Export},File {_fileName = "unexport", _fileType = Unexport}]
 
             it "creates a file in the current directory when clobber is True" $
               do let Right z1 = cd "/sys/class/gpio" sysfsRootZ
-                 let Right (MockFSZipper dir2 (crumb2:_)) = mkfile "gpio1" (Const ["Hey!", "This is gpio1"]) True z1
+                 let Right (MockFSZipper dir2 (crumb2:_)) = mkfile "gpio1" (Constant ["Hey!", "This is gpio1"]) True z1
                  dirName dir2 `shouldBe` "gpio"
                  parentName crumb2 `shouldBe` "class"
                  let file:rest = files dir2
                  _fileName file `shouldBe` "gpio1"
-                 _fileType file `shouldBe` (Const ["Hey!", "This is gpio1"])
+                 _fileType file `shouldBe` (Constant ["Hey!", "This is gpio1"])
                  rest `shouldBe` [File {_fileName = "export", _fileType = Export},File {_fileName = "unexport", _fileType = Unexport}]
 
             it "fails when a subdir with the same name already exists" $ do
-              let Left result1 = mkfile "sys" (Const []) True sysfsRootZ
+              let Left result1 = mkfile "sys" (Constant []) True sysfsRootZ
               isAlreadyExistsError result1 `shouldBe` True
-              let Left result2 = mkfile "sys" (Const []) False sysfsRootZ
+              let Left result2 = mkfile "sys" (Constant []) False sysfsRootZ
               isAlreadyExistsError result2 `shouldBe` True
 
             it "fails when a file with the same name already exists and clobber is False" $
-              do let Left result = (cd "/sys/class/gpio" sysfsRootZ >>= mkfile "export" (Const []) False)
+              do let Left result = (cd "/sys/class/gpio" sysfsRootZ >>= mkfile "export" (Constant []) False)
                  isAlreadyExistsError result `shouldBe` True
 
             it "overwrites an existing file's contents when a file with the same name already exists and clobber is True" $
               do let Right z1 = cd "/sys/class/gpio" sysfsRootZ
-                 let Right z2 = mkfile "gpio1" (Const ["Hey!", "This is gpio1"]) False z1
-                 let Right (MockFSZipper dir3 (crumb3:_)) = mkfile "gpio1" (Const ["Hey!", "Now I'm gpio1"]) True z2
+                 let Right z2 = mkfile "gpio1" (Constant ["Hey!", "This is gpio1"]) False z1
+                 let Right (MockFSZipper dir3 (crumb3:_)) = mkfile "gpio1" (Constant ["Hey!", "Now I'm gpio1"]) True z2
                  dirName dir3 `shouldBe` "gpio"
                  parentName crumb3 `shouldBe` "class"
                  let file:rest = files dir3
                  _fileName file `shouldBe` "gpio1"
-                 _fileType file `shouldBe` (Const ["Hey!", "Now I'm gpio1"])
+                 _fileType file `shouldBe` (Constant ["Hey!", "Now I'm gpio1"])
                  rest `shouldBe` [File {_fileName = "export", _fileType = Export},File {_fileName = "unexport", _fileType = Unexport}]
 
             it "fails with an invalid name" $ do
-              let Left result1 = mkfile "" (Const []) False sysfsRootZ
+              let Left result1 = mkfile "" (Constant []) False sysfsRootZ
               isInvalidArgumentError result1 `shouldBe` True
-              let Left result2 = mkfile "" (Const []) True sysfsRootZ
+              let Left result2 = mkfile "" (Constant []) True sysfsRootZ
               isInvalidArgumentError result2 `shouldBe` True
 
             it "fails when the name contains a '/'" $
-              do let Left result1 = mkfile "/abc" (Const []) False sysfsRootZ
+              do let Left result1 = mkfile "/abc" (Constant []) False sysfsRootZ
                  isInvalidArgumentError result1 `shouldBe` True
-                 let Left result2 = mkfile "/abc" (Const []) True sysfsRootZ
+                 let Left result2 = mkfile "/abc" (Constant []) True sysfsRootZ
                  isInvalidArgumentError result2 `shouldBe` True
-                 let Left result3 = mkfile "sys/foobar" (Const []) False sysfsRootZ
+                 let Left result3 = mkfile "sys/foobar" (Constant []) False sysfsRootZ
                  isInvalidArgumentError result3 `shouldBe` True
-                 let Left result4 = mkfile "sys/foobar" (Const []) True sysfsRootZ
+                 let Left result4 = mkfile "sys/foobar" (Constant []) True sysfsRootZ
                  isInvalidArgumentError result4 `shouldBe` True
 
        describe "findFile" $
@@ -258,8 +261,8 @@ spec =
               do let Right z1@(MockFSZipper dir1 _) = cd "/sys/class/gpio" sysfsRootZ
                  findFile "export" dir1 `shouldBe` (Just Export)
                  findFile "unexport" dir1 `shouldBe` (Just Unexport)
-                 let Right (MockFSZipper dir2 _) = mkfile "gpio1" (Const ["Hey!", "This is gpio1"]) False z1
-                 findFile "gpio1" dir2 `shouldBe` (Just ((Const ["Hey!", "This is gpio1"])))
+                 let Right (MockFSZipper dir2 _) = mkfile "gpio1" (Constant ["Hey!", "This is gpio1"]) False z1
+                 findFile "gpio1" dir2 `shouldBe` (Just ((Constant ["Hey!", "This is gpio1"])))
             it "doesn't find subdirectories in the current directory" $
               do let Right (MockFSZipper dir1 _) = cd "/sys/class" sysfsRootZ
                  findFile "gpio" dir1 `shouldBe` Nothing
@@ -297,11 +300,11 @@ spec =
 
        describe "rmfile" $
          do it "removes a file in the current directory" $
-              do let Right z1 = cd "/sys" sysfsRootZ >>= mkfile "abc" (Const []) False >>= mkfile "def" (Const []) False
+              do let Right z1 = cd "/sys" sysfsRootZ >>= mkfile "abc" (Constant []) False >>= mkfile "def" (Constant []) False
                  let Right z2@(MockFSZipper dir2 (crumb2:_)) = rmfile "abc" z1
                  dirName dir2 `shouldBe` "sys"
                  parentName crumb2 `shouldBe` "/"
-                 files dir2 `shouldBe` [File {_fileName = "def", _fileType = (Const [])}]
+                 files dir2 `shouldBe` [File {_fileName = "def", _fileType = (Constant [])}]
                  let Right (MockFSZipper dir3 (crumb3:_)) = rmfile "def" z2
                  dirName dir3 `shouldBe` "sys"
                  parentName crumb3 `shouldBe` "/"

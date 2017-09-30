@@ -12,13 +12,14 @@ implementation directly, without using the
 
 module Main where
 
+import Protolude
 import Control.Concurrent (threadDelay)
 import Control.Concurrent.Async (concurrently)
 import Control.Exception (bracket_)
 import Control.Monad (forever, void)
 import Control.Monad.IO.Class (liftIO)
 import Data.Foldable (for_)
-import Data.Monoid ((<>))
+import Data.Text (unwords)
 import Options.Applicative
        (Parser, argument, auto, command, execParser, fullDesc, header,
         help, helper, hsubparser, info, long, metavar, option, progDesc,
@@ -89,10 +90,10 @@ runNativeSysfs :: NativeSysfs a -> IO a
 runNativeSysfs = runSysfsIOT
 
 run :: GlobalOptions -> IO ()
-run (GlobalOptions (ReadEdge (ReadEdgeOptions period edge to inputPin outputPin))) =
+run (GlobalOptions (ReadEdge (ReadEdgeOptions period edge timeout inputPin outputPin))) =
   void $
     concurrently
-      (runNativeSysfs $ edgeRead inputPin edge to)
+      (runNativeSysfs $ edgeRead inputPin edge timeout)
       (runNativeSysfs $ driveOutput outputPin period)
 run (GlobalOptions ListPins) = runNativeSysfs listPins
 
@@ -102,19 +103,19 @@ withPin p block = liftIO $ bracket_ (runNativeSysfs $ exportPin p) (runNativeSys
 listPins :: NativeSysfs ()
 listPins =
   availablePins >>= \case
-    [] -> liftIO $ putStrLn "No GPIO pins found on this system"
-    ps -> for_ ps $ liftIO . print
+    [] -> putText "No GPIO pins found on this system"
+    ps -> for_ ps $ putText . show
 
 edgeRead :: Pin -> SysfsEdge -> Int -> NativeSysfs ()
-edgeRead p edge to =
+edgeRead p edge timeout =
   withPin p $
     do writePinDirection p In
        writePinEdge p edge
        forever $
-         do result <- pollPinValueTimeout p to
+         do result <- pollPinValueTimeout p timeout
             case result of
-              Nothing -> liftIO $ putStrLn ("readPin timed out after " ++ show to ++ " microseconds")
-              Just v -> liftIO $ putStrLn ("Input: " ++ show v)
+              Nothing -> putText $ unwords ["readPin timed out after", show timeout, "microseconds"]
+              Just v -> putText $ unwords ["Input:", show v]
 
 driveOutput :: Pin -> Int -> NativeSysfs ()
 driveOutput p delay =
@@ -125,7 +126,7 @@ driveOutput p delay =
             v <- readPinValue p
             let notv = invertValue v
             writePinValue p notv
-            liftIO $ putStrLn ("Output: " ++ show notv)
+            putText $ unwords ["Output:", show notv]
 
 main :: IO ()
 main =execParser opts >>= run

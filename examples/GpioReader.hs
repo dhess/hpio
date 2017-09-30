@@ -12,6 +12,7 @@ a transformer stack.
 
 module Main where
 
+import Protolude
 import Control.Concurrent (threadDelay)
 import Control.Concurrent.Async (concurrently)
 import Control.Monad (forever, void)
@@ -19,7 +20,7 @@ import Control.Monad.Catch (MonadMask)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Reader (MonadReader(..), ReaderT(..), asks)
 import Data.Foldable (for_)
-import Data.Monoid ((<>))
+import Data.Text (unwords)
 import Options.Applicative
        (Parser, argument, auto, command, execParser, fullDesc, header,
         help, helper, hsubparser, info, long, metavar, option, progDesc,
@@ -49,7 +50,7 @@ listPinsCmd = pure ListPins
 
 data PollPinOptions =
   PollPinOptions {_period :: !Int
-                 ,_trigger :: !PinInterruptMode
+                 ,_interruptMode :: !PinInterruptMode
                  ,_timeout :: !Int
                  ,_outputPin :: !Pin
                  ,_inputPin :: !Pin}
@@ -97,9 +98,9 @@ cmds =
        command "pollPin" (info pollPinCmd (progDesc "Drive INPIN using OUTPIN. (Make sure the pins are connected!")))
 
 data Config =
-  Config {pin :: Pin
-         ,trigger :: PinInterruptMode
-         ,wait :: Int}
+  Config {_pin :: Pin
+         ,_trigger :: PinInterruptMode
+         ,_wait :: Int}
   deriving ((Show))
 
 -- | Our 'IO' transformer stack:
@@ -114,17 +115,14 @@ runSysfsGpioReaderIO :: SysfsGpioReaderIO a -> Config -> IO a
 runSysfsGpioReaderIO act config = runSysfsIOT $ runSysfsGpioT $ runReaderT act config
 
 run :: GlobalOptions -> IO ()
-run (GlobalOptions SysfsIO (PollPin (PollPinOptions period mode to inputPin outputPin))) =
+run (GlobalOptions SysfsIO (PollPin (PollPinOptions period mode timeout inputPin outputPin))) =
   void $
     concurrently
-      (runSysfsGpioReaderIO pollInput (Config inputPin mode to))
+      (runSysfsGpioReaderIO pollInput (Config inputPin mode timeout))
       (runSysfsGpioReaderIO driveOutput (Config outputPin Disabled period))
 -- The 'listPins' program takes no arguments, so we don't need our
 -- custom 'IO' transformer stack here.
 run (GlobalOptions SysfsIO ListPins) = runSysfsGpioIO listPins
-
-output :: (MonadIO m) => String -> m ()
-output = liftIO . putStrLn
 
 -- | Define some constraint types that work with multiple 'MonadGpio'
 -- interpreters.
@@ -134,33 +132,33 @@ type GpioReaderM h m = (MonadMask m, MonadIO m, MonadGpio h m, MonadReader Confi
 listPins :: (GpioM h m) => m ()
 listPins =
   pins >>= \case
-    [] -> output "No GPIO pins found on this system"
-    ps -> for_ ps $ output . show
+    [] -> putText "No GPIO pins found on this system"
+    ps -> for_ ps $ putText . show
 
 pollInput :: (GpioReaderM h m) => m ()
 pollInput =
-  do p <- asks pin
-     mode <- asks trigger
-     timeout <- asks wait
+  do p <- asks _pin
+     mode <- asks _trigger
+     timeout <- asks _wait
      withPin p $ \h ->
        do setPinInputMode h InputDefault
           setPinInterruptMode h mode
           forever $
             do result <- pollPinTimeout h timeout
                case result of
-                 Nothing -> output ("readPin timed out after " ++ show timeout ++ " microseconds")
-                 Just v -> output ("Input: " ++ show v)
+                 Nothing -> putText $ unwords ["readPin timed out after", show timeout, "microseconds"]
+                 Just v -> putText $ unwords ["Input:", show v]
 
 driveOutput :: (GpioReaderM h m) => m ()
 driveOutput =
-  do p <- asks pin
-     delay <- asks wait
+  do p <- asks _pin
+     delay <- asks _wait
      withPin p $ \h ->
        do setPinOutputMode h OutputDefault Low
           forever $
             do liftIO $ threadDelay delay
                v <- togglePin h
-               output ("Output: " ++ show v)
+               putText $ unwords ["Output:", show v]
 
 main :: IO ()
 main = execParser opts >>= run

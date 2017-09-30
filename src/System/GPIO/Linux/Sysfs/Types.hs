@@ -24,9 +24,9 @@ module System.GPIO.Linux.Sysfs.Types
        , SysfsException(..)
        ) where
 
+import Protolude
 import Control.Monad.Catch (Exception(..))
 import Data.Data
-import GHC.Generics
 import Test.QuickCheck (Arbitrary(..), arbitraryBoundedEnum, genericShrink)
 
 import System.GPIO.Types
@@ -133,21 +133,21 @@ data SysfsException
     -- ^ The pin does not have a @direction@ attribute
   | NoEdgeAttribute Pin
     -- ^ The pin does not have an @edge@ attribute
-  | UnexpectedDirection Pin String
+  | UnexpectedDirection Pin Text
     -- ^ An unexpected value was read from the pin's @direction@
     -- attribute
-  | UnexpectedValue Pin String
+  | UnexpectedValue Pin Text
     -- ^ An unexpected value was read from the pin's @value@
     -- attribute
-  | UnexpectedEdge Pin String
+  | UnexpectedEdge Pin Text
     -- ^ An unexpected value was read from the pin's @edge@
     -- attribute
-  | UnexpectedActiveLow Pin String
+  | UnexpectedActiveLow Pin Text
     -- ^ An unexpected value was read from the pin's @active_low@
     -- attribute
-  | UnexpectedContents FilePath String
+  | UnexpectedContents FilePath Text
     -- ^ An unexpected value was read from the specified file
-  | InternalError String
+  | InternalError Text
     -- ^ An internal error has occurred in the interpreter, something
     -- which should "never happen" and should be reported to the
     -- package maintainer

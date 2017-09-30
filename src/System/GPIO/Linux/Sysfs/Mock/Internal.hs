@@ -49,23 +49,23 @@ module System.GPIO.Linux.Sysfs.Mock.Internal
        , rmfile
        ) where
 
-import Prelude ()
-import Prelude.Compat
+import Protolude
 import Data.ByteString (ByteString)
 import Data.Foldable (foldlM)
 import Data.List (find, unfoldr)
 import Data.Maybe (isJust)
+import Data.String (String)
 import Data.Tree (Tree(..))
 import GHC.IO.Exception (IOErrorType(..))
 import System.FilePath (isAbsolute, isValid, joinPath, splitDirectories)
-import System.IO.Error (mkIOError)
+import System.IO.Error (IOError, mkIOError)
 
 import System.GPIO.Types (Pin)
 
 type Name = String
 
 data FileType
-  = Const [ByteString]
+  = Constant [ByteString]
   | Export
   | Unexport
   | Value Pin

@@ -3,13 +3,14 @@
 
 module Test.System.GPIO.Linux.Sysfs.MockSpec (spec) where
 
-import Prelude hiding (readFile, writeFile)
+import Protolude hiding (readFile, writeFile)
 import Control.Exception (fromException)
 import Data.List (sort)
 import GHC.IO.Exception (IOErrorType(..))
 import System.GPIO.Linux.Sysfs.Mock
 import System.GPIO.Types (Pin(..), PinValue(..))
-import System.IO.Error (ioeGetErrorType, isDoesNotExistError, isPermissionError)
+import System.IO.Error
+       (IOError, ioeGetErrorType, isDoesNotExistError, isPermissionError)
 import Test.Hspec
 
 isInappropriateTypeErrorType :: IOErrorType -> Bool

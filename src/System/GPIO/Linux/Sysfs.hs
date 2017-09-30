@@ -102,6 +102,7 @@ module System.GPIO.Linux.Sysfs
        , SysfsException(..)
        ) where
 
+import Protolude
 import System.GPIO.Linux.Sysfs.Monad
 import System.GPIO.Linux.Sysfs.IO
 import System.GPIO.Linux.Sysfs.Types

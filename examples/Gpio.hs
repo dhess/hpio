@@ -4,13 +4,14 @@
 
 module Main where
 
+import Protolude
 import Control.Concurrent (threadDelay)
 import Control.Concurrent.Async (concurrently)
 import Control.Monad (forever, void)
 import Control.Monad.Catch (MonadMask)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.Foldable (for_)
-import Data.Monoid ((<>))
+import Data.Text (unwords)
 import Options.Applicative
        (Parser, argument, auto, command, execParser, fullDesc, header,
         help, helper, hsubparser, info, long, metavar, option, progDesc,
@@ -88,10 +89,10 @@ cmds =
        command "pollPin" (info pollPinCmd (progDesc "Drive INPIN using OUTPIN and wait for interrupts. (Make sure the pins are connected!")))
 
 run :: GlobalOptions -> IO ()
-run (GlobalOptions SysfsIO (PollPin (PollPinOptions period trigger to inputPin outputPin))) =
+run (GlobalOptions SysfsIO (PollPin (PollPinOptions period trigger timeout inputPin outputPin))) =
   void $
     concurrently
-      (void $ runSysfsGpioIO $ pollInput inputPin trigger to)
+      (void $ runSysfsGpioIO $ pollInput inputPin trigger timeout)
       (runSysfsGpioIO $ driveOutput outputPin period)
 run (GlobalOptions SysfsIO ListPins) = runSysfsGpioIO listPins
 
@@ -99,25 +100,22 @@ run (GlobalOptions SysfsIO ListPins) = runSysfsGpioIO listPins
 -- interpreters.
 type GpioM h m = (MonadMask m, MonadIO m, MonadGpio h m)
 
-output :: (GpioM h m) => String -> m ()
-output = liftIO . putStrLn
-
 listPins :: (GpioM h m) => m ()
 listPins =
   pins >>= \case
-    [] -> output "No GPIO pins found on this system"
+    [] -> putText "No GPIO pins found on this system"
     ps -> for_ ps $ liftIO . print
 
 pollInput :: (GpioM h m) => Pin -> PinInterruptMode -> Int -> m ()
-pollInput p trigger to =
+pollInput p trigger timeout =
   withPin p $ \h ->
     do setPinInputMode h InputDefault
        setPinInterruptMode h trigger
        forever $
-         do result <- pollPinTimeout h to
+         do result <- pollPinTimeout h timeout
             case result of
-              Nothing -> output ("readPin timed out after " ++ show to ++ " microseconds")
-              Just v -> output ("Input: " ++ show v)
+              Nothing -> putText $ unwords ["readPin timed out after", show timeout, "microseconds"]
+              Just v -> putText $ unwords ["Input:", show v]
 
 driveOutput :: (GpioM h m) => Pin -> Int -> m ()
 driveOutput p delay =
@@ -126,7 +124,7 @@ driveOutput p delay =
        forever $
          do liftIO $ threadDelay delay
             v <- togglePin h
-            output ("Output: " ++ show v)
+            putText $ unwords ["Output:", show v]
 
 main :: IO ()
 main =execParser opts >>= run

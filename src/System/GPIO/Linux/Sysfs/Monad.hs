@@ -62,8 +62,7 @@ module System.GPIO.Linux.Sysfs.Monad
        , writePinActiveLow
        ) where
 
-import Prelude ()
-import Prelude.Compat hiding (readFile, writeFile)
+import Protolude hiding (readFile, writeFile)
 import Control.Applicative (Alternative)
 import Control.Monad (MonadPlus, filterM, void)
 import Control.Monad.Base (MonadBase)
@@ -92,15 +91,15 @@ import qualified Control.Monad.Trans.Writer.Lazy as LazyWriter (WriterT)
 import qualified Control.Monad.Trans.Writer.Strict as StrictWriter (WriterT)
 import Control.Monad.Writer (MonadWriter)
 import Data.ByteString (ByteString)
-import qualified Data.ByteString.Char8 as C8 (readInt, unpack)
+import qualified Data.ByteString.Char8 as C8 (readInt)
 import Data.List (isPrefixOf, sort)
 import qualified Data.Set as Set (empty, fromList)
 import Foreign.C.Types (CInt(..))
 import qualified GHC.IO.Exception as IO (IOErrorType(..))
 import System.FilePath ((</>), takeFileName)
 import System.IO.Error
-       (ioeGetErrorType, isAlreadyInUseError, isDoesNotExistError,
-        isPermissionError)
+       (IOError, ioeGetErrorType, isAlreadyInUseError,
+        isDoesNotExistError, isPermissionError)
 
 import System.GPIO.Linux.Sysfs.Types (SysfsEdge(..), SysfsException(..), toPinInterruptMode, toSysfsEdge)
 import System.GPIO.Linux.Sysfs.Util
@@ -453,7 +452,7 @@ readPinDirection p =
     (readFile (pinDirectionFileName p) >>= \case
        "in\n"  -> return In
        "out\n" -> return Out
-       x     -> throwM $ UnexpectedDirection p (C8.unpack x))
+       x     -> throwM $ UnexpectedDirection p (decodeUtf8 x))
     mapIOError
   where
     mapIOError :: (ThrowSysfsM m) => IOError -> m PinDirection
@@ -514,7 +513,7 @@ writePinDirection p Out =
 writePinDirectionWithValue :: (CatchSysfsM m) => Pin -> PinValue -> m ()
 writePinDirectionWithValue p v =
   do activeLow <- readPinActiveLow p
-     let f = if activeLow then invertValue else id
+     let f = if activeLow then invertValue else identity
      resetEdge p
      writeDirection p (pinDirectionValueToBS $ f v)
 
@@ -559,7 +558,7 @@ readPinValue p =
     (readFile (pinValueFileName p) >>= \case
        "0\n" -> return Low
        "1\n" -> return High
-       x   -> throwM $ UnexpectedValue p (C8.unpack x))
+       x   -> throwM $ UnexpectedValue p (decodeUtf8 x))
     mapIOError
   where
     mapIOError :: (ThrowSysfsM m) => IOError -> m PinValue
@@ -654,7 +653,7 @@ readPinEdge p =
        "rising\n" -> return Rising
        "falling\n" -> return Falling
        "both\n" -> return Both
-       x     -> throwM $ UnexpectedEdge p (C8.unpack x))
+       x     -> throwM $ UnexpectedEdge p (decodeUtf8 x))
     mapIOError
   where
     mapIOError :: (ThrowSysfsM m) => IOError -> m SysfsEdge
@@ -695,7 +694,7 @@ readPinActiveLow p =
     (readFile (pinActiveLowFileName p) >>= \case
        "0\n" -> return False
        "1\n" -> return True
-       x   -> throwM $ UnexpectedActiveLow p (C8.unpack x))
+       x   -> throwM $ UnexpectedActiveLow p (decodeUtf8 x))
     mapIOError
   where
     mapIOError :: (ThrowSysfsM m) => IOError -> m Bool
@@ -746,7 +745,7 @@ readIntFromFile f =
   do contents <- readFile f
      case C8.readInt contents of
        Just (n, _) -> return n
-       Nothing -> throwM $ UnexpectedContents f (C8.unpack contents)
+       Nothing -> throwM $ UnexpectedContents f (decodeUtf8 contents)
 
 pinRange :: (ThrowSysfsM m) => FilePath -> m [Pin]
 pinRange chipDir =

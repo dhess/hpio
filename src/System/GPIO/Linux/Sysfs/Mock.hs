@@ -80,8 +80,8 @@ module System.GPIO.Linux.Sysfs.Mock
        , pollFile
        ) where
 
-import Prelude ()
-import Prelude.Compat hiding (readFile, writeFile)
+import Protolude
+       hiding (StateT, execStateT, readFile, runStateT, writeFile)
 import Control.Applicative (Alternative)
 import Control.Exception (Exception(..), SomeException)
 import Control.Monad (MonadPlus, when)
@@ -105,11 +105,12 @@ import Data.Foldable (foldrM)
 import Data.Maybe (isJust)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map (empty, insert, insertLookupWithKey, lookup)
+import Data.String (String)
 import Data.Typeable (Typeable)
 import Foreign.C.Types (CInt(..))
 import GHC.IO.Exception (IOErrorType(..))
 import System.FilePath ((</>), splitFileName)
-import System.IO.Error (mkIOError)
+import System.IO.Error (IOError, mkIOError)
 
 import System.GPIO.Linux.Sysfs.Mock.Internal
        (Directory, File(..), FileType(..), MockFSZipper(..), directory,
@@ -500,9 +501,9 @@ makeChip chip =
       Right newPinState ->
         do putPins newPinState
            mkdir chipdir
-           mkfile (chipdir </> "base") (Const [intToBS $ _base chip])
-           mkfile (chipdir </> "ngpio") (Const [intToBS $ length (_initialPinStates chip)])
-           mkfile (chipdir </> "label") (Const [C8.pack $ _label chip])
+           mkfile (chipdir </> "base") (Constant [intToBS $ _base chip])
+           mkfile (chipdir </> "ngpio") (Constant [intToBS $ length (_initialPinStates chip)])
+           mkfile (chipdir </> "label") (Constant [C8.pack $ _label chip])
 
 addPins :: Int -> [MockPinState] -> MockPins -> Either MockFSException MockPins
 addPins base states pm = foldrM addPin pm (zip (map Pin [base..]) states)
@@ -586,7 +587,7 @@ readFile path =
          if isDirectory
             then throwM $ mkIOError InappropriateType "Mock.readFile" Nothing (Just path)
             else throwM $ mkIOError NoSuchThing "Mock.readFile" Nothing (Just path)
-    Just (Const contents) -> return $ C8.unlines contents
+    Just (Constant contents) -> return $ C8.unlines contents
     Just (Value pin) -> pinValueToBS . logicalValue <$> pinState pin -- Use the logical "value" here!
     Just (ActiveLow pin) -> activeLowToBS . _activeLow <$> pinState pin
     Just (Direction pin) ->

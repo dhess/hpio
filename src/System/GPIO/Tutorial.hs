@@ -61,6 +61,7 @@ module System.GPIO.Tutorial (
       -- $copyright
     ) where
 
+import Prelude
 import Control.Concurrent (threadDelay)
 import Control.Monad (forM_)
 import Control.Monad.Catch (MonadMask, MonadThrow, MonadCatch)

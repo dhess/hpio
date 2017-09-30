@@ -1,5 +1,6 @@
 {-# OPTIONS_GHC -fno-warn-warnings-deprecations #-}
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 #ifndef MIN_VERSION_base
 #define MIN_VERSION_base(x,y,z) 1
@@ -7,6 +8,7 @@
 
 module Test.System.GPIO.TypesSpec (spec) where
 
+import Protolude
 import System.GPIO.Types
 
 import Data.Bits

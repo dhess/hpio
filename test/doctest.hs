@@ -1,6 +1,6 @@
 module Main where
 
-import Data.Monoid ((<>))
+import Protolude
 import System.FilePath ((</>))
 import Test.DocTest
 
@@ -10,15 +10,12 @@ addPrefix fp = "src" </> "System" </> "GPIO" </> fp
 testFiles :: [FilePath]
 testFiles =
   map addPrefix
-      [ "Monad.hs"
-      , "Tutorial.hs"
+      [ "Tutorial.hs"
       , "Types.hs"
       , "Linux" </> "Sysfs" </> "Mock.hs"
-      , "Linux" </> "Sysfs" </> "Mock" </> "Internal.hs"
-      , "Linux" </> "Sysfs" </> "Monad.hs"
       , "Linux" </> "Sysfs" </> "Util.hs"
       , "Linux" </> "Sysfs" </> "Types.hs"
       ]
 
 main :: IO ()
-main = doctest (["-isrc"] <> testFiles)
+main = doctest (["-isrc", "-XNoImplicitPrelude"] <> testFiles)

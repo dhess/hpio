@@ -1,5 +1,6 @@
 module Main where
 
+import Protolude
 import Control.Monad (unless)
 import Language.Haskell.HLint
 import System.Environment
