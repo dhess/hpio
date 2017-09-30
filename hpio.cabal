@@ -70,7 +70,6 @@ library
       src
   default-extensions: NoImplicitPrelude
   other-extensions: ConstraintKinds CPP DefaultSignatures DeriveDataTypeable DeriveGeneric ExistentialQuantification FlexibleContexts FlexibleInstances FunctionalDependencies GADTs GeneralizedNewtypeDeriving InterruptibleFFI KindSignatures LambdaCase MultiParamTypeClasses OverloadedStrings PackageImports QuasiQuotes Safe TemplateHaskell Trustworthy TypeSynonymInstances UndecidableInstances
-  ghc-options: -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates
   cc-options: -Wall
   c-sources:
       src/System/GPIO/Linux/Sysfs/pollSysfs.c
@@ -94,6 +93,10 @@ library
     , transformers-compat >=0.4.0  && <1
     , unix                >=2.7.0  && <2.8
     , unix-bytestring     >=0.3.7  && <0.4
+  if impl(ghc >= 8.0)
+    ghc-options: -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates
+  else
+    ghc-options: -Wall -fwarn-incomplete-uni-patterns -fwarn-incomplete-record-updates
   if impl(ghc >= 8.0)
     ghc-options: -Wcompat -Wnoncanonical-monad-instances -Wnoncanonical-monadfail-instances
   else
@@ -123,7 +126,11 @@ executable hpio-example
       examples
   default-extensions: NoImplicitPrelude
   other-extensions: ConstraintKinds LambdaCase OverloadedStrings
-  ghc-options: -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates -threaded
+  ghc-options: -threaded
+  if impl(ghc >= 8.0)
+    ghc-options: -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates
+  else
+    ghc-options: -Wall -fwarn-incomplete-uni-patterns -fwarn-incomplete-record-updates
   if !(flag(examples))
     buildable: False
   else
@@ -150,7 +157,11 @@ executable hpio-reader-example
       examples
   default-extensions: NoImplicitPrelude
   other-extensions: ConstraintKinds FlexibleContexts LambdaCase OverloadedStrings
-  ghc-options: -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates -threaded
+  ghc-options: -threaded
+  if impl(ghc >= 8.0)
+    ghc-options: -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates
+  else
+    ghc-options: -Wall -fwarn-incomplete-uni-patterns -fwarn-incomplete-record-updates
   if !(flag(examples))
     buildable: False
   else
@@ -177,7 +188,11 @@ executable hpio-sysfs-example
       examples
   default-extensions: NoImplicitPrelude
   other-extensions: FlexibleContexts LambdaCase OverloadedStrings
-  ghc-options: -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates -threaded
+  ghc-options: -threaded
+  if impl(ghc >= 8.0)
+    ghc-options: -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates
+  else
+    ghc-options: -Wall -fwarn-incomplete-uni-patterns -fwarn-incomplete-record-updates
   if !(flag(examples))
     buildable: False
   else
@@ -204,7 +219,11 @@ test-suite doctest
   hs-source-dirs:
       test
   default-extensions: NoImplicitPrelude
-  ghc-options: -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates -threaded
+  ghc-options: -threaded
+  if impl(ghc >= 8.0)
+    ghc-options: -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates
+  else
+    ghc-options: -Wall -fwarn-incomplete-uni-patterns -fwarn-incomplete-record-updates
   if (!(flag(test-doctests))) || (impl(ghc <7.10))
     buildable: False
   else
@@ -221,7 +240,11 @@ test-suite hlint
   hs-source-dirs:
       test
   default-extensions: NoImplicitPrelude
-  ghc-options: -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates -w -threaded
+  ghc-options: -w -threaded
+  if impl(ghc >= 8.0)
+    ghc-options: -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates
+  else
+    ghc-options: -Wall -fwarn-incomplete-uni-patterns -fwarn-incomplete-record-updates
   if !(flag(test-hlint))
     buildable: False
   else
@@ -237,7 +260,7 @@ test-suite spec
   hs-source-dirs:
       test
   default-extensions: NoImplicitPrelude
-  ghc-options: -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates -threaded
+  ghc-options: -threaded
   build-depends:
       base
     , base-compat
@@ -249,6 +272,10 @@ test-suite spec
     , hspec                >=2.1.7
     , protolude
     , QuickCheck
+  if impl(ghc >= 8.0)
+    ghc-options: -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates
+  else
+    ghc-options: -Wall -fwarn-incomplete-uni-patterns -fwarn-incomplete-record-updates
   if flag(linux-bbone-tests)
     cpp-options: -DRUN_LINUX_BBONE_TESTS=1
   other-modules:

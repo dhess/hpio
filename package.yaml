@@ -54,10 +54,18 @@ flags:
     manual: true
     default: true
 
-ghc-options:
-  - -Wall
-  - -Wincomplete-uni-patterns
-  - -Wincomplete-record-updates
+when:
+  - condition: impl(ghc >= 8.0)
+    then:
+      ghc-options:
+        - -Wall
+        - -Wincomplete-uni-patterns
+        - -Wincomplete-record-updates
+    else:
+      ghc-options:
+        - -Wall
+        - -fwarn-incomplete-uni-patterns
+        - -fwarn-incomplete-record-updates
 
 default-extensions:
   - NoImplicitPrelude
