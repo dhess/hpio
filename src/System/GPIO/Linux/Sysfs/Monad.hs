@@ -73,7 +73,8 @@ import Control.Monad.Cont (MonadCont, ContT)
 import Control.Monad.Except (MonadError, ExceptT)
 import Control.Monad.Fix (MonadFix)
 import Control.Monad.IO.Class (MonadIO)
-import Control.Monad.Logger (MonadLogger, MonadLoggerIO)
+import Control.Monad.Logger
+       (LoggingT, MonadLogger, MonadLoggerIO, NoLoggingT)
 import Control.Monad.Reader (MonadReader, ReaderT)
 import Control.Monad.RWS (MonadRWS)
 import Control.Monad.State (MonadState)
@@ -190,6 +191,8 @@ instance (MonadSysfs m) => MonadSysfs (LazyState.StateT s m)
 instance (MonadSysfs m) => MonadSysfs (StrictState.StateT s m)
 instance (MonadSysfs m, Monoid w) => MonadSysfs (LazyWriter.WriterT w m)
 instance (MonadSysfs m, Monoid w) => MonadSysfs (StrictWriter.WriterT w m)
+instance (MonadSysfs m) => MonadSysfs (LoggingT m)
+instance (MonadSysfs m) => MonadSysfs (NoLoggingT m)
 
 -- | The @sysfs@ pin handle type. Currently it's just a newtype
 -- wrapper around a 'Pin'. The constructor is exported for
