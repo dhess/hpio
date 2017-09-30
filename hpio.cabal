@@ -101,6 +101,7 @@ library
       System.GPIO.Linux.Sysfs
       System.GPIO.Linux.Sysfs.IO
       System.GPIO.Linux.Sysfs.Mock
+      System.GPIO.Linux.Sysfs.Mock.Internal
       System.GPIO.Linux.Sysfs.Monad
       System.GPIO.Linux.Sysfs.Types
       System.GPIO.Linux.Sysfs.Util
@@ -108,7 +109,7 @@ library
       System.GPIO.Tutorial
       System.GPIO.Types
   other-modules:
-      System.GPIO.Linux.Sysfs.Mock.Internal
+      Paths_hpio
   default-language: Haskell2010
 
 executable hpio-example
@@ -217,28 +218,17 @@ test-suite spec
   main-is: Spec.hs
   hs-source-dirs:
       test
-      src
   ghc-options: -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates -threaded
   build-depends:
-      QuickCheck
-    , base
-    , async
+      base
     , base-compat
-    , bytestring
     , containers
     , directory
     , exceptions
     , filepath
+    , hpio
     , hspec                >=2.1.7
-    , mtl
-    , mtl-compat
-    , text
-    , transformers
-    , transformers-compat
-    , unix
-    , unix-bytestring
-  if impl(ghc >= 8.0)
-    ghc-options: -Wcompat -Wnoncanonical-monad-instances -Wnoncanonical-monadfail-instances -fno-warn-redundant-constraints -fno-warn-redundant-constraints
+    , QuickCheck
   if flag(linux-bbone-tests)
     cpp-options: -DRUN_LINUX_BBONE_TESTS=1
   other-modules:
@@ -247,16 +237,4 @@ test-suite spec
       Test.System.GPIO.Linux.Sysfs.MockSpec
       Test.System.GPIO.Linux.Sysfs.SysfsGpioMockSpec
       Test.System.GPIO.TypesSpec
-      System.GPIO
-      System.GPIO.Linux
-      System.GPIO.Linux.Sysfs
-      System.GPIO.Linux.Sysfs.IO
-      System.GPIO.Linux.Sysfs.Mock
-      System.GPIO.Linux.Sysfs.Mock.Internal
-      System.GPIO.Linux.Sysfs.Monad
-      System.GPIO.Linux.Sysfs.Types
-      System.GPIO.Linux.Sysfs.Util
-      System.GPIO.Monad
-      System.GPIO.Tutorial
-      System.GPIO.Types
   default-language: Haskell2010

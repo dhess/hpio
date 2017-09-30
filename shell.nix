@@ -25,9 +25,8 @@ let
           optparse-applicative transformers transformers-compat
         ];
         testHaskellDepends = [
-          async base base-compat bytestring containers directory doctest
-          exceptions filepath hlint hspec mtl mtl-compat QuickCheck text
-          transformers transformers-compat unix unix-bytestring
+          base base-compat containers directory doctest exceptions filepath
+          hlint hspec QuickCheck
         ];
         homepage = "https://github.com/quixoftic/hpio#readme";
         description = "Monads for GPIO in Haskell";

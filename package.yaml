@@ -101,8 +101,6 @@ library:
     - Trustworthy
     - TypeSynonymInstances
     - UndecidableInstances
-  other-modules:
-    - System.GPIO.Linux.Sysfs.Mock.Internal
   dependencies:
     - QuickCheck          >=2.7.6  && <2.11
     - base                >=4.7.0  && <5
@@ -205,35 +203,21 @@ tests:
     main: Spec.hs
     source-dirs:
       - test
-      - src
     ghc-options:
       - -threaded
     dependencies:
-      - QuickCheck
       - base
-      - async
       - base-compat
-      - bytestring
       - containers
       - directory
       - exceptions
       - filepath
+      - hpio
       - hspec                >=2.1.7
-      - mtl
-      - mtl-compat
-      - text
-      - transformers
-      - transformers-compat
-      - unix
-      - unix-bytestring
+      - QuickCheck
+    ghc-options:
+      - -threaded
     when:
-      - condition: impl(ghc >= 8.0)
-        ghc-options:
-          - -Wcompat
-          - -Wnoncanonical-monad-instances
-          - -Wnoncanonical-monadfail-instances
-          - -fno-warn-redundant-constraints
-          - -fno-warn-redundant-constraints
       - condition: flag(linux-bbone-tests)
         cpp-options:
           -DRUN_LINUX_BBONE_TESTS=1
