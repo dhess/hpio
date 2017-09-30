@@ -92,6 +92,7 @@ import Control.Monad.Cont (MonadCont)
 import Control.Monad.Except (MonadError)
 import Control.Monad.Fix (MonadFix)
 import Control.Monad.IO.Class (MonadIO)
+import Control.Monad.Logger (MonadLogger, MonadLoggerIO)
 import Control.Monad.Reader (MonadReader(..))
 import Control.Monad.State.Strict (MonadState(..), StateT(..), gets, execStateT)
 import Control.Monad.Trans.Class (MonadTrans)
@@ -268,6 +269,8 @@ newtype SysfsMockT m a = SysfsMockT
              , MonadError e
              , MonadWriter w
              , MonadState MockWorld
+             , MonadLogger
+             , MonadLoggerIO
              , MonadTrans
              , MonadTransControl
              )

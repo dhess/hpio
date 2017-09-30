@@ -73,6 +73,7 @@ import Control.Monad.Cont (MonadCont, ContT)
 import Control.Monad.Except (MonadError, ExceptT)
 import Control.Monad.Fix (MonadFix)
 import Control.Monad.IO.Class (MonadIO)
+import Control.Monad.Logger (MonadLogger, MonadLoggerIO)
 import Control.Monad.Reader (MonadReader, ReaderT)
 import Control.Monad.RWS (MonadRWS)
 import Control.Monad.State (MonadState)
@@ -220,6 +221,8 @@ newtype SysfsGpioT m a = SysfsGpioT
              , MonadWriter w
              , MonadState s
              , MonadRWS r w s
+             , MonadLogger
+             , MonadLoggerIO
              )
 
 instance MonadTrans SysfsGpioT where

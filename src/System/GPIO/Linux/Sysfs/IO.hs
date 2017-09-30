@@ -36,6 +36,7 @@ import Control.Monad.Cont (MonadCont)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Except (MonadError)
 import Control.Monad.Fix (MonadFix)
+import Control.Monad.Logger (MonadLogger, MonadLoggerIO)
 import Control.Monad.Reader (MonadReader)
 import Control.Monad.RWS (MonadRWS)
 import Control.Monad.State (MonadState)
@@ -94,6 +95,8 @@ newtype SysfsIOT m a = SysfsIOT
              , MonadWriter w
              , MonadState s
              , MonadRWS r w s
+             , MonadLogger
+             , MonadLoggerIO
              )
 
 instance MonadTrans SysfsIOT where
