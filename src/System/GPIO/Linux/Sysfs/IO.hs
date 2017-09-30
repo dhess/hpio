@@ -19,6 +19,7 @@ obviously.
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PackageImports #-}
 {-# LANGUAGE Trustworthy #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module System.GPIO.Linux.Sysfs.IO
          ( -- * SysfsIOT transformer
@@ -29,6 +30,7 @@ import Prelude ()
 import Prelude.Compat
 import Control.Applicative (Alternative)
 import Control.Monad (MonadPlus, void)
+import Control.Monad.Base (MonadBase)
 import Control.Monad.Catch (MonadCatch, MonadMask, MonadThrow, bracket)
 import Control.Monad.Cont (MonadCont)
 import Control.Monad.IO.Class (MonadIO, liftIO)
@@ -37,7 +39,9 @@ import Control.Monad.Fix (MonadFix)
 import Control.Monad.Reader (MonadReader)
 import Control.Monad.RWS (MonadRWS)
 import Control.Monad.State (MonadState)
-import Control.Monad.Trans.Class (MonadTrans, lift)
+import Control.Monad.Trans.Class (MonadTrans(..))
+import Control.Monad.Trans.Control
+       (MonadBaseControl, MonadTransControl(..))
 import Control.Monad.Writer (MonadWriter)
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as BS (readFile, writeFile)
@@ -70,12 +74,37 @@ import System.GPIO.Linux.Sysfs.Monad (MonadSysfs(..))
 -- (On Haskell implementations other than GHC, the threading
 -- implications are unknown; see the implementation's notes on how its
 -- threading system interacts with the C FFI.)
-newtype SysfsIOT m a =
-  SysfsIOT { runSysfsIOT :: m a }
-  deriving (Functor,Alternative,Applicative,Monad,MonadFix,MonadPlus,MonadThrow,MonadCatch,MonadMask,MonadCont,MonadIO,MonadReader r,MonadError e,MonadWriter w,MonadState s,MonadRWS r w s)
+newtype SysfsIOT m a = SysfsIOT
+  { runSysfsIOT :: m a
+  } deriving ( Functor
+             , Alternative
+             , Applicative
+             , Monad
+             , MonadBase b
+             , MonadBaseControl b
+             , MonadFix
+             , MonadPlus
+             , MonadThrow
+             , MonadCatch
+             , MonadMask
+             , MonadCont
+             , MonadIO
+             , MonadReader r
+             , MonadError e
+             , MonadWriter w
+             , MonadState s
+             , MonadRWS r w s
+             )
 
 instance MonadTrans SysfsIOT where
   lift = SysfsIOT
+
+instance MonadTransControl SysfsIOT where
+  type StT SysfsIOT a = a
+  liftWith f = SysfsIOT $ f runSysfsIOT
+  restoreT = SysfsIOT
+  {-# INLINABLE liftWith #-}
+  {-# INLINABLE restoreT #-}
 
 instance (MonadIO m, MonadThrow m) => MonadSysfs (SysfsIOT m) where
   doesDirectoryExist = liftIO . D.doesDirectoryExist

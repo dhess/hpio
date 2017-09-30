@@ -19,6 +19,7 @@ filesystem.
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE Trustworthy #-}
 
 module System.GPIO.Linux.Sysfs.Mock
@@ -84,6 +85,7 @@ import Prelude.Compat hiding (readFile, writeFile)
 import Control.Applicative (Alternative)
 import Control.Exception (Exception(..), SomeException)
 import Control.Monad (MonadPlus, when)
+import Control.Monad.Base (MonadBase)
 import Control.Monad.Catch (MonadCatch, MonadMask, MonadThrow, throwM)
 import Control.Monad.Catch.Pure (Catch, runCatch)
 import Control.Monad.Cont (MonadCont)
@@ -93,6 +95,8 @@ import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Reader (MonadReader(..))
 import Control.Monad.State.Strict (MonadState(..), StateT(..), gets, execStateT)
 import Control.Monad.Trans.Class (MonadTrans)
+import Control.Monad.Trans.Control
+       (MonadBaseControl, MonadTransControl(..))
 import Control.Monad.Writer (MonadWriter(..))
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Char8 as C8 (pack, unlines)
@@ -245,9 +249,28 @@ initialMockWorld = MockWorld sysfsRootZipper Map.empty
 
 -- | A monad transformer which adds mock @sysfs@ computations to an
 -- inner monad 'm'.
-newtype SysfsMockT m a =
-  SysfsMockT {unSysfsMockT :: StateT MockWorld m a}
-  deriving (Functor,Alternative,Applicative,Monad,MonadFix,MonadPlus,MonadThrow,MonadCatch,MonadMask,MonadCont,MonadIO,MonadReader r,MonadError e,MonadWriter w,MonadState MockWorld,MonadTrans)
+newtype SysfsMockT m a = SysfsMockT
+  { unSysfsMockT :: StateT MockWorld m a
+  } deriving ( Functor
+             , Alternative
+             , Applicative
+             , Monad
+             , MonadBase b
+             , MonadBaseControl b
+             , MonadFix
+             , MonadPlus
+             , MonadThrow
+             , MonadCatch
+             , MonadMask
+             , MonadCont
+             , MonadIO
+             , MonadReader r
+             , MonadError e
+             , MonadWriter w
+             , MonadState MockWorld
+             , MonadTrans
+             , MonadTransControl
+             )
 
 getZipper :: (Monad m) => SysfsMockT m MockFSZipper
 getZipper = gets _zipper

@@ -66,6 +66,7 @@ import Prelude ()
 import Prelude.Compat hiding (readFile, writeFile)
 import Control.Applicative (Alternative)
 import Control.Monad (MonadPlus, filterM, void)
+import Control.Monad.Base (MonadBase)
 import Control.Monad.Catch (MonadCatch, MonadMask, MonadThrow, catchIOError, throwM)
 import Control.Monad.Catch.Pure (CatchT)
 import Control.Monad.Cont (MonadCont, ContT)
@@ -76,6 +77,8 @@ import Control.Monad.Reader (MonadReader, ReaderT)
 import Control.Monad.RWS (MonadRWS)
 import Control.Monad.State (MonadState)
 import Control.Monad.Trans.Class (MonadTrans, lift)
+import Control.Monad.Trans.Control
+       (MonadBaseControl, MonadTransControl(..))
 import Control.Monad.Trans.Identity (IdentityT)
 import "transformers" Control.Monad.Trans.List (ListT)
 import Control.Monad.Trans.Maybe (MaybeT)
@@ -197,12 +200,37 @@ newtype PinDescriptor =
 
 -- | An instance of 'MonadGpio' which translates actions in that monad
 -- to operations on Linux's native @sysfs@ GPIO interface.
-newtype SysfsGpioT m a =
-  SysfsGpioT {runSysfsGpioT :: m a}
-  deriving (Functor,Alternative,Applicative,Monad,MonadFix,MonadPlus,MonadThrow,MonadCatch,MonadMask,MonadCont,MonadIO,MonadReader r,MonadError e,MonadWriter w,MonadState s,MonadRWS r w s)
+newtype SysfsGpioT m a = SysfsGpioT
+  { runSysfsGpioT :: m a
+  } deriving ( Functor
+             , Alternative
+             , Applicative
+             , Monad
+             , MonadBase b
+             , MonadBaseControl b
+             , MonadFix
+             , MonadPlus
+             , MonadThrow
+             , MonadCatch
+             , MonadMask
+             , MonadCont
+             , MonadIO
+             , MonadReader r
+             , MonadError e
+             , MonadWriter w
+             , MonadState s
+             , MonadRWS r w s
+             )
 
 instance MonadTrans SysfsGpioT where
   lift = SysfsGpioT
+
+instance MonadTransControl SysfsGpioT where
+  type StT SysfsGpioT a = a
+  liftWith f = SysfsGpioT $ f runSysfsGpioT
+  restoreT = SysfsGpioT
+  {-# INLINABLE liftWith #-}
+  {-# INLINABLE restoreT #-}
 
 type CatchSysfsM m = (MonadCatch m, MonadSysfs m)
 type ThrowSysfsM m = (MonadThrow m, MonadSysfs m)
