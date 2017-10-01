@@ -85,18 +85,13 @@ module System.GPIO.Linux.Sysfs.Mock
 
 import Protolude
        hiding (StateT, execStateT, readFile, runStateT, writeFile)
-import Control.Applicative (Alternative)
-import Control.Exception (Exception(..), SomeException)
-import Control.Monad (MonadPlus, when)
 import Control.Monad.Base (MonadBase)
 import Control.Monad.Catch (MonadCatch, MonadMask, MonadThrow, throwM)
 import Control.Monad.Catch.Pure (Catch, runCatch)
 import Control.Monad.Cont (MonadCont)
 import Control.Monad.Except (MonadError)
 import Control.Monad.Fix (MonadFix)
-import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Logger (MonadLogger, MonadLoggerIO)
-import Control.Monad.Reader (MonadReader(..))
 import Control.Monad.State.Strict (MonadState(..), StateT(..), gets, execStateT)
 import Control.Monad.Trans.Class (MonadTrans)
 import Control.Monad.Trans.Control
@@ -104,14 +99,10 @@ import Control.Monad.Trans.Control
         defaultLiftBaseWith, defaultLiftWith, defaultRestoreM,
         defaultRestoreT)
 import Control.Monad.Writer (MonadWriter(..))
-import Data.ByteString (ByteString)
 import qualified Data.ByteString.Char8 as C8 (pack, unlines)
-import Data.Foldable (foldrM)
-import Data.Maybe (isJust)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map (empty, insert, insertLookupWithKey, lookup)
 import Data.String (String)
-import Data.Typeable (Typeable)
 import Foreign.C.Types (CInt(..))
 import GHC.IO.Exception (IOErrorType(..))
 import System.FilePath ((</>), splitFileName)

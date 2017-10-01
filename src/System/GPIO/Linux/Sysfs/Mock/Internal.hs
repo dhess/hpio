@@ -50,10 +50,6 @@ module System.GPIO.Linux.Sysfs.Mock.Internal
        ) where
 
 import Protolude
-import Data.ByteString (ByteString)
-import Data.Foldable (foldlM)
-import Data.List (find, unfoldr)
-import Data.Maybe (isJust)
 import Data.String (String)
 import Data.Tree (Tree(..))
 import GHC.IO.Exception (IOErrorType(..))

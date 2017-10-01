@@ -4,8 +4,6 @@
 module Test.System.GPIO.Linux.Sysfs.SysfsGpioMockSpec (spec) where
 
 import Protolude hiding (handle)
-import Control.Exception (fromException)
-import Control.Monad (void)
 import Control.Monad.Catch (MonadCatch, MonadMask, handle)
 import qualified Data.Map.Strict as Map (lookup)
 import qualified Data.Set as Set (empty, fromList)

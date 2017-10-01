@@ -4,8 +4,6 @@
 module Test.System.GPIO.Linux.Sysfs.MockSpec (spec) where
 
 import Protolude hiding (readFile, writeFile)
-import Control.Exception (fromException)
-import Data.List (sort)
 import GHC.IO.Exception (IOErrorType(..))
 import System.GPIO.Linux.Sysfs.Mock
 import System.GPIO.Types (Pin(..), PinValue(..))

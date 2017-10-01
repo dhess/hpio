@@ -11,7 +11,7 @@ module Test.System.GPIO.TypesSpec (spec) where
 import Protolude
 import System.GPIO.Types
 
-import Data.Bits
+import Data.Bits (unsafeShiftL, unsafeShiftR)
 import Test.Hspec
 import Test.QuickCheck (property)
 

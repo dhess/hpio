@@ -52,7 +52,6 @@ module System.GPIO.Linux.Sysfs.Util
 
 import Protolude hiding (show)
 import Prelude (show)
-import Data.ByteString (ByteString)
 import qualified Data.ByteString as BS (empty)
 import Data.ByteString.Builder (toLazyByteString, intDec)
 import qualified Data.ByteString.Char8 as C8 (readInt)

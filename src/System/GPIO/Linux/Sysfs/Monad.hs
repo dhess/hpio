@@ -65,20 +65,14 @@ module System.GPIO.Linux.Sysfs.Monad
        ) where
 
 import Protolude hiding (readFile, writeFile)
-import Control.Applicative (Alternative)
-import Control.Monad (MonadPlus, filterM, void)
 import Control.Monad.Base (MonadBase)
 import Control.Monad.Catch (MonadCatch, MonadMask, MonadThrow, catchIOError, throwM)
 import Control.Monad.Catch.Pure (CatchT)
 import Control.Monad.Cont (MonadCont, ContT)
-import Control.Monad.Except (MonadError, ExceptT)
 import Control.Monad.Fix (MonadFix)
-import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Logger
        (LoggingT, MonadLogger, MonadLoggerIO, NoLoggingT)
-import Control.Monad.Reader (MonadReader, ReaderT)
 import Control.Monad.RWS (MonadRWS)
-import Control.Monad.State (MonadState)
 import Control.Monad.Trans.Class (MonadTrans, lift)
 import Control.Monad.Trans.Control
        (ComposeSt, MonadBaseControl(..), MonadTransControl(..),
@@ -93,9 +87,7 @@ import qualified Control.Monad.Trans.State.Strict as StrictState (StateT)
 import qualified Control.Monad.Trans.Writer.Lazy as LazyWriter (WriterT)
 import qualified Control.Monad.Trans.Writer.Strict as StrictWriter (WriterT)
 import Control.Monad.Writer (MonadWriter)
-import Data.ByteString (ByteString)
 import qualified Data.ByteString.Char8 as C8 (readInt)
-import Data.List (isPrefixOf, sort)
 import qualified Data.Set as Set (empty, fromList)
 import Foreign.C.Types (CInt(..))
 import qualified GHC.IO.Exception as IO (IOErrorType(..))

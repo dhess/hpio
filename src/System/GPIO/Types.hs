@@ -46,10 +46,8 @@ module System.GPIO.Types
        ) where
 
 import Protolude
-import Control.Exception (Exception(..), SomeException)
-import Data.Data
-import Data.Ix
-import Data.Set (Set)
+import Data.Data (Data)
+import Data.Ix (Ix)
 import qualified GHC.Show as GHC (Show(..))
 import Test.QuickCheck (Arbitrary(..), arbitraryBoundedEnum, genericShrink)
 

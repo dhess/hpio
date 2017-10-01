@@ -5,11 +5,7 @@
 module Test.System.GPIO.Linux.Sysfs.LinuxBboneSpec (spec) where
 
 import Protolude
-import Control.Concurrent (forkIO, threadDelay)
-import Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar)
-import Control.Monad (void)
 import Control.Monad.Catch (throwM)
-import Control.Monad.IO.Class (MonadIO, liftIO)
 import System.Directory (doesDirectoryExist)
 import System.GPIO.Linux.Sysfs (SysfsException(..), runSysfsGpioIO)
 import System.GPIO.Monad (MonadGpio(..), withPin)

@@ -30,24 +30,18 @@ module System.GPIO.Linux.Sysfs.IO
          ) where
 
 import Protolude hiding (bracket)
-import Control.Applicative (Alternative)
-import Control.Monad (MonadPlus, void)
 import Control.Monad.Base (MonadBase)
 import Control.Monad.Catch (MonadCatch, MonadMask, MonadThrow, bracket)
 import Control.Monad.Cont (MonadCont)
-import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Except (MonadError)
 import Control.Monad.Fix (MonadFix)
 import Control.Monad.Logger (MonadLogger, MonadLoggerIO)
-import Control.Monad.Reader (MonadReader)
 import Control.Monad.RWS (MonadRWS)
-import Control.Monad.State (MonadState)
 import Control.Monad.Trans.Class (MonadTrans(..))
 import Control.Monad.Trans.Control
        (ComposeSt, MonadBaseControl(..), MonadTransControl(..),
         defaultLiftBaseWith, defaultRestoreM)
 import Control.Monad.Writer (MonadWriter)
-import Data.ByteString (ByteString)
 import qualified Data.ByteString as BS (readFile, writeFile)
 import Foreign.C.Error (throwErrnoIfMinus1Retry)
 import Foreign.C.Types (CInt(..))

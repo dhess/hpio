@@ -26,7 +26,7 @@ module System.GPIO.Linux.Sysfs.Types
 
 import Protolude
 import Control.Monad.Catch (Exception(..))
-import Data.Data
+import Data.Data (Data)
 import Test.QuickCheck (Arbitrary(..), arbitraryBoundedEnum, genericShrink)
 
 import System.GPIO.Types
