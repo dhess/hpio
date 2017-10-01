@@ -89,10 +89,9 @@ import Control.Monad.Base (MonadBase)
 import Control.Monad.Catch (MonadCatch, MonadMask, MonadThrow, throwM)
 import Control.Monad.Catch.Pure (Catch, runCatch)
 import Control.Monad.Cont (MonadCont)
-import Control.Monad.Except (MonadError)
 import Control.Monad.Fix (MonadFix)
 import Control.Monad.Logger (MonadLogger, MonadLoggerIO)
-import Control.Monad.State.Strict (MonadState(..), StateT(..), gets, execStateT)
+import Control.Monad.State.Strict (StateT(..), execStateT)
 import Control.Monad.Trans.Class (MonadTrans)
 import Control.Monad.Trans.Control
        (ComposeSt, MonadBaseControl(..), MonadTransControl(..),

@@ -15,14 +15,8 @@ module Main where
 -- Protolude uses <> and options from Semigroups, but
 -- optparse-applicative hasn't caught up yet.
 import Protolude hiding ((<>))
-import Control.Concurrent (threadDelay)
-import Control.Concurrent.Async (concurrently)
-import Control.Monad (forever, void)
 import Control.Monad.Catch (MonadMask)
-import Control.Monad.IO.Class (MonadIO, liftIO)
-import Control.Monad.Reader (MonadReader(..), ReaderT(..), asks)
 import Data.Monoid ((<>))
-import Data.Foldable (for_)
 import Data.Text (unwords)
 import Options.Applicative
        (Parser, argument, auto, command, execParser, fullDesc, header,

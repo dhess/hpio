@@ -73,7 +73,7 @@ import Control.Monad.Fix (MonadFix)
 import Control.Monad.Logger
        (LoggingT, MonadLogger, MonadLoggerIO, NoLoggingT)
 import Control.Monad.RWS (MonadRWS)
-import Control.Monad.Trans.Class (MonadTrans, lift)
+import Control.Monad.Trans.Class (MonadTrans)
 import Control.Monad.Trans.Control
        (ComposeSt, MonadBaseControl(..), MonadTransControl(..),
         defaultLiftBaseWith, defaultRestoreM)
