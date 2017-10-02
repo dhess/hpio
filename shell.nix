@@ -4,11 +4,10 @@ let
 
   inherit (nixpkgs) pkgs;
 
-  f = { mkDerivation, async, base, base-compat, bytestring
-      , containers, directory, doctest, exceptions, filepath, hlint
-      , hspec, monad-control, monad-logger, mtl, mtl-compat
-      , optparse-applicative, protolude, QuickCheck, stdenv, text
-      , transformers, transformers-base, transformers-compat, unix
+  f = { mkDerivation, async, base, bytestring, containers
+      , directory, doctest, exceptions, filepath, hlint, hspec
+      , monad-control, monad-logger, mtl, optparse-applicative, protolude
+      , QuickCheck, stdenv, text, transformers, transformers-base, unix
       , unix-bytestring
       }:
       mkDerivation {
@@ -18,19 +17,17 @@ let
         isLibrary = true;
         isExecutable = true;
         libraryHaskellDepends = [
-          base base-compat bytestring containers directory exceptions
-          filepath monad-control monad-logger mtl mtl-compat protolude
-          QuickCheck text transformers transformers-base transformers-compat
-          unix unix-bytestring
+          base bytestring containers directory exceptions filepath
+          monad-control monad-logger mtl protolude QuickCheck text
+          transformers transformers-base unix unix-bytestring
         ];
         executableHaskellDepends = [
-          async base base-compat exceptions mtl mtl-compat
-          optparse-applicative protolude text transformers
-          transformers-compat
+          async base exceptions mtl optparse-applicative protolude text
+          transformers
         ];
         testHaskellDepends = [
-          base base-compat containers directory doctest exceptions filepath
-          hlint hspec protolude QuickCheck
+          base containers directory doctest exceptions filepath hlint hspec
+          protolude QuickCheck
         ];
         homepage = "https://github.com/quixoftic/hpio#readme";
         description = "Monads for GPIO in Haskell";
