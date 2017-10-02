@@ -24,8 +24,8 @@ help:
 	@echo "The following targets build and test the package with Stack, using the"
 	@echo "given version of Stackage LTS as configured by the file stack-<target>.yaml."
 	@echo
+	@echo "    lts   [build all supported LTS targets]"
 	@echo "    lts-9"
-	@echo "    lts-7"
 	@echo "    lts-6"
 	@echo "    lts-3"
 	@echo "    lts-2 [Note: does not work on macOS]"
@@ -53,11 +53,16 @@ configure: hpio.cabal shell.nix default.nix
 
 nix-stack = nix-shell -p stack-$(1)-env --run 'stack test --nix --nix-packages "zlib binutils gcc" --stack-yaml $(2)'
 
+lts:	lts-9 lts-6 lts-3 lts-2
+
 lts-9: 	hpio.cabal shell.nix default.nix
 	$(call nix-stack,lts-9,stack.yaml)
 
-lts-7: 	hpio.cabal shell.nix default.nix
-	$(call nix-stack,lts-7,stack-lts-7.yaml)
+# Currently disabled, as Nix no longer supports GHC 8.0.1 out of the
+# box.
+
+#lts-7: 	hpio.cabal shell.nix default.nix
+#	$(call nix-stack,lts-7,stack-lts-7.yaml)
 
 lts-6: 	hpio.cabal shell.nix default.nix
 	$(call nix-stack,lts-6,stack-lts-6.yaml)
