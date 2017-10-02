@@ -93,7 +93,7 @@ before_install:
 - unset CC
 
 # We want to always allow newer versions of packages when building on GHC HEAD
-- CABALARGS=""
+- CABALARGS="--flags='-test-hlint'"
 - if [ "x$GHCVER" = "xhead" ]; then CABALARGS=--allow-newer; fi
 
 # Download and unpack the stack executable
