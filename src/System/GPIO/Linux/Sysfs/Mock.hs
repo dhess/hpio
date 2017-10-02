@@ -99,11 +99,11 @@ import Control.Monad.Trans.Control
         defaultLiftBaseWith, defaultLiftWith, defaultRestoreM,
         defaultRestoreT)
 import Control.Monad.Writer (MonadWriter(..))
-import qualified Data.ByteString.Char8 as C8 (pack, unlines)
+import qualified Data.ByteString.Char8 as C8 (unlines)
 import Data.List (length)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map (empty, insert, insertLookupWithKey, lookup)
-import Data.String (String)
+import Data.Text (unwords)
 import Foreign.C.Types (CInt(..))
 import GHC.IO.Exception (IOErrorType(..))
 import System.FilePath ((</>), splitFileName)
@@ -194,7 +194,7 @@ defaultMockPinState =
 -- @\/sys\/class\/gpio\/gpioN@, where @N@ is @_base@ + the pin's index
 -- in the '_initialPinStates' list.
 data MockGpioChip =
-  MockGpioChip {_label :: !String
+  MockGpioChip {_label :: !Text
                -- ^ The name given to the chip in the filesystem
                ,_base :: !Int
                -- ^ The pin number of the chip's first pin
@@ -301,7 +301,8 @@ getPins = gets _pins
 pinState :: (MockM m) => Pin -> SysfsMockT m MockPinState
 pinState pin =
   Map.lookup pin <$> getPins >>= \case
-    Nothing -> throwM $ InternalError ("An operation attempted to get the mock pin state for non-existent pin " ++ show pin)
+    Nothing -> throwM $ InternalError $
+      unwords ["An operation attempted to get the mock pin state for non-existent pin", show pin]
     Just s -> return s
 
 putPins :: (MockM m) => MockPins -> SysfsMockT m ()
@@ -488,7 +489,7 @@ data MockFSException
   = GpioChipOverlap Pin
     -- ^ The user has defined defined at least two 'MockGpioChip's
     -- with the same pin number, which is an invalid condition
-  | InternalError String
+  | InternalError Text
     -- ^ An internal error has occurred in the mock @sysfs@
     -- interpreter, something which should "never happen" and should
     -- be reported to the package maintainer.
@@ -514,7 +515,7 @@ makeChip chip =
            mkdir chipdir
            mkfile (chipdir </> "base") (Constant [intToBS $ _base chip])
            mkfile (chipdir </> "ngpio") (Constant [intToBS $ length (_initialPinStates chip)])
-           mkfile (chipdir </> "label") (Constant [C8.pack $ _label chip])
+           mkfile (chipdir </> "label") (Constant [toS $ _label chip])
 
 addPins :: Int -> [MockPinState] -> MockPins -> Either MockFSException MockPins
 addPins base states pm = foldrM addPin pm (zip (map Pin [base..]) states)
@@ -606,10 +607,13 @@ readFile path =
          if visible
             then do direction <- _direction <$> pinState pin
                     return $ pinDirectionToBS direction
-            else throwM $ InternalError ("Mock pin " ++ show pin ++ " has no direction but direction attribute is exported")
+            else throwM $
+                   InternalError $
+                     unwords ["Mock pin", show pin, "has no direction but direction attribute is exported"]
     Just (Edge pin) ->
       _edge <$> pinState pin >>= \case
-        Nothing -> throwM $ InternalError ("Mock pin " ++ show pin ++ " has no edge but edge attribute is exported")
+        Nothing -> throwM $ InternalError $
+          unwords ["Mock pin", show pin, "has no edge but edge attribute is exported"]
         Just edge -> return $ sysfsEdgeToBS edge
     Just _ -> throwM $ mkIOError PermissionDenied "Mock.readFile" Nothing (Just path)
 
@@ -650,7 +654,8 @@ writeFile path bs =
     Just (Edge pin) ->
       do ps <- pinState pin
          case (_edge ps, _direction ps) of
-           (Nothing, _) -> throwM $ InternalError ("Mock pin " ++ show pin ++ " has no edge but edge attribute is exported")
+           (Nothing, _) -> throwM $ InternalError $
+             unwords ["Mock pin", show pin, "has no edge but edge attribute is exported"]
            (_, Out) -> throwM $ mkIOError InvalidArgument "Mock.writeFile" Nothing (Just path)
            _ -> case bsToSysfsEdge bs of
                   Just edge -> putPinState pin (\s -> s {_edge = Just edge})
@@ -669,7 +674,8 @@ writeFile path bs =
       -- generates an I/O error. We emulate that behavior here.
       do ps <- pinState pin
          case (_userVisibleDirection ps, _edge ps, bsToPinDirection bs) of
-           (False, _, _) -> throwM $ InternalError ("Mock pin " ++ show pin ++ " has no direction but direction attribute is exported")
+           (False, _, _) -> throwM $ InternalError $
+             unwords ["Mock pin", show pin, "has no direction but direction attribute is exported"]
            (True, _, Nothing) -> throwM writeError
            (True, Nothing, Just (dir, Nothing)) -> putPinState pin (\s -> s {_direction = dir})
            (True, Nothing, Just (dir, Just v)) -> putPinState pin (\s -> s {_direction = dir, _value = v})

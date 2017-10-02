@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -fno-warn-unused-imports -fno-warn-unused-binds #-}
 
 module System.GPIO.Tutorial (
@@ -87,6 +88,7 @@ import System.GPIO.Linux.Sysfs.Types (SysfsException(..))
 
 -- $setup
 -- >>> :set -XFlexibleContexts
+-- >>> :set -XOverloadedStrings
 -- >>> import System.GPIO.Monad
 
 {- $introduction

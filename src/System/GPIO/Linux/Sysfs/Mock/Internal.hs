@@ -50,7 +50,6 @@ module System.GPIO.Linux.Sysfs.Mock.Internal
        ) where
 
 import Protolude
-import Data.String (String)
 import Data.Tree (Tree(..))
 import GHC.IO.Exception (IOErrorType(..))
 import System.FilePath (isAbsolute, isValid, joinPath, splitDirectories)
@@ -58,7 +57,7 @@ import System.IO.Error (IOError, mkIOError)
 
 import System.GPIO.Types (Pin)
 
-type Name = String
+type Name = FilePath
 
 data FileType
   = Constant [ByteString]
