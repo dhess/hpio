@@ -39,6 +39,14 @@ build:	configure
 	@echo "*** Building the package"
 	cabal build
 
+sdist:	check
+	@echo "*** Creating a source distribution"
+	cabal sdist
+
+check:
+	@echo "*** Checking the package for errors"
+	cabal check
+
 configure: hpio.cabal shell.nix default.nix
 	@echo "*** Configuring the package"
 	cabal configure
