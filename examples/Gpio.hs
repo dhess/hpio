@@ -97,7 +97,7 @@ run (GlobalOptions SysfsIO ListPins) = runSysfsGpioIO listPins
 
 -- | Define a constraint that can work with multiple 'MonadGpio'
 -- interpreters.
-type GpioM h m = (MonadMask m, MonadIO m, MonadGpio h m)
+type GpioM h m = (Applicative m, MonadMask m, MonadIO m, MonadGpio h m)
 
 listPins :: (GpioM h m) => m ()
 listPins =
