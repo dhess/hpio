@@ -238,9 +238,9 @@ instance MonadTransControl SysfsGpioT where
   {-# INLINABLE liftWith #-}
   {-# INLINABLE restoreT #-}
 
-type CatchSysfsM m = (MonadCatch m, MonadSysfs m)
-type ThrowSysfsM m = (MonadThrow m, MonadSysfs m)
-type ThrowCatchSysfsM m = (MonadThrow m, MonadCatch m, MonadSysfs m)
+type CatchSysfsM m = (Functor m, MonadCatch m, MonadSysfs m)
+type ThrowSysfsM m = (Functor m, MonadThrow m, MonadSysfs m)
+type ThrowCatchSysfsM m = (Functor m, MonadThrow m, MonadCatch m, MonadSysfs m)
 
 instance (MonadMask m, ThrowCatchSysfsM m) => MonadGpio PinDescriptor (SysfsGpioT m) where
   pins =
