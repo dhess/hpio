@@ -50,12 +50,10 @@ module System.GPIO.Linux.Sysfs.Util
        , bsToInt
        ) where
 
-import Protolude hiding (show)
-import Prelude (show)
+import Protolude
 import qualified Data.ByteString as BS (empty)
 import Data.ByteString.Builder (toLazyByteString, intDec)
 import qualified Data.ByteString.Char8 as C8 (readInt)
-import qualified Data.ByteString.Lazy as LBS (toStrict)
 import System.FilePath ((</>))
 
 import System.GPIO.Types (Pin(..), PinDirection(..), PinValue(..))
@@ -316,7 +314,7 @@ bsToActiveLow bs
 -- >>> intToBS 37
 -- "37"
 intToBS :: Int -> ByteString
-intToBS = LBS.toStrict . toLazyByteString . intDec
+intToBS = toS . toLazyByteString . intDec
 
 -- | Convert a strict decimal ASCII 'ByteString' encoding of an
 -- integer to an 'Int' (maybe). If there are any extraneous trailing
