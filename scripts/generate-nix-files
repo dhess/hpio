@@ -1,4 +1,0 @@
-#!/bin/sh -e
-hpack
-cabal2nix --shell ./. > shell.nix
-cabal2nix ./. > default.nix
