@@ -1,4 +1,4 @@
-## 0.9.0.0 (2017-09-30)
+## 0.9.0.0 (2017-10-02)
 
 Changes:
   - This project now uses Protolude (0.2.*). I believe the only visible
@@ -16,6 +16,7 @@ Fixes:
   - Update Travis-CI config to test against more recent Stackage LTS
     and GHC releases.
   - Remove most of the Travis-CI macOS jobs; they're really slow.
+  - Get all supported GHC/Stackage LTS versions to build again.
 
 ## 0.8.0.10 (2017-06-28)
 
