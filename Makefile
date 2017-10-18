@@ -3,6 +3,10 @@
 # This Makefile is very much tailored to the maintainer's environment.
 # It might work for you, but don't expect much.
 
+doc:	test
+	@echo "*** Generating docs"
+	cabal haddock --hyperlink-source
+
 test:	build
 	@echo "*** Running tests"
 	cabal test
