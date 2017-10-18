@@ -34,10 +34,15 @@ extra-source-files:
     .travis.yml
     changelog.md
     Hlint.hs
+    nix/hpio.nix
+    package.yaml
     README.md
     release.nix
     shell.nix
     stack-lts-2.yaml
+    stack-lts-3.yaml
+    stack-lts-6.yaml
+    stack-lts-7.yaml
     stack.yaml
 
 source-repository head
