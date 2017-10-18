@@ -14,8 +14,9 @@ Top-level re-exports for writing GPIO programs.
 {-# LANGUAGE Safe #-}
 
 module System.GPIO
-       ( module X
+       ( module System.GPIO.Monad
+       , module System.GPIO.Linux
        ) where
 
-import System.GPIO.Monad as X
-import System.GPIO.Linux as X
+import System.GPIO.Monad
+import System.GPIO.Linux
