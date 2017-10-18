@@ -3,7 +3,7 @@
 -- see: https://github.com/sol/hpack
 
 name:                   hpio
-version:                0.9.0.1
+version:                0.9.0.2
 synopsis:               Monads for GPIO in Haskell
 description:            This package provides an embedded DSL for writing cross-platform
                         GPIO programs in Haskell. Currently only Linux is supported (via the

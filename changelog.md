@@ -1,3 +1,12 @@
+## 0.9.0.2 (2017-10-18)
+
+Changes:
+  - Revert to manual imports in top-level modules for better Haddocks.
+
+Fixes:
+  - Fix source path in hpio.nix.
+  - Remove macOS builds from Travis-CI config; they're just too slow.
+
 ## 0.9.0.1 (2017-10-16)
 
 Fixes:
