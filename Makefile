@@ -75,7 +75,7 @@ lts-2: 	hpio.cabal nix/hpio.nix
 
 nix/hpio.nix: hpio.cabal
 	@echo "*** Generating nix/hpio.nix"
-	cabal2nix ./. > nix/hpio.nix
+	cd nix && cabal2nix ../. > hpio.nix
 
 hpio.cabal: package.yaml
 	@echo "*** Running hpack"

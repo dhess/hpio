@@ -7,7 +7,7 @@
 mkDerivation {
   pname = "hpio";
   version = "0.9.0.1";
-  src = ./.;
+  src = ../.;
   isLibrary = true;
   isExecutable = true;
   libraryHaskellDepends = [
