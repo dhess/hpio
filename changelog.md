@@ -1,3 +1,9 @@
+## 0.9.0.1 (2017-10-16)
+
+Fixes:
+  - Better Nix packaging.
+  - Add a few missing files to extra-source-files.
+
 ## 0.9.0.0 (2017-10-02)
 
 Changes:
