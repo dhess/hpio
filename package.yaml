@@ -240,7 +240,8 @@ extra-source-files:
   - Hlint.hs
   - README.md
   - changelog.md
-  - default.nix
+  - nix/*
+  - release.nix
   - shell.nix
   - stack.yaml
   - stack-lts-2.yaml

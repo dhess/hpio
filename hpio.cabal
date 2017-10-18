@@ -1,4 +1,4 @@
--- This file has been generated from package.yaml by hpack version 0.18.1.
+-- This file has been generated from package.yaml by hpack version 0.19.2.
 --
 -- see: https://github.com/sol/hpack
 
@@ -33,9 +33,9 @@ cabal-version:          >= 1.10
 extra-source-files:
     .travis.yml
     changelog.md
-    default.nix
     Hlint.hs
     README.md
+    release.nix
     shell.nix
     stack-lts-2.yaml
     stack.yaml
@@ -74,22 +74,22 @@ library
   c-sources:
       src/System/GPIO/Linux/Sysfs/pollSysfs.c
   build-depends:
-      QuickCheck          >=2.7.6  && <2.11
-    , base                >=4.7.0  && <5
-    , bytestring          >=0.10.4 && <0.11
-    , containers          >=0.5.5  && <0.6
-    , directory           >=1.2.1  && <1.4
-    , exceptions          >=0.8.0  && <1
-    , filepath            >=1.3.0  && <1.5
-    , monad-control       == 1.*
-    , monad-logger        == 0.3.*
-    , mtl                 >=2.1.3  && <2.3
-    , protolude           == 0.2.*
-    , text                >=1.2.0  && <1.3
-    , transformers        >=0.3.0  && <0.6
-    , transformers-base   == 0.4.*
-    , unix                >=2.7.0  && <2.8
-    , unix-bytestring     >=0.3.7  && <0.4
+      QuickCheck >=2.7.6 && <2.11
+    , base >=4.7.0 && <5
+    , bytestring >=0.10.4 && <0.11
+    , containers >=0.5.5 && <0.6
+    , directory >=1.2.1 && <1.4
+    , exceptions >=0.8.0 && <1
+    , filepath >=1.3.0 && <1.5
+    , monad-control ==1.*
+    , monad-logger ==0.3.*
+    , mtl >=2.1.3 && <2.3
+    , protolude ==0.2.*
+    , text >=1.2.0 && <1.3
+    , transformers >=0.3.0 && <0.6
+    , transformers-base ==0.4.*
+    , unix >=2.7.0 && <2.8
+    , unix-bytestring >=0.3.7 && <0.4
   if impl(ghc >= 8.0)
     ghc-options: -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates
   else
@@ -98,8 +98,8 @@ library
     ghc-options: -Wcompat -Wnoncanonical-monad-instances -Wnoncanonical-monadfail-instances
   else
     build-depends:
-        fail       == 4.9.*
-      , semigroups == 0.18.*
+        fail ==4.9.*
+      , semigroups ==0.18.*
   exposed-modules:
       System.GPIO
       System.GPIO.Linux
@@ -132,8 +132,8 @@ executable hpio-example
     buildable: False
   else
     build-depends:
-        base
-      , async >=2.0.2 && <2.2
+        async >=2.0.2 && <2.2
+      , base
       , exceptions
       , hpio
       , mtl
@@ -160,8 +160,8 @@ executable hpio-reader-example
     buildable: False
   else
     build-depends:
-        base
-      , async >=2.0.2 && <2.2
+        async >=2.0.2 && <2.2
+      , base
       , exceptions
       , hpio
       , mtl
@@ -188,8 +188,8 @@ executable hpio-sysfs-example
     buildable: False
   else
     build-depends:
-        base
-      , async >=2.0.2 && <2.2
+        async >=2.0.2 && <2.2
+      , base
       , exceptions
       , hpio
       , mtl
@@ -250,15 +250,15 @@ test-suite spec
   default-extensions: NoImplicitPrelude
   ghc-options: -threaded
   build-depends:
-      base
+      QuickCheck
+    , base
     , containers
     , directory
     , exceptions
     , filepath
     , hpio
-    , hspec                >=2.1.7
+    , hspec >=2.1.7
     , protolude
-    , QuickCheck
   if impl(ghc >= 8.0)
     ghc-options: -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates
   else
@@ -271,4 +271,5 @@ test-suite spec
       Test.System.GPIO.Linux.Sysfs.MockSpec
       Test.System.GPIO.Linux.Sysfs.SysfsGpioMockSpec
       Test.System.GPIO.TypesSpec
+      Paths_hpio
   default-language: Haskell2010

@@ -47,7 +47,7 @@ check:
 	@echo "*** Checking the package for errors"
 	cabal check
 
-configure: hpio.cabal shell.nix default.nix
+configure: hpio.cabal nix/hpio.nix
 	@echo "*** Configuring the package"
 	cabal configure
 
@@ -55,31 +55,27 @@ nix-stack = nix-shell -p stack-$(1)-env --run 'stack test --nix --nix-packages "
 
 lts:	lts-9 lts-6 lts-3 lts-2
 
-lts-9: 	hpio.cabal shell.nix default.nix
+lts-9: 	hpio.cabal nix/hpio.nix
 	$(call nix-stack,lts-9,stack.yaml)
 
 # Currently disabled, as Nix no longer supports GHC 8.0.1 out of the
 # box.
 
-#lts-7: 	hpio.cabal shell.nix default.nix
+#lts-7: 	hpio.cabal nix/hpio.nix
 #	$(call nix-stack,lts-7,stack-lts-7.yaml)
 
-lts-6: 	hpio.cabal shell.nix default.nix
+lts-6: 	hpio.cabal nix/hpio.nix
 	$(call nix-stack,lts-6,stack-lts-6.yaml)
 
-lts-3: 	hpio.cabal shell.nix default.nix
+lts-3: 	hpio.cabal nix/hpio.nix
 	$(call nix-stack,lts-3,stack-lts-3.yaml)
 
-lts-2: 	hpio.cabal shell.nix default.nix
+lts-2: 	hpio.cabal nix/hpio.nix
 	$(call nix-stack,lts-2,stack-lts-2.yaml)
 
-shell.nix: hpio.cabal
-	@echo "*** Generating shell.nix"
-	cabal2nix --shell ./. > shell.nix
-
-default.nix: hpio.cabal
-	@echo "*** Generating default.nix"
-	cabal2nix ./. > default.nix
+nix/hpio.nix: hpio.cabal
+	@echo "*** Generating nix/hpio.nix"
+	cabal2nix ./. > nix/hpio.nix
 
 hpio.cabal: package.yaml
 	@echo "*** Running hpack"
