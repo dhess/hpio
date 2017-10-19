@@ -194,7 +194,7 @@ tests:
       else:
         dependencies:
           - base
-          - hlint
+          - hlint     >= 1.9 && <2.1
           - protolude
   doctest:
     main: doctest.hs
@@ -228,8 +228,6 @@ tests:
       - hspec                >=2.1.7
       - protolude
       - QuickCheck
-    ghc-options:
-      - -threaded
     when:
       - condition: flag(linux-bbone-tests)
         cpp-options:
