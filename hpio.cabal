@@ -1,6 +1,8 @@
--- This file has been generated from package.yaml by hpack version 0.19.2.
+-- This file has been generated from package.yaml by hpack version 0.20.0.
 --
 -- see: https://github.com/sol/hpack
+--
+-- hash: 354989a4e1b2f8a2df204f869aee2f81ada8e26ac9146d0f58cfda12004ba35c
 
 name:                   hpio
 version:                0.9.0.2
@@ -243,7 +245,7 @@ test-suite hlint
   else
     build-depends:
         base
-      , hlint
+      , hlint >=1.9 && <2.1
       , protolude
   default-language: Haskell2010
 
