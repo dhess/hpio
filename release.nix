@@ -45,7 +45,6 @@ let
 
           # More exotic overrides go here
           manualOverrides = haskellPackagesNew: haskellPackagesOld: {
-            protolude = pkgs.haskell.packages.${compiler}.protolude_0_2;
           };
         in
           pkgs.haskell.packages.${compiler}.override {
