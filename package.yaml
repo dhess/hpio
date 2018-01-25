@@ -249,3 +249,4 @@ extra-source-files:
   - stack-lts-3.yaml
   - stack-lts-6.yaml
   - stack-lts-7.yaml
+  - stack-lts-9.yaml

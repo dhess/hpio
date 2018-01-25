@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 4141b8ac6bf673a0016cc0f76b9782f76130e7f59a418e4670594e6499bf7797
+-- hash: e8dbbcc52e95afb9cf0789dc36d77c4debc03409c219ff355858bf264e520d8c
 
 name:                   hpio
 version:                0.9.0.2
@@ -47,6 +47,7 @@ extra-source-files:
     stack-lts-3.yaml
     stack-lts-6.yaml
     stack-lts-7.yaml
+    stack-lts-9.yaml
     stack.yaml
 
 source-repository head
