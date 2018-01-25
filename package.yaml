@@ -238,7 +238,9 @@ extra-source-files:
   - Hlint.hs
   - README.md
   - changelog.md
+  - fetch-nixpkgs.nix
   - nix/*
+  - nixpkgs-src.json
   - package.yaml
   - release.nix
   - shell.nix

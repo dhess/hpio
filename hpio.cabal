@@ -35,8 +35,10 @@ cabal-version:          >= 1.10
 extra-source-files:
     .travis.yml
     changelog.md
+    fetch-nixpkgs.nix
     Hlint.hs
     nix/hpio.nix
+    nixpkgs-src.json
     package.yaml
     README.md
     release.nix
