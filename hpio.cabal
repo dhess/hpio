@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 4228eb0fa13e2d6d2e6d513169745a11e495cef8af0b69ccad69cafe50f87025
+-- hash: 5f3e002c5b17d28acb5d1a4af271627cee30326dd2c255f9c2d4e288cb944f7d
 
 name:                   hpio
 version:                0.9.0.2
@@ -43,7 +43,6 @@ extra-source-files:
     nix/nixpkgs-src.json
     nix/overlays/haskell-overrides.nix
     nix/pkgs/hpio.nix
-    nix/release.nix
     package.yaml
     README.md
     shell.nix
