@@ -14,3 +14,4 @@ cabal-dev
 cabal.sandbox.config
 .stack-work/*
 result*
+.dir-locals.el
