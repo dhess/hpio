@@ -1,3 +1,15 @@
+## 0.9.0.3 (2018-01-25)
+
+Changes:
+  - Bump QuickCheck, hlint bounds.
+  - Add GHC 8.2.2 to .travis.yml.
+  - Much improved Nix support, including a default fixed nixpkgs
+    revision and Hydra jobsets.
+  - Stackage LTS 10 support.
+
+Fixes:
+  - Fixed new hlint issues.
+
 ## 0.9.0.2 (2017-10-18)
 
 Changes:
