@@ -1,8 +1,8 @@
--- This file has been generated from package.yaml by hpack version 0.20.0.
+-- This file has been generated from package.yaml by hpack version 0.21.2.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 354989a4e1b2f8a2df204f869aee2f81ada8e26ac9146d0f58cfda12004ba35c
+-- hash: 4141b8ac6bf673a0016cc0f76b9782f76130e7f59a418e4670594e6499bf7797
 
 name:                   hpio
 version:                0.9.0.2
@@ -81,7 +81,7 @@ library
   c-sources:
       src/System/GPIO/Linux/Sysfs/pollSysfs.c
   build-depends:
-      QuickCheck >=2.7.6 && <2.11
+      QuickCheck >=2.7.6 && <2.12
     , base >=4.7.0 && <5
     , bytestring >=0.10.4 && <0.11
     , containers >=0.5.5 && <0.6
