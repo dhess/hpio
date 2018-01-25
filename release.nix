@@ -1,4 +1,6 @@
-{ compiler ? "ghc822" }:
+{ compiler ? "ghc822"
+, overlays ? []
+}:
 
 let
   # Disable tests for these packages
@@ -59,7 +61,7 @@ let
     };
   };
 
-  pkgs = import <nixpkgs> { inherit config; };
+  pkgs = import <nixpkgs> { inherit config overlays; };
 
 in
   { hpio = pkgs.haskellPackages.hpio;
