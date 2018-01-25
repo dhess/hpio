@@ -569,8 +569,7 @@ mkfile path filetype =
 -- filesystem.
 doesDirectoryExist :: (MockM m) => FilePath -> SysfsMockT m Bool
 doesDirectoryExist path =
-  do cwz <- getZipper
-     return $ either (const False) (const True) (Internal.cd path cwz)
+  either (const False) (const True) . Internal.cd path <$> getZipper
 
 -- | Check whether the specified file exists in the mock filesystem.
 doesFileExist :: (MockM m) => FilePath -> SysfsMockT m Bool
@@ -605,8 +604,7 @@ readFile path =
     Just (Direction pin) ->
       do visible <- _userVisibleDirection <$> pinState pin
          if visible
-            then do direction <- _direction <$> pinState pin
-                    return $ pinDirectionToBS direction
+            then pinDirectionToBS . _direction <$> pinState pin
             else throwM $
                    InternalError $
                      unwords ["Mock pin", show pin, "has no direction but direction attribute is exported"]
@@ -720,8 +718,7 @@ fileAt :: (MockM m) => FilePath -> SysfsMockT m (Maybe FileType)
 fileAt path =
   let (dirPath, fileName) = splitFileName path
   in
-    do parent <- _cwd <$> cd dirPath
-       return $ findFile fileName parent
+    findFile fileName . _cwd <$> cd dirPath
 
 -- | For the mock filesystem, this action is equivalent to
 -- 'writeFile'.

@@ -529,9 +529,7 @@ resetEdge p =
     maybeReadPinEdge =
         pinHasEdge p >>= \case
           False -> return Nothing
-          True ->
-            do edge <- readPinEdge p
-               return $ Just edge
+          True -> Just <$> readPinEdge p
 
 writeDirection :: (CatchSysfsM m) => Pin -> ByteString -> m ()
 writeDirection p bs =
