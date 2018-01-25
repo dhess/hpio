@@ -1,3 +1,3 @@
 { compiler ? "ghc822" }:
 
-(import ./release.nix { inherit compiler; }).hpio.env
+(import ./nix/release.nix { inherit compiler; }).hpio.env

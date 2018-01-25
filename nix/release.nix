@@ -4,13 +4,7 @@
 
 let
 
-  fetchNixPkgs =
-  let
-    try = builtins.tryEval <nixpkgs_override>;
-  in
-    if try.success
-      then builtins.trace "Using <nixpkgs_override>" try.value
-      else import ./fetch-nixpkgs.nix;
+  fixedNixPkgs = (import ./lib.nix).fetchNixPkgs;
 
   # Disable tests for these packages
   dontCheckPackages = [
@@ -33,11 +27,11 @@ let
               toPackage = file: _: {
                 name  = builtins.replaceStrings [ ".nix" ] [ "" ] file;
 
-                value = haskellPackagesNew.callPackage (./. + "/nix/${file}") { };
+                value = haskellPackagesNew.callPackage (./. + "/pkgs/${file}") { };
               };
 
             in
-              pkgs.lib.mapAttrs' toPackage (builtins.readDir ./nix);
+              pkgs.lib.mapAttrs' toPackage (builtins.readDir ./pkgs);
 
           makeOverrides =
             function: names: haskellPackagesNew: haskellPackagesOld:
@@ -70,7 +64,7 @@ let
     };
   };
 
-  pkgs = (import fetchNixPkgs) { inherit config overlays; };
+  pkgs = (import fixedNixPkgs) { inherit config overlays; };
 
 in
   { hpio = pkgs.haskellPackages.hpio;

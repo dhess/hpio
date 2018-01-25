@@ -238,11 +238,10 @@ extra-source-files:
   - Hlint.hs
   - README.md
   - changelog.md
-  - fetch-nixpkgs.nix
+  - default.nix
   - nix/*
-  - nixpkgs-src.json
+  - nix/*/*
   - package.yaml
-  - release.nix
   - shell.nix
   - stack.yaml
   - stack-lts-2.yaml

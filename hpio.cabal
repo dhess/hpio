@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: e8dbbcc52e95afb9cf0789dc36d77c4debc03409c219ff355858bf264e520d8c
+-- hash: 4228eb0fa13e2d6d2e6d513169745a11e495cef8af0b69ccad69cafe50f87025
 
 name:                   hpio
 version:                0.9.0.2
@@ -35,13 +35,17 @@ cabal-version:          >= 1.10
 extra-source-files:
     .travis.yml
     changelog.md
-    fetch-nixpkgs.nix
+    default.nix
     Hlint.hs
-    nix/hpio.nix
-    nixpkgs-src.json
+    nix/fetch-nixpkgs.nix
+    nix/jobsets/release.nix
+    nix/lib.nix
+    nix/nixpkgs-src.json
+    nix/overlays/haskell-overrides.nix
+    nix/pkgs/hpio.nix
+    nix/release.nix
     package.yaml
     README.md
-    release.nix
     shell.nix
     stack-lts-2.yaml
     stack-lts-3.yaml
