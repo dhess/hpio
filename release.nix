@@ -3,6 +3,15 @@
 }:
 
 let
+
+  fetchNixPkgs =
+  let
+    try = builtins.tryEval <nixpkgs_override>;
+  in
+    if try.success
+      then builtins.trace "Using <nixpkgs_override>" try.value
+      else import ./fetch-nixpkgs.nix;
+
   # Disable tests for these packages
   dontCheckPackages = [
   ];
@@ -61,7 +70,7 @@ let
     };
   };
 
-  pkgs = import <nixpkgs> { inherit config overlays; };
+  pkgs = (import fetchNixPkgs) { inherit config overlays; };
 
 in
   { hpio = pkgs.haskellPackages.hpio;
