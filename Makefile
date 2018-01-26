@@ -3,6 +3,10 @@
 # This Makefile is very much tailored to the maintainer's environment.
 # It might work for you, but don't expect much.
 
+
+nix-build: nix
+	nix-build nix/jobsets/release.nix -A hpio
+
 doc:	test
 	@echo "*** Generating docs"
 	cabal haddock --hyperlink-source
@@ -14,25 +18,17 @@ test:	build
 help:
 	@echo "Targets:"
 	@echo
+	@echo "(Default is 'nix-build')"
+	@echo
 	@echo "Cabal/Nix:"
 	@echo
 	@echo "The following targets assume that you are running Nix with some version"
 	@echo "of cabal and GHC in your environment."
 	@echo
+	@echo "    nix-build - Run nix-build on all release.nix targets"
 	@echo "    test      - configure and build the package, then run the tests"
 	@echo "    build     - configure and build the package"
 	@echo "    configure - configure the package"
-	@echo
-	@echo "Stack/Nix:"
-	@echo
-	@echo "The following targets build and test the package with Stack, using the"
-	@echo "given version of Stackage LTS as configured by the file stack-<target>.yaml."
-	@echo
-	@echo "    lts   [build all supported LTS targets]"
-	@echo "    lts-9"
-	@echo "    lts-6"
-	@echo "    lts-3"
-	@echo "    lts-2 [Note: does not work on macOS]"
 	@echo
 	@echo "General:"
 	@echo
@@ -55,29 +51,7 @@ configure: hpio.cabal nix/pkgs/hpio.nix
 	@echo "*** Configuring the package"
 	cabal configure
 
-nix-stack = nix-shell -p stack-$(1)-env --run 'stack test --nix --nix-packages "zlib binutils gcc" --stack-yaml $(2)'
-
-lts:	lts-9 lts-6 lts-3 lts-2
-
-lts-9: 	hpio.cabal nix/pkgs/hpio.nix
-	$(call nix-stack,lts-9,stack.yaml)
-
-# Currently disabled, as Nix no longer supports GHC 8.0.1 out of the
-# box.
-
-#lts-7: 	hpio.cabal pkgs/hpio.nix
-#	$(call nix-stack,lts-7,stack-lts-7.yaml)
-
-lts-6: 	hpio.cabal nix/pkgs/hpio.nix
-	$(call nix-stack,lts-6,stack-lts-6.yaml)
-
-lts-3: 	hpio.cabal nix/pkgs/hpio.nix
-	$(call nix-stack,lts-3,stack-lts-3.yaml)
-
-lts-2: 	hpio.cabal nix/pkgs/hpio.nix
-	$(call nix-stack,lts-2,stack-lts-2.yaml)
-
-nix/pkgs/hpio.nix: hpio.cabal
+nix nix/pkgs/hpio.nix: hpio.cabal
 	@echo "*** Generating pkgs/hpio.nix"
 	cd nix/pkgs && cabal2nix ../../. > hpio.nix
 
