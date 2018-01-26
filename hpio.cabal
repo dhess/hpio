@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 998649f85926e44c675d5e7d0f9074add5f856d11f0f01dc411e7db73e59f8c9
+-- hash: 800b04bc85b7dcea7a642e3ab40fa6d5af222981ad5f413e704033902dbd4363
 
 name:                   hpio
 version:                0.9.0.3
@@ -33,10 +33,10 @@ build-type:             Simple
 cabal-version:          >= 1.10
 
 extra-source-files:
+    .hlint.yaml
     .travis.yml
     changelog.md
     default.nix
-    Hlint.hs
     nix/fetch-nixpkgs.nix
     nix/jobsets/default.nix
     nix/jobsets/release.nix
@@ -253,7 +253,7 @@ test-suite hlint
   else
     build-depends:
         base
-      , hlint >=1.9 && <2.1
+      , hlint ==2.0.*
       , protolude
   default-language: Haskell2010
 

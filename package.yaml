@@ -194,7 +194,7 @@ tests:
       else:
         dependencies:
           - base
-          - hlint     >= 1.9 && <2.1
+          - hlint     ==2.0.*
           - protolude
   doctest:
     main: doctest.hs
@@ -234,8 +234,8 @@ tests:
           -DRUN_LINUX_BBONE_TESTS=1
 
 extra-source-files:
+  - .hlint.yaml
   - .travis.yml
-  - Hlint.hs
   - README.md
   - changelog.md
   - default.nix
