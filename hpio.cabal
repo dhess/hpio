@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: cf366b6910abe1c5e5a562bccf9aed1a9dfcb4e69c757b4e4e4e7c2134080d24
+-- hash: 59a015137b3603cd0c9ae210407c08f67f9b52016c858c0567a5841a2e111e3b
 
 name:                   hpio
 version:                0.9.0.3
@@ -232,7 +232,7 @@ test-suite doctest
   else
     build-depends:
         base
-      , doctest
+      , doctest >=0.9.13
       , filepath
       , protolude
   default-language: Haskell2010
