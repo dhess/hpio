@@ -1366,7 +1366,7 @@ runTutorialReaderGpioIO program config =
 
 {- $copyright
 
-This tutorial is copyright Quixoftic, LLC, 2017, and is licensed under the
+This tutorial is copyright Quixoftic, LLC, 2018, and is licensed under the
 <http://creativecommons.org/licenses/by/4.0/ Creative Commons Attribution 4.0 International License>.
 
 -}

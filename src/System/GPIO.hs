@@ -1,7 +1,7 @@
 {-|
 Module      : System.GPIO
 Description : Top-level re-exports for writing GPIO programs
-Copyright   : (c) 2017, Quixoftic, LLC
+Copyright   : (c) 2018, Quixoftic, LLC
 License     : BSD3
 Maintainer  : Drew Hess <dhess-src@quixoftic.com>
 Stability   : experimental

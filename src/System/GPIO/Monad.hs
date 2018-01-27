@@ -1,7 +1,7 @@
 {-|
 Module      : System.GPIO.Monad
 Description : A monad for GPIO computations
-Copyright   : (c) 2017, Quixoftic, LLC
+Copyright   : (c) 2018, Quixoftic, LLC
 License     : BSD3
 Maintainer  : Drew Hess <dhess-src@quixoftic.com>
 Stability   : experimental
