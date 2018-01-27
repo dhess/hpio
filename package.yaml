@@ -163,7 +163,6 @@ executables:
           - -Wnoncanonical-monad-instances
           - -Wnoncanonical-monadfail-instances
           - -fno-warn-redundant-constraints
-          - -fno-warn-redundant-constraints
   hpio-sysfs-example:
     <<: *executable
     main: Sysfs.hs
