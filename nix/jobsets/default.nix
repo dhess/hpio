@@ -32,9 +32,10 @@ let
     description = "hpio";
     inputs = {
       # nixpkgs-stackage wants a <nixpkgs> path so that it can import
-      # Haskell stuff. Here we use the one passed to us as an
-      # argument, for lack of anything better.
-      nixpkgs = mkFetchGithub "https://github.com/NixOS/nixpkgs-channels.git nixpkgs-unstable";
+      # Haskell stuff. Which we use doesn't particularly matter, as
+      # it's only used for importing functions. Here we use a stable
+      # one.
+      nixpkgs = mkFetchGithub "https://github.com/NixOS/nixpkgs-channels.git nixos-17.09";
       hpio = mkFetchGithub "${hpioUri} master";
     };
   };
@@ -44,7 +45,9 @@ let
     schedulingshares = 100;
     inputs = rec {
       # nixpkgs-stackage wants a <nixpkgs> path so that it can import
-      # Haskell stuff.
+      # Haskell stuff. Which we use doesn't particularly matter, as
+      # it's only used for importing functions. Here we use the same
+      # one that was passed to us as nixpkgs_override.
       nixpkgs = nixpkgs_override;
       nixpkgs_override = mkFetchGithub "https://github.com/NixOS/nixpkgs-channels.git ${nixpkgsRev}";
       nixpkgs_stackage_override = mkFetchGithub "https://github.com/typeable/nixpkgs-stackage.git ${nixpkgsStackageRev}";
