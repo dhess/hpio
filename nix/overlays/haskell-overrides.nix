@@ -11,7 +11,13 @@ let
     }
   )));
 
-  withLts9Extras = withLts7Extras;
+  withLts9Extras = hp: (hp.extend (self: super: (
+    with haskell.lib;
+    rec {
+      protolude = self.callPackage ../pkgs/protolude-0.2.nix {};
+      zlib = dontCheck super.zlib;
+    }
+  )));
 
   withLts7Extras = withLts6Extras;
 
