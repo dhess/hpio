@@ -34,7 +34,7 @@ let
       # nixpkgs-stackage wants a <nixpkgs> path so that it can import
       # Haskell stuff. Here we use the one passed to us as an
       # argument, for lack of anything better.
-      inherit nixpkgs;
+      nixpkgs = mkFetchGithub "https://github.com/NixOS/nixpkgs-channels.git nixpkgs-unstable";
       hpio = mkFetchGithub "${hpioUri} master";
     };
   };
