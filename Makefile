@@ -8,7 +8,7 @@ hpio:	 nix
 	 nix-build nix/jobsets/release.nix -A hpio
 
 nixpkgs: nix
-	 nix-build nix/jobsets/release.nix -A nixpkgs
+	 nix-build nix/jobsets/release.nix -A hpio-nixpkgs
 
 release: nix
 	 nix-build nix/jobsets/release.nix
