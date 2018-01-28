@@ -4,9 +4,6 @@
 # It might work for you, but don't expect much.
 
 
-hpio:	 nix
-	 nix-build nix/jobsets/release.nix -A hpio
-
 nixpkgs: nix
 	 nix-build nix/jobsets/release.nix -A nixpkgs
 
@@ -24,15 +21,14 @@ test:	build
 help:
 	@echo "Targets:"
 	@echo
-	@echo "(Default is 'this-system')"
+	@echo "(Default is 'nixpkgs')"
 	@echo
 	@echo "Cabal/Nix:"
 	@echo
 	@echo "The following targets assume that you are running Nix with some version"
 	@echo "of cabal and GHC in your environment."
 	@echo
-	@echo "    hpio        - build hpio against nixpkgs using nix-build (just this platform)"
-	@echo "    nixpkgs     - build hpio against nixpkgs using nix-build (all supported platforms)"
+	@echo "    nixpkgs     - build hpio against nixpkgs using nix-build"
 	@echo "    release     - Run nix-build on all release.nix targets"
 	@echo "    test        - configure and build the package, then run the tests (cabal)"
 	@echo "    build       - configure and build the package (cabal)"

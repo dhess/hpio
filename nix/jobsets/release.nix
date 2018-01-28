@@ -119,7 +119,6 @@ let
 in
 {
   inherit (jobs) nixpkgs lts-10 lts-9 lts-6 lts-2; #lts-7 lts-3
-  hpio = jobs.haskellPackages.hpio.${builtins.currentSystem};
 }
 // enumerateConstituents jobs.nixpkgs
 // enumerateConstituents jobs.lts-10
