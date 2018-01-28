@@ -4,11 +4,14 @@
 # It might work for you, but don't expect much.
 
 
-nixpkgs: nix
-	 nix-build nix/jobsets/release.nix -A nixpkgs
+hpio:    nix
+	 nix-build nix/jobsets/release.nix -A hpio
+
+hpio-lts-%:	nix
+		nix-build nix/jobsets/release.nix -A hpio-lts-$*
 
 release: nix
-	 nix-build nix/jobsets/release.nix
+	 nix-build nix/jobsets/release.nix -A hpio -A hpio-lts-10 -A hpio-lts-9 -A hpio-lts-6 -A hpio-lts-2
 
 doc:	test
 	@echo "*** Generating docs"
@@ -21,14 +24,18 @@ test:	build
 help:
 	@echo "Targets:"
 	@echo
-	@echo "(Default is 'nixpkgs')"
+	@echo "(Default is 'hpio')"
 	@echo
 	@echo "Cabal/Nix:"
 	@echo
 	@echo "The following targets assume that you are running Nix with some version"
 	@echo "of cabal and GHC in your environment."
 	@echo
-	@echo "    nixpkgs     - build hpio against nixpkgs using nix-build"
+	@echo "    hpio        - build hpio against nixpkgs using nix-build"
+	@echo "    hpio-lts-10 - build hpio against Stackage LTS 10 using nix-build"
+	@echo "    hpio-lts-9  - build hpio against Stackage LTS 9 using nix-build"
+	@echo "    hpio-lts-6  - build hpio against Stackage LTS 6 using nix-build"
+	@echo "    hpio-lts-2  - build hpio against Stackage LTS 2 using nix-build"
 	@echo "    release     - Run nix-build on all release.nix targets"
 	@echo "    test        - configure and build the package, then run the tests (cabal)"
 	@echo "    build       - configure and build the package (cabal)"
