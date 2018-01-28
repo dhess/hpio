@@ -30,6 +30,19 @@ help:
 	@echo "    build     - configure and build the package"
 	@echo "    configure - configure the package"
 	@echo
+	@echo "Stack/Nix:"
+	@echo
+	@echo "The following targets build and test the package with Stack, using the"
+	@echo "given version of Stackage LTS as configured by the file stack-<target>.yaml."
+	@echo
+	@echo "    lts   [build all supported LTS targets]"
+	@echo "    lts-10"
+	@echo "    lts-9"
+	@echo "    lts-7"
+	@echo "    lts-6"
+	@echo "    lts-3"
+	@echo "    lts-2 [Note: does not work on macOS]"
+	@echo
 	@echo "General:"
 	@echo
 	@echo "    clean - remove all targets"
@@ -38,6 +51,28 @@ help:
 build:	configure
 	@echo "*** Building the package"
 	cabal build
+
+nix-stack = nix-shell -p stack-env zlib libiconv ncurses --run 'stack test --stack-yaml $(1)'
+
+lts:    lts-10 lts-9 lts-7 lts-6 lts-3 lts-2
+
+lts-10: nix
+	$(call nix-stack,stack.yaml)
+
+lts-9:  nix
+	$(call nix-stack,stack-lts-9.yaml)
+
+lts-7:  nix
+	$(call nix-stack,stack-lts-7.yaml)
+
+lts-6:  nix
+	$(call nix-stack,stack-lts-6.yaml)
+
+lts-3:  nix
+	$(call nix-stack,stack-lts-3.yaml)
+
+lts-2:  nix
+	$(call nix-stack,stack-lts-2.yaml)
 
 sdist:	check
 	@echo "*** Creating a source distribution"
