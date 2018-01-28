@@ -1,7 +1,10 @@
-# From https://github.com/input-output-hk/iohk-ops/blob/a25d2d9320f8b8f3515f1195d5fceba96fd24493/fetch-nixpkgs.nix
+# Adapted from
+# https://github.com/input-output-hk/iohk-ops/blob/a25d2d9320f8b8f3515f1195d5fceba96fd24493/fetch-nixpkgs.nix
+
+{ jsonSpec }:
 
 let
-  spec = builtins.fromJSON (builtins.readFile ./nixpkgs-src.json);
+  spec = builtins.fromJSON jsonSpec;
   src = import <nix/fetchurl.nix> {
     url = "https://github.com/${spec.owner}/${spec.repo}/archive/${spec.rev}.tar.gz";
     inherit (spec) sha256;

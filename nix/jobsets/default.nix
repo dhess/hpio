@@ -35,18 +35,20 @@ let
     };
   };
 
-  mkChannelAlt = hpioBranch: nixpkgsRev: {
+  mkChannelAlt = hpioBranch: nixpkgsRev: nixpkgsStackageRev: {
     checkinterval = 60;
     schedulingshares = 100;
     inputs = {
       nixpkgs_override = mkFetchGithub "https://github.com/NixOS/nixpkgs-channels.git ${nixpkgsRev}";
+      nixpkgs_stackage_override = mkFetchGithub "https://github.com/typeable/nixpkgs-stackage.git ${nixpkgsStackageRev}";
       hpio = mkFetchGithub "${hpioUri} ${hpioBranch}";
     };
   };
 
   mainJobsets = with pkgs.lib; mapAttrs (name: settings: defaultSettings // settings) (rec {
     master = {};
-    nixpkgs-unstable = mkChannelAlt "master" "nixpkgs-unstable";
+    # Disabled for now.
+    #next = mkChannelAlt "master" "nixpkgs-unstable" "master";
   });
 
   jobsetsAttrs = mainJobsets;

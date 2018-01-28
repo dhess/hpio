@@ -8,16 +8,23 @@ let
   in
     if try.success
       then builtins.trace "Using <nixpkgs_override>" try.value
-      else import ./fetch-nixpkgs.nix;
+      else (import ./fetch-github.nix) { jsonSpec = builtins.readFile ./nixpkgs-src.json; };
+
+  fetchNixPkgsStackage =
+  let
+    try = builtins.tryEval <nixpkgs_stackage_override>;
+  in
+    if try.success
+      then builtins.trace "Using <nixpkgs_stackage_override>" try.value
+      else (import ./fetch-github.nix) { jsonSpec = builtins.readFile ./nixpkgs-stackage-src.json; };
 
   nixpkgs = import fetchNixPkgs;
-
   pkgs = nixpkgs {};
-
   lib = pkgs.lib;
 
 in lib // (rec {
 
   inherit fetchNixPkgs;
+  inherit fetchNixPkgsStackage;
 
 })
