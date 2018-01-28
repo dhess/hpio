@@ -31,6 +31,10 @@ let
     nixexprinput = "hpio";
     description = "hpio";
     inputs = {
+      # nixpkgs-stackage wants a <nixpkgs> path so that it can import
+      # Haskell stuff. Here we use the one passed to us as an
+      # argument, for lack of anything better.
+      inherit nixpkgs;
       hpio = mkFetchGithub "${hpioUri} master";
     };
   };
@@ -38,7 +42,10 @@ let
   mkChannelAlt = hpioBranch: nixpkgsRev: nixpkgsStackageRev: {
     checkinterval = 60;
     schedulingshares = 100;
-    inputs = {
+    inputs = rec {
+      # nixpkgs-stackage wants a <nixpkgs> path so that it can import
+      # Haskell stuff.
+      nixpkgs = nixpkgs_override;
       nixpkgs_override = mkFetchGithub "https://github.com/NixOS/nixpkgs-channels.git ${nixpkgsRev}";
       nixpkgs_stackage_override = mkFetchGithub "https://github.com/typeable/nixpkgs-stackage.git ${nixpkgsStackageRev}";
       hpio = mkFetchGithub "${hpioUri} ${hpioBranch}";
