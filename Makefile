@@ -12,11 +12,11 @@ nix-build = nix-build --no-out-link nix/jobsets/release.nix -I nixpkgs=$(NIXPKGS
 hpio:	 nix
 	 $(call nix-build-attr,hpio)
 
-hpio-nixpkgs:	nix
-		$(call nix-build-attr,hpio-nixpkgs)
+nixpkgs:	nix
+		$(call nix-build-attr,nixpkgs)
 
-hpio-lts-%:	nix
-		$(call nix-build-attr,hpio-lts-$*)
+lts-%:	nix
+	$(call nix-build-attr,lts-$*)
 
 release: nix
 	 $(call nix-build)
@@ -39,30 +39,30 @@ help:
 	@echo "The following targets assume that you are running Nix with some version"
 	@echo "of cabal and GHC in your environment."
 	@echo
-	@echo "    hpio         - build hpio against nixpkgs using nix-build (quick)"
-	@echo "    hpio-nixpkgs - build hpio against nixpkgs using nix-build"
-	@echo "    hpio-lts-10  - build hpio against LTS 10 package set using nix-build"
-	@echo "    hpio-lts-9   - build hpio against LTS 9 package set using nix-build"
-	@echo "    hpio-lts-6   - build hpio against LTS 6 package set using nix-build"
-	@echo "    hpio-lts-2   - build hpio against LTS 2 package set using nix-build"
-	@echo "    release      - Run nix-build on all release.nix targets"
+	@echo "    hpio      - build hpio against nixpkgs using nix-build (quick)"
+	@echo "    nixpkgs   - build hpio against nixpkgs using nix-build"
+	@echo "    lts-10    - build hpio against LTS 10 package set using nix-build"
+	@echo "    lts-9     - build hpio against LTS 9 package set using nix-build"
+	@echo "    lts-6     - build hpio against LTS 6 package set using nix-build"
+	@echo "    lts-2     - build hpio against LTS 2 package set using nix-build"
+	@echo "    release   - Run nix-build on all release.nix targets"
 	@echo
-	@echo "    test         - configure and build the package, then run the tests (cabal)"
-	@echo "    build        - configure and build the package (cabal)"
-	@echo "    configure    - configure the package (cabal)"
+	@echo "    test      - configure and build the package, then run the tests (cabal)"
+	@echo "    build     - configure and build the package (cabal)"
+	@echo "    configure - configure the package (cabal)"
 	@echo
 	@echo "Stack/Nix:"
 	@echo
 	@echo "The following targets build and test the package with Stack, using the"
 	@echo "given version of Stackage LTS as configured by the file stack-<target>.yaml."
 	@echo
-	@echo "    lts   [build all supported LTS targets]"
-	@echo "    lts-10"
-	@echo "    lts-9"
-	@echo "    lts-7"
-	@echo "    lts-6"
-	@echo "    lts-3"
-	@echo "    lts-2 [Note: does not work on macOS]"
+	@echo "    stack-lts    [build all supported LTS targets]"
+	@echo "    stack-lts-10"
+	@echo "    stack-lts-9"
+	@echo "    stack-lts-7"
+	@echo "    stack-lts-6"
+	@echo "    stack-lts-3"
+	@echo "    stack-lts-2  [Note: does not work on macOS]"
 	@echo
 	@echo "General:"
 	@echo
@@ -75,25 +75,10 @@ build:	configure
 
 nix-stack = nix-shell -p stack-env zlib libiconv ncurses --run 'stack test --stack-yaml $(1)'
 
-lts:    lts-10 lts-9 lts-7 lts-6 lts-3 lts-2
+stack-lts:	stack-lts-10 stack-lts-9 stack-lts-7 stack-lts-6 stack-lts-3 stack-lts-2
 
-lts-10: nix
-	$(call nix-stack,stack.yaml)
-
-lts-9:  nix
-	$(call nix-stack,stack-lts-9.yaml)
-
-lts-7:  nix
-	$(call nix-stack,stack-lts-7.yaml)
-
-lts-6:  nix
-	$(call nix-stack,stack-lts-6.yaml)
-
-lts-3:  nix
-	$(call nix-stack,stack-lts-3.yaml)
-
-lts-2:  nix
-	$(call nix-stack,stack-lts-2.yaml)
+stack-lts-%:	nix
+		$(call nix-stack, stack-lts-$*.yaml)
 
 sdist:	check
 	@echo "*** Creating a source distribution"

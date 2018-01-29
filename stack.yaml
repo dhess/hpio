@@ -1,5 +1,1 @@
-require-stack-version: ">= 1.1.0"
-pvp-bounds: both
-resolver: lts-10.3
-packages:
-- .
+stack-lts-10.yaml
