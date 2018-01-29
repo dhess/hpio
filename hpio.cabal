@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 4bfd79fedd86f0d59cb3099a7c320fa14fa23c105270133aac17f7a69f098b51
+-- hash: 1ee52cb9701cf9a56a4637d5bd853f8ac374e8cfba6e87fa652baaa36ef452e6
 
 name:                   hpio
 version:                0.9.0.3
@@ -28,7 +28,7 @@ maintainer:             Drew Hess <dhess-src@quixoftic.com>
 copyright:              Copyright (c) 2018, Quixoftic, LLC
 license:                BSD3
 license-file:           LICENSE
-tested-with:            GHC==7.8.4 GHC==7.10.2 GHC==7.10.3 GHC==8.0.1 GHC==8.0.2 GHC==8.2.1
+tested-with:            GHC==7.8.4 GHC==7.10.2 GHC==7.10.3 GHC==8.0.1 GHC==8.0.2 GHC==8.2.1 GHC==8.2.2
 build-type:             Simple
 cabal-version:          >= 1.10
 
