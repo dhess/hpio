@@ -3,11 +3,11 @@
 # This Makefile is very much tailored to the maintainer's environment.
 # It might work for you, but don't expect much.
 
-nix-build-attr = nix-build --no-out-link nix/jobsets/release.nix -A $(1)
+NIXPKGS := $(shell nix-build -Q --no-out-link ./nix/fetch-nixpkgs-stackage-nixpkgs.nix 2>/dev/null)
 
-nix-build-attr-nixpkgs = nix-build --no-out-link nix/jobsets/release.nix -I nixpkgs=$(2) -A $(1)
+nix-build-attr = nix-build --no-out-link nix/jobsets/release.nix -I nixpkgs=$(NIXPKGS) -A $(1)
 
-nix-build = nix-build --no-out-link nix/jobsets/release.nix
+nix-build = nix-build --no-out-link nix/jobsets/release.nix -I nixpkgs=$(NIXPKGS)
 
 hpio:	 nix
 	 $(call nix-build-attr,hpio)
@@ -15,9 +15,8 @@ hpio:	 nix
 hpio-nixpkgs:	nix
 		$(call nix-build-attr,hpio-nixpkgs)
 
-hpio-lts-%:	NIXPKGS := $(shell nix-build -Q --no-out-link ./nix/fetch-nixpkgs-stackage-nixpkgs.nix 2>/dev/null)
 hpio-lts-%:	nix
-		$(call nix-build-attr-nixpkgs,hpio-lts-$*,$(NIXPKGS))
+		$(call nix-build-attr,hpio-lts-$*)
 
 release: nix
 	 $(call nix-build)
