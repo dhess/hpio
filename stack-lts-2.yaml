@@ -17,7 +17,5 @@ extra-deps:
 packages:
 - .
 flags:
-  hpio:
-    test-hlint: false
   semigroups:
     bytestring-builder: false

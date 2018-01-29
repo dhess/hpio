@@ -4,6 +4,13 @@ let
 
   inherit (self) haskell;
 
+  withOurHpioHlint = hp: (hp.extend (self: super: (
+    with haskell.lib;
+    rec {
+      hpio = self.callPackage ../pkgs/hpio-hlint.nix {};
+    }
+  )));
+
   withOurHpio = hp: (hp.extend (self: super: (
     with haskell.lib;
     rec {
@@ -58,9 +65,9 @@ let
 
 in
 {
-  ## The default Nixpkgs package set.
+  ## The default Nixpkgs package set. Note that we use hlint tests here.
 
-  haskellPackages = withOurHpio super.haskellPackages;
+  haskellPackages = withOurHpioHlint super.haskellPackages;
 
 
   ## Package sets equivalent to the latest(-ish) Stackage LTS sets.

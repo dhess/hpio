@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: ca9f78c6d3d1c07bf21f6b19cb048e44630051c5aff22a83880b023db7a2afc5
+-- hash: a29ed38c408ec394121f059ce60dd207056733f59d13f66f1511984fd0168b43
 
 name:                   hpio
 version:                0.9.0.3
@@ -38,14 +38,28 @@ extra-source-files:
     changelog.md
     default.nix
     nix/fetch-github.nix
+    nix/fetch-nixpkgs-stackage-nixpkgs.nix
     nix/jobsets/default.nix
     nix/jobsets/release.nix
     nix/jobsets/spec.json
     nix/lib.nix
     nix/nixpkgs-src.json
+    nix/nixpkgs-stackage-nixpkgs-src.json
     nix/nixpkgs-stackage-src.json
     nix/overlays/haskell-overrides.nix
+    nix/pkgs/base-compat-0.9.3.nix
+    nix/pkgs/fail-4.9.0.0.nix
     nix/pkgs/hpio.nix
+    nix/pkgs/monad-logger-0.3.16.nix
+    nix/pkgs/mtl-2.2.1.nix
+    nix/pkgs/mtl-compat-0.2.1.3.nix
+    nix/pkgs/primitive-0.6.2.0.nix
+    nix/pkgs/protolude-0.2.nix
+    nix/pkgs/semigroups-0.18.2.nix
+    nix/pkgs/transformers-0.4.3.0.nix
+    nix/pkgs/transformers-compat-0.4.0.4.nix
+    nix/pkgs/unix-bytestring-0.3.7.3.nix
+    nix/pkgs/void-0.7.2.nix
     package.yaml
     README.md
     shell.nix
@@ -79,7 +93,7 @@ flag test-doctests
 flag test-hlint
   description: Build hlint test
   manual: True
-  default: True
+  default: False
 
 library
   hs-source-dirs:

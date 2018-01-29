@@ -5,6 +5,3 @@ extra-deps:
 - protolude-0.2
 packages:
 - .
-flags:
-  hpio:
-    test-hlint: false

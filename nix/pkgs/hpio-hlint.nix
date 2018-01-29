@@ -1,12 +1,14 @@
 { mkDerivation, async, base, bytestring, containers, directory
-, doctest, exceptions, filepath, hspec, monad-control, monad-logger
-, mtl, optparse-applicative, protolude, QuickCheck, stdenv, text
-, transformers, transformers-base, unix, unix-bytestring
+, doctest, exceptions, filepath, hlint, hspec, monad-control
+, monad-logger, mtl, optparse-applicative, protolude, QuickCheck
+, stdenv, text, transformers, transformers-base, unix
+, unix-bytestring
 }:
 mkDerivation {
   pname = "hpio";
   version = "0.9.0.3";
   src = ../../.;
+  configureFlags = [ "-ftest-hlint" ];
   isLibrary = true;
   isExecutable = true;
   libraryHaskellDepends = [
@@ -19,7 +21,7 @@ mkDerivation {
     transformers
   ];
   testHaskellDepends = [
-    base containers directory doctest exceptions filepath hspec
+    base containers directory doctest exceptions filepath hlint hspec
     protolude QuickCheck
   ];
   homepage = "https://github.com/quixoftic/hpio#readme";

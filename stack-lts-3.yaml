@@ -9,7 +9,5 @@ extra-deps:
 - semigroups-0.18.2
 - unix-bytestring-0.3.7.3
 flags:
-  hpio:
-    test-hlint: false
   semigroups:
     bytestring-builder: false

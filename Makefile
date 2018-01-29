@@ -103,13 +103,14 @@ check:
 	@echo "*** Checking the package for errors"
 	cabal check
 
-configure: hpio.cabal nix/pkgs/hpio.nix
+configure: nix hpio.cabal
 	@echo "*** Configuring the package"
-	cabal configure
+	cabal configure -f test-hlint
 
-nix nix/pkgs/hpio.nix: hpio.cabal
-	@echo "*** Generating pkgs/hpio.nix"
+nix nix/pkgs/hpio.nix nix/pkgs/hpio-hlint.nix: hpio.cabal
+	@echo "*** Generating nix/pkgs/hpio.nix and nix/pkgs/hpio-hlint.nix"
 	cd nix/pkgs && cabal2nix ../../. > hpio.nix
+	cd nix/pkgs && cabal2nix --flag test-hlint ../../. > hpio-hlint.nix
 
 hpio.cabal: package.yaml
 	@echo "*** Running hpack"
