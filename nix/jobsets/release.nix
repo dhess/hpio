@@ -18,25 +18,6 @@ with import (fixedNixPkgs + "/pkgs/top-level/release-lib.nix") {
 
 let
 
-  ## Aggregates are handy for defining jobs (especially for subsets of
-  ## platforms), but they don't provide very useful information in
-  ## Hydra, especially when they die. We use aggregates here to define
-  ## set of jobs, and then splat them into the output attrset so that
-  ## they're more visible in Hydra.
-
-  enumerateConstituents = aggregate: lib.listToAttrs (
-    map (d:
-           let
-             name = (builtins.parseDrvName d.name).name;
-             system = d.system;
-           in
-             { name = name + "." + system;
-               value = d;
-             }
-         )
-        aggregate.constituents
-  );
-
   jobs = {
 
     nixpkgs = pkgs.releaseTools.aggregate {
@@ -114,12 +95,4 @@ let
 in
 {
   inherit (jobs) nixpkgs lts-10 lts-9 lts-6 lts-2; #lts-7 lts-3
-  hpio = jobs.haskellPackages.hpio.${builtins.currentSystem};
 }
-// enumerateConstituents jobs.nixpkgs
-// enumerateConstituents jobs.lts-10
-// enumerateConstituents jobs.lts-9
-// enumerateConstituents jobs.lts-6
-// enumerateConstituents jobs.lts-2
-#// enumerateConstituents jobs.lts-3
-#// enumerateConstituents jobs.lts-7

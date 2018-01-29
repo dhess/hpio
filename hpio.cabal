@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 7bfe1ea664593f1a79b6dde686eb7e608b74d9af8d960ebfbd8cbc0c4a8babb9
+-- hash: 4bfd79fedd86f0d59cb3099a7c320fa14fa23c105270133aac17f7a69f098b51
 
 name:                   hpio
 version:                0.9.0.3
@@ -42,6 +42,7 @@ extra-source-files:
     nix/jobsets/default.nix
     nix/jobsets/release.nix
     nix/jobsets/spec.json
+    nix/jobsets/testing.nix
     nix/lib.nix
     nix/nixpkgs-src.json
     nix/nixpkgs-stackage-nixpkgs-src.json
