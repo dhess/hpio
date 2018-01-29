@@ -65,24 +65,9 @@ let
     };
   };
 
-  mkBranch = hpioBranch: {
-    checkinterval = 60;
-    schedulingshares = 100;
-    inputs = rec {
-      # nixpkgs-stackage wants a <nixpkgs> path so that it can import
-      # Haskell stuff. Which we use doesn't particularly matter, as
-      # it's only used for importing functions. Here we use a stable
-      # one.
-      nixpkgs = mkFetchGithub "https://github.com/NixOS/nixpkgs-channels.git nixos-17.09";
-      hpio = mkFetchGithub "${hpioUri} ${hpioBranch}";
-    };
-  };
-
   mainJobsets = with pkgs.lib; mapAttrs (name: settings: defaultSettings // settings) (rec {
-    # Disabled for now.
-    #master = {};
-    #next = mkChannelAlt "master" "nixpkgs-unstable" "master";
-    hydra = mkBranch "hydra";
+    master = {};
+    next = mkChannelAlt "master" "nixpkgs-unstable" "master";
   });
 
   jobsetsAttrs = mainJobsets;
