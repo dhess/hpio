@@ -3,15 +3,24 @@
 # This Makefile is very much tailored to the maintainer's environment.
 # It might work for you, but don't expect much.
 
+nix-build-attr = nix-build --no-out-link nix/jobsets/release.nix -A $(1)
+
+nix-build-attr-nixpkgs = nix-build --no-out-link nix/jobsets/release.nix -I nixpkgs=$(2) -A $(1)
+
+nix-build = nix-build --no-out-link nix/jobsets/release.nix
 
 hpio:	 nix
-	 nix-build nix/jobsets/release.nix -A hpio
+	 $(call nix-build-attr,hpio)
 
-nixpkgs: nix
-	 nix-build nix/jobsets/release.nix -A hpio-nixpkgs
+hpio-nixpkgs:	nix
+		$(call nix-build-attr,hpio-nixpkgs)
+
+hpio-lts-%:	NIXPKGS := $(shell nix-build -Q --no-out-link ./nix/fetch-nixpkgs-stackage-nixpkgs.nix 2>/dev/null)
+hpio-lts-%:	nix
+		$(call nix-build-attr-nixpkgs,hpio-lts-$*,$(NIXPKGS))
 
 release: nix
-	 nix-build nix/jobsets/release.nix
+	 $(call nix-build)
 
 doc:	test
 	@echo "*** Generating docs"
@@ -24,19 +33,24 @@ test:	build
 help:
 	@echo "Targets:"
 	@echo
-	@echo "(Default is 'this-system')"
+	@echo "(Default is 'hpio')"
 	@echo
 	@echo "Cabal/Nix:"
 	@echo
 	@echo "The following targets assume that you are running Nix with some version"
 	@echo "of cabal and GHC in your environment."
 	@echo
-	@echo "    hpio        - build hpio against nixpkgs using nix-build (just this platform)"
-	@echo "    nixpkgs     - build hpio against nixpkgs using nix-build (all supported platforms)"
-	@echo "    release     - Run nix-build on all release.nix targets"
-	@echo "    test        - configure and build the package, then run the tests (cabal)"
-	@echo "    build       - configure and build the package (cabal)"
-	@echo "    configure   - configure the package (cabal)"
+	@echo "    hpio         - build hpio against nixpkgs using nix-build (quick)"
+	@echo "    hpio-nixpkgs - build hpio against nixpkgs using nix-build"
+	@echo "    hpio-lts-10  - build hpio against LTS 10 package set using nix-build"
+	@echo "    hpio-lts-9   - build hpio against LTS 9 package set using nix-build"
+	@echo "    hpio-lts-6   - build hpio against LTS 6 package set using nix-build"
+	@echo "    hpio-lts-2   - build hpio against LTS 2 package set using nix-build"
+	@echo "    release      - Run nix-build on all release.nix targets"
+	@echo
+	@echo "    test         - configure and build the package, then run the tests (cabal)"
+	@echo "    build        - configure and build the package (cabal)"
+	@echo "    configure    - configure the package (cabal)"
 	@echo
 	@echo "Stack/Nix:"
 	@echo
