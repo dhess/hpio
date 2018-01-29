@@ -1,7 +1,8 @@
 { mkDerivation, async, base, bytestring, containers, directory
-, doctest, exceptions, filepath, hspec, monad-control, monad-logger
-, mtl, optparse-applicative, protolude, QuickCheck, stdenv, text
-, transformers, transformers-base, unix, unix-bytestring
+, doctest, exceptions, fail, filepath, hspec, monad-control
+, monad-logger, mtl, optparse-applicative, protolude, QuickCheck
+, semigroups, stdenv, text, transformers, transformers-base, unix
+, unix-bytestring
 }:
 mkDerivation {
   pname = "hpio";
@@ -10,8 +11,8 @@ mkDerivation {
   isLibrary = true;
   isExecutable = true;
   libraryHaskellDepends = [
-    base bytestring containers directory exceptions filepath
-    monad-control monad-logger mtl protolude QuickCheck text
+    base bytestring containers directory exceptions fail filepath
+    monad-control monad-logger mtl protolude QuickCheck semigroups text
     transformers transformers-base unix unix-bytestring
   ];
   executableHaskellDepends = [

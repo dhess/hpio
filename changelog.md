@@ -1,3 +1,12 @@
+
+Changes:
+  - The `test-hlint` cabal flag is now disabled by default.
+  - More Nix and Hydra improvements, including Nix/Hydra builds
+    against LTS package sets, rather than just the pinned Nixpkgs
+    package set.
+
+Fixes:
+
 ## 0.9.0.3 (2018-01-25)
 
 Changes:

@@ -18,6 +18,20 @@ let
       then builtins.trace "Using <nixpkgs_stackage_override>" try.value
       else (import ./fetch-github.nix) { jsonSpec = builtins.readFile ./nixpkgs-stackage-src.json; };
 
+
+  ## This exists so that we can pin nixpkgs-stackage's <nixpkgs>
+  ## imports. Note that we usually will want this to be different than
+  ## nixpkgs_override's spec because nixpkgs-stackage's <nixpkgs> is
+  ## only used for function imports and shouldn't change very often.
+
+  fetchNixPkgsStackageNixPkgs =
+  let
+    try = builtins.tryEval <nixpkgs_stackage_nixpkgs_override>;
+  in
+    if try.success
+      then builtins.trace "Using <nixpkgs_stackage_nixpkgs_override>" try.value
+      else (import ./fetch-github.nix) { jsonSpec = builtins.readFile ./nixpkgs-stackage-nixpkgs-src.json; };
+
   nixpkgs = import fetchNixPkgs;
   pkgs = nixpkgs {};
   lib = pkgs.lib;
@@ -26,5 +40,6 @@ in lib // (rec {
 
   inherit fetchNixPkgs;
   inherit fetchNixPkgsStackage;
+  inherit fetchNixPkgsStackageNixPkgs;
 
 })

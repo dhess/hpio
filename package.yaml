@@ -37,7 +37,7 @@ flags:
   test-hlint:
     description: Build hlint test
     manual: true
-    default: true
+    default: false
   test-doctests:
     description: Build doctests
     manual: true
