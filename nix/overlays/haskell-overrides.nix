@@ -18,6 +18,27 @@ let
     }
   )));
 
+  withOurHpio7103 = hp: (hp.extend (self: super: (
+    with haskell.lib;
+    rec {
+      hpio = self.callPackage ../pkgs/hpio-ghc7103.nix {};
+    }
+  )));
+
+  withOurHpio7102 = hp: (hp.extend (self: super: (
+    with haskell.lib;
+    rec {
+      hpio = self.callPackage ../pkgs/hpio-ghc7102.nix {};
+    }
+  )));
+
+  withOurHpio784 = hp: (hp.extend (self: super: (
+    with haskell.lib;
+    rec {
+      hpio = self.callPackage ../pkgs/hpio-ghc784.nix {};
+    }
+  )));
+
   withLts9Extras = hp: (hp.extend (self: super: (
     with haskell.lib;
     rec {
@@ -41,7 +62,7 @@ let
       fail = self.callPackage ../pkgs/fail-4.9.0.0.nix {};
       protolude = self.callPackage ../pkgs/protolude-0.2.nix {};
       semigroups = self.callPackage ../pkgs/semigroups-0.18.2.nix {};
-      unix-bytestring = self.callPackage ../pkgs/unix-bytestring-0.3.7.3 {};
+      unix-bytestring = self.callPackage ../pkgs/unix-bytestring-0.3.7.3.nix {};
     }
   )));
 
@@ -51,15 +72,26 @@ let
       base-compat = self.callPackage ../pkgs/base-compat-0.9.3.nix {};
       fail = self.callPackage ../pkgs/fail-4.9.0.0.nix {};
       monad-logger = self.callPackage ../pkgs/monad-logger-0.3.16.nix {};
-      mtl = self.callPackage ../pkgs/mtl-2.2.1.nix {};
-      mtl-compat = self.callPackage ../pkgs/mtl-compat-0.2.1.3.nix {};
-      primitive = self.callPackage ../pkgs/primitive-0.6.2.0.nix {};
       protolude = self.callPackage ../pkgs/protolude-0.2.nix {};
-      semigroups = self.callPackage ../pkgs/semigroups-0.18.2.nix {};
-      transformers = self.callPackage ../pkgs/transformers-0.4.3.0.nix {};
-      transformers-compat = self.callPackage ../pkgs/transformers-compat-0.4.0.4.nix {};
+      semigroups = self.callPackage ../pkgs/semigroups-0.18.2-ghc784.nix {};
       unix-bytestring = self.callPackage ../pkgs/unix-bytestring-0.3.7.3.nix {};
       void = self.callPackage ../pkgs/void-0.7.2.nix {};
+    }
+  )));
+
+
+  ## For most of these package sets, especially the older LTSes, we
+  ## don't want to waste time with Haddock generation. In theory this
+  ## could reduce cache re-use, but there's no Hydra for these
+  ## Stackage LTS package sets, anyway; and once they've been built
+  ## once, they're very unlikely to change, anyway.
+
+  dontHaddock = hp: (hp.extend (self: super: (
+    with haskell.lib;
+    rec {
+      mkDerivation = args: super.mkDerivation (args // {
+        doHaddock = false;
+      });
     }
   )));
 
@@ -74,9 +106,13 @@ in
   ## Only supported LTS versions are defined here.
 
   lts10Packages = withOurHpio self.haskell.packages.stackage.lts-100;
-  lts9Packages = withOurHpio (withLts9Extras self.haskell.packages.stackage.lts-920);
-  lts7Packages = withOurHpio (withLts7Extras self.haskell.packages.stackage.lts-724);
-  lts6Packages = withOurHpio (withLts6Extras self.haskell.packages.stackage.lts-635);
-  lts3Packages = withOurHpio (withLts3Extras self.haskell.packages.stackage.lts-322);
-  lts2Packages = withOurHpio (withLts2Extras self.haskell.packages.stackage.lts-222);
+
+
+  ## Don't waste time Haddock-ing these.
+
+  lts9Packages = dontHaddock (withOurHpio (withLts9Extras self.haskell.packages.stackage.lts-920));
+  lts7Packages = dontHaddock (withOurHpio (withLts7Extras self.haskell.packages.stackage.lts-724));
+  lts6Packages = dontHaddock (withOurHpio7103 (withLts6Extras self.haskell.packages.stackage.lts-635));
+  lts3Packages = dontHaddock (withOurHpio7102 (withLts3Extras self.haskell.packages.stackage.lts-322));
+  lts2Packages = dontHaddock (withOurHpio784 (withLts2Extras self.haskell.packages.stackage.lts-222));
 }

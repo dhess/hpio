@@ -107,10 +107,13 @@ configure: nix hpio.cabal
 	@echo "*** Configuring the package"
 	cabal configure -f test-hlint
 
-nix nix/pkgs/hpio.nix nix/pkgs/hpio-hlint.nix: hpio.cabal
-	@echo "*** Generating nix/pkgs/hpio.nix and nix/pkgs/hpio-hlint.nix"
+nix: 	hpio.cabal
+	@echo "*** Generating hpio Nix files"
 	cd nix/pkgs && cabal2nix ../../. > hpio.nix
 	cd nix/pkgs && cabal2nix --flag test-hlint ../../. > hpio-hlint.nix
+	cd nix/pkgs && cabal2nix --compiler=ghc-7.10.3 ../../. > hpio-ghc7103.nix
+	cd nix/pkgs && cabal2nix --compiler=ghc-7.10.2 ../../. > hpio-ghc7102.nix
+	cd nix/pkgs && cabal2nix --compiler=ghc-7.8.4 ../../. > hpio-ghc784.nix
 
 hpio.cabal: package.yaml
 	@echo "*** Running hpack"
