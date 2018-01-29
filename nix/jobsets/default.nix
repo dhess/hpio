@@ -15,7 +15,15 @@ let
     emailresponsible = false;
   };
 
-  nixpkgs-src = builtins.fromJSON (builtins.readFile ../nixpkgs-src.json);
+  ## nixpkgs-stackage wants a <nixpkgs> path so that it can import
+  ## Haskell stuff. Which we use doesn't particularly matter, as
+  ## it's only used for importing functions. Here we use a stable
+  ## one.
+  nixpkgs-src = builtins.fromJSON (builtins.readFile ../nixpkgs-stackage-nixpkgs-src.json);
+  nixpkgs-spec = {
+    url = "https://github.com/${nixpkgs-src.owner}/${nixpkgs-src.repo}.git";
+    rev = "${nixpkgs-src.rev}";
+  };
 
   pkgs = import nixpkgs {};
 
@@ -31,12 +39,13 @@ let
     nixexprinput = "hpio";
     description = "hpio";
     inputs = {
-      # nixpkgs-stackage wants a <nixpkgs> path so that it can import
-      # Haskell stuff. Which we use doesn't particularly matter, as
-      # it's only used for importing functions. Here we use a stable
-      # one.
-      nixpkgs = mkFetchGithub "https://github.com/NixOS/nixpkgs-channels.git nixos-17.09";
+
+      ## Note: the nixpkgs input here is for nixpkgs-stackage's
+      ## <nixpkgs>. It is not used by hpio.
+      nixpkgs = mkFetchGithub "${nixpkgs-spec.url} ${nixpkgs-spec.rev}";
+
       hpio = mkFetchGithub "${hpioUri} master";
+
     };
   };
 
@@ -44,14 +53,15 @@ let
     checkinterval = 60;
     schedulingshares = 100;
     inputs = rec {
-      # nixpkgs-stackage wants a <nixpkgs> path so that it can import
-      # Haskell stuff. Which we use doesn't particularly matter, as
-      # it's only used for importing functions. Here we use the same
-      # one that was passed to us as nixpkgs_override.
-      nixpkgs = nixpkgs_override;
+
+      ## Note: the nixpkgs input here is for nixpkgs-stackage's
+      ## <nixpkgs>. It is not used by hpio.
+      nixpkgs = mkFetchGithub "${nixpkgs-spec.url} ${nixpkgs-spec.rev}";
+
       nixpkgs_override = mkFetchGithub "https://github.com/NixOS/nixpkgs-channels.git ${nixpkgsRev}";
       nixpkgs_stackage_override = mkFetchGithub "https://github.com/typeable/nixpkgs-stackage.git ${nixpkgsStackageRev}";
       hpio = mkFetchGithub "${hpioUri} ${hpioBranch}";
+
     };
   };
 
