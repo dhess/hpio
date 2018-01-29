@@ -2,42 +2,83 @@ self: super:
 
 let
 
-  inherit (self) haskell;
+  inherit (self) haskell lib;
+
+
+  ## Ignore local files that shouldn't contribute to the Nix hash.
+  ## Ideally this would be based on the cabal sdist contents, but
+  ## that's not easily do-able at the moment.
+
+  # Pretty sure that filtering Nix files from the source hash is the
+  # right thing to do. They're obviously already evaluated when a
+  # nix-build command is executed, so if *what they evaluate* changes
+  # they'll cause a rebuild anyway, as they should; while cosmetic
+  # changes (comments, formatting, etc.) won't.
+
+  filterNix = name: type: let baseName = baseNameOf (toString name); in ! (
+    type != "directory" && lib.hasSuffix ".nix" baseName
+  );
+  cleanNix = src: lib.cleanSourceWith { filter = filterNix; inherit src; };
+
+  filterOther = name: type: let baseName = baseNameOf (toString name); in ! (
+    type == "directory" && (
+      baseName == "dist"           ||
+      baseName == "dist-newstyle"  ||
+      baseName == ".cabal-sandbox" ||
+      baseName == ".stack-work"
+    ) ||
+    type != "directory" && (
+      baseName == ".gitignore"           ||
+      baseName == ".dir-locals.el"       ||
+      baseName == "cabal.sandbox.config"
+    )
+  );
+  cleanOther = src: lib.cleanSourceWith { filter = filterOther; inherit src; };
+
+  cleanPackage = pkg: (pkg.overrideAttrs (oldAttrs: {
+    src = cleanOther (cleanNix (lib.cleanSource oldAttrs.src));
+  }));
+
+
+  ## Local packages, i.e., the packages we're actually building.
 
   withOurHpioHlint = hp: (hp.extend (self: super: (
     with haskell.lib;
     rec {
-      hpio = self.callPackage ../pkgs/hpio-hlint.nix {};
+      hpio = cleanPackage (self.callPackage ../pkgs/hpio-hlint.nix {});
     }
   )));
 
   withOurHpio = hp: (hp.extend (self: super: (
     with haskell.lib;
     rec {
-      hpio = self.callPackage ../pkgs/hpio.nix {};
+      hpio = cleanPackage (self.callPackage ../pkgs/hpio.nix {});
     }
   )));
 
   withOurHpio7103 = hp: (hp.extend (self: super: (
     with haskell.lib;
     rec {
-      hpio = self.callPackage ../pkgs/hpio-ghc7103.nix {};
+      hpio = cleanPackage (self.callPackage ../pkgs/hpio-ghc7103.nix {});
     }
   )));
 
   withOurHpio7102 = hp: (hp.extend (self: super: (
     with haskell.lib;
     rec {
-      hpio = self.callPackage ../pkgs/hpio-ghc7102.nix {};
+      hpio = cleanPackage (self.callPackage ../pkgs/hpio-ghc7102.nix {});
     }
   )));
 
   withOurHpio784 = hp: (hp.extend (self: super: (
     with haskell.lib;
     rec {
-      hpio = self.callPackage ../pkgs/hpio-ghc784.nix {};
+      hpio = cleanPackage (self.callPackage ../pkgs/hpio-ghc784.nix {});
     }
   )));
+
+
+  ## hpio adds a few extra-deps to the Stackage LTS sets.
 
   withLts9Extras = hp: (hp.extend (self: super: (
     with haskell.lib;

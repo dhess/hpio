@@ -1,3 +1,6 @@
+## This builds just hpio (plus hlint tests) for the current system.
+## It's useful for development and interactive testing.
+
 let
 
   fixedNixPkgs = (import ../lib.nix).fetchNixPkgs;
