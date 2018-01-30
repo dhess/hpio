@@ -1,11 +1,23 @@
+## 0.9.0.4 (2018-01-29)
+
+Note that this will be the last release in the `0.9` series, excepting
+critical bug fixes or security issues. The next release is expected to
+(slightly) break module export compatibility, but in a way that should
+not affect too many users.
 
 Changes:
   - The `test-hlint` cabal flag is now disabled by default.
+  - Tested with GHC 8.2.2.
+  - Clean up the sdist to include just what's required for Cabal/Stack
+    builds.
+  - Updated copyright year.
+  - Requires `hlint` 2.0.*.
   - More Nix and Hydra improvements, including Nix/Hydra builds
     against LTS package sets, rather than just the pinned Nixpkgs
     package set.
 
 Fixes:
+  - All dependencies should now have PVP bounds.
 
 ## 0.9.0.3 (2018-01-25)
 
