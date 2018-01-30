@@ -12,7 +12,7 @@ in
 , scrubJobs ? true
 , nixpkgsArgs ? {
     config = { allowUnfree = true; allowBroken = true; inHydra = true; };
-    overlays = [ (import ../../.) ];
+    overlays = [ (import ../../next.nix) ];
   }
 }:
 

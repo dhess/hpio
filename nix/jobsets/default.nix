@@ -75,9 +75,8 @@ let
     checkinterval = 60 * 60 * 24;
     inputs = {
 
-      ## Note: the nixpkgs input here is for nixpkgs-stackage's
-      ## <nixpkgs>. It is not used by hpio.
-      nixpkgs = mkFetchGithub "${nixpkgs-spec.url} ${nixpkgs-spec.rev}";
+      ## Note: does not depend on nixpkgs because we don't use
+      ## nixpkgs-stackage for these builds.
 
       nixpkgs_override = mkFetchGithub "https://github.com/NixOS/nixpkgs.git ${nixpkgsRev}";
       hpio = mkFetchGithub "${hpioUri} ${hpioBranch}";

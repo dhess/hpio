@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 573251655ed3f45dd4841891771709363bc0280c4d67d34014e5bcb41341c2fc
+-- hash: 8aad7100fe7b6ad86cd7e2fc7314bd01ef96cf9c77afcc30672c0970fcac0038
 
 name:                   hpio
 version:                0.9.0.3
@@ -48,7 +48,10 @@ extra-source-files:
     nix/nixpkgs-src.json
     nix/nixpkgs-stackage-nixpkgs-src.json
     nix/nixpkgs-stackage-src.json
+    nix/overlays/haskell-lib.nix
+    nix/overlays/haskell-overrides-next.nix
     nix/overlays/haskell-overrides.nix
+    nix/overlays/lib.nix
     nix/pkgs/base-compat-0.9.3.nix
     nix/pkgs/fail-4.9.0.0.nix
     nix/pkgs/hpio-ghc7102.nix

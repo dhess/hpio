@@ -30,6 +30,7 @@ let
     nixpkgs = pkgs.releaseTools.aggregate {
       name = "nixpkgs";
       meta.description = "hpio built against nixpkgs haskellPackages";
+      meta.maintainer = lib.maintainers.dhess;
       constituents = with jobs; [
         haskellPackages.hpio.x86_64-darwin
         haskellPackages.hpio.x86_64-linux
@@ -39,6 +40,7 @@ let
     lts-10 = pkgs.releaseTools.aggregate {
       name = "lts-10";
       meta.description = "hpio built against Stackage LTS 10 package set";
+      meta.maintainer = lib.maintainers.dhess;
       constituents = with jobs; [
         lts10Packages.hpio.x86_64-darwin
         lts10Packages.hpio.x86_64-linux
@@ -48,6 +50,7 @@ let
     lts-9 = pkgs.releaseTools.aggregate {
       name = "lts-9";
       meta.description = "hpio built against Stackage LTS 9 package set";
+      meta.maintainer = lib.maintainers.dhess;
       constituents = with jobs; [
         lts9Packages.hpio.x86_64-linux
       ];
@@ -56,6 +59,7 @@ let
     lts-6 = pkgs.releaseTools.aggregate {
       name = "lts-6";
       meta.description = "hpio built against Stackage LTS 6 package set";
+      meta.maintainer = lib.maintainers.dhess;
       constituents = with jobs; [
         lts6Packages.hpio.x86_64-linux
       ];
@@ -64,6 +68,7 @@ let
     lts-2 = pkgs.releaseTools.aggregate {
       name = "lts-2";
       meta.description = "hpio built against Stackage LTS 2 package set";
+      meta.maintainer = lib.maintainers.dhess;
       constituents = with jobs; [
         lts2Packages.hpio.x86_64-linux
       ];
@@ -78,6 +83,7 @@ let
     # lts-7 = pkgs.releaseTools.aggregate {
     #   name = "lts-7";
     #   meta.description = "hpio built against Stackage LTS 7 package set";
+    #   meta.maintainer = lib.maintainers.dhess;
     #   constituents = with jobs; [
     #     lts7Packages.hpio.x86_64-linux
     #   ];
@@ -86,6 +92,7 @@ let
     # lts-3 = pkgs.releaseTools.aggregate {
     #   name = "lts-3";
     #   meta.description = "hpio built against Stackage LTS 3 package set";
+    #   meta.maintainer = lib.maintainers.dhess;
     #   constituents = with jobs; [
     #     lts3Packages.hpio.x86_64-linux
     #   ];
