@@ -138,6 +138,19 @@ let
     }
   )));
 
+
+  ## For some package sets (e.g., haskellPackages with a pre-release
+  ## GHC), it may be convenient to allow jailbreaks across the board.
+
+  doJailbreak = hp: (hp.extend (self: super: (
+    with haskell.lib;
+    rec {
+      mkDerivation = args: super.mkDerivation (args // {
+        doJailbreak = true;
+      });
+    }
+  )));
+
 in
 {
   ## The default Nixpkgs package set. Note that we use hlint tests here.
@@ -146,9 +159,11 @@ in
 
 
   ## Testing with upcoming GHC releases. Don't bother Haddock-ing
-  ## these as they're unlikely to be cached by upstream Hydra.
+  ## these as they're unlikely to be cached by upstream Hydra. Also,
+  ## jailbreak the whole thing as we're not particularly worried about
+  ## that here; we just want things to build.
 
-  haskellPackages841 = dontHaddock (withOurHpioHlint super.haskell.packages.ghc841);
+  haskellPackages841 = doJailbreak (dontHaddock (withOurHpioHlint super.haskell.packages.ghc841));
 
 
   ## Package sets equivalent to the latest(-ish) Stackage LTS sets.
