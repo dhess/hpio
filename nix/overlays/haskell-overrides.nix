@@ -22,15 +22,17 @@ let
 
   filterOther = name: type: let baseName = baseNameOf (toString name); in ! (
     type == "directory" && (
+      baseName == ".cabal-sandbox" ||
+      baseName == ".stack-work"    ||
       baseName == "dist"           ||
       baseName == "dist-newstyle"  ||
-      baseName == ".cabal-sandbox" ||
-      baseName == ".stack-work"
+      baseName == "scripts"
     ) ||
     type != "directory" && (
       baseName == ".gitignore"           ||
       baseName == ".dir-locals.el"       ||
-      baseName == "cabal.sandbox.config"
+      baseName == "cabal.sandbox.config" ||
+      baseName == "Makefile"
     )
   );
   cleanOther = src: lib.cleanSourceWith { filter = filterOther; inherit src; };
