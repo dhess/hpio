@@ -50,9 +50,7 @@ let
   };
 
   mkChannelAlt = hpioBranch: nixpkgsRev: nixpkgsStackageRev: {
-    checkinterval = 60;
-    schedulingshares = 100;
-    inputs = rec {
+    inputs = {
 
       ## Note: the nixpkgs input here is for nixpkgs-stackage's
       ## <nixpkgs>. It is not used by hpio.
@@ -65,9 +63,31 @@ let
     };
   };
 
+
+  ## "next" builds; these are expected to fail from time to time and
+  ## don't run as often. They also build from nixpkgs and not
+  ## nixpkgs-channels as we always want to be testing the latest,
+  ## greatest GHC pre-releases. (We don't bother overriding
+  ## nixpkgs-stackage because it's not used in these evaluations.)
+
+  mkNext = hpioBranch: nixpkgsRev: {
+    checkinterval = 60 * 60 * 24;
+    inputs = {
+
+      ## Note: the nixpkgs input here is for nixpkgs-stackage's
+      ## <nixpkgs>. It is not used by hpio.
+      nixpkgs = mkFetchGithub "${nixpkgs-spec.url} ${nixpkgs-spec.rev}";
+
+      nixpkgs_override = mkFetchGithub "https://github.com/NixOS/nixpkgs.git ${nixpkgsRev}";
+      hpio = mkFetchGithub "${hpioUri} ${hpioBranch}";
+
+    };
+  };
+
   mainJobsets = with pkgs.lib; mapAttrs (name: settings: defaultSettings // settings) (rec {
     master = {};
-    next = mkChannelAlt "master" "nixpkgs-unstable" "master";
+    nixpkgs-unstable = mkChannelAlt "master" "nixpkgs-unstable" "master";
+    next-ghc = mkNext "master" "master";
   });
 
   jobsetsAttrs = mainJobsets;
