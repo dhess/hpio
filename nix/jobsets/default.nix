@@ -71,6 +71,7 @@ let
   ## nixpkgs-stackage because it's not used in these evaluations.)
 
   mkNext = hpioBranch: nixpkgsRev: {
+    nixexprpath = "nix/jobsets/next.nix";
     checkinterval = 60 * 60 * 24;
     inputs = {
 
