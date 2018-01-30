@@ -1,5 +1,5 @@
 name:        hpio
-version:     0.9.0.3
+version:     0.9.0.4
 synopsis:    Monads for GPIO in Haskell
 category:    System
 stability:   experimental
