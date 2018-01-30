@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 8aad7100fe7b6ad86cd7e2fc7314bd01ef96cf9c77afcc30672c0970fcac0038
+-- hash: 3983a2319191c0948beb28ec8fd01f2ee03842d616faba5cda5a2bf08c0bad12
 
 name:                   hpio
 version:                0.9.0.3
@@ -34,40 +34,9 @@ cabal-version:          >= 1.10
 
 extra-source-files:
     .hlint.yaml
-    .travis.yml
     changelog.md
-    default.nix
-    nix/fetch-github.nix
-    nix/fetch-nixpkgs-stackage-nixpkgs.nix
-    nix/jobsets/default.nix
-    nix/jobsets/next.nix
-    nix/jobsets/release.nix
-    nix/jobsets/spec.json
-    nix/jobsets/testing.nix
-    nix/lib.nix
-    nix/nixpkgs-src.json
-    nix/nixpkgs-stackage-nixpkgs-src.json
-    nix/nixpkgs-stackage-src.json
-    nix/overlays/haskell-lib.nix
-    nix/overlays/haskell-overrides-next.nix
-    nix/overlays/haskell-overrides.nix
-    nix/overlays/lib.nix
-    nix/pkgs/base-compat-0.9.3.nix
-    nix/pkgs/fail-4.9.0.0.nix
-    nix/pkgs/hpio-ghc7102.nix
-    nix/pkgs/hpio-ghc7103.nix
-    nix/pkgs/hpio-ghc784.nix
-    nix/pkgs/hpio-hlint.nix
-    nix/pkgs/hpio.nix
-    nix/pkgs/monad-logger-0.3.16.nix
-    nix/pkgs/protolude-0.2.nix
-    nix/pkgs/semigroups-0.18.2-ghc784.nix
-    nix/pkgs/semigroups-0.18.2.nix
-    nix/pkgs/unix-bytestring-0.3.7.3.nix
-    nix/pkgs/void-0.7.2.nix
     package.yaml
     README.md
-    shell.nix
     stack-lts-10.yaml
     stack-lts-2.yaml
     stack-lts-3.yaml

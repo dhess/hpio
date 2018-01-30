@@ -29,8 +29,9 @@ let
       baseName == "scripts"
     ) ||
     type != "directory" && (
-      baseName == ".gitignore"           ||
       baseName == ".dir-locals.el"       ||
+      baseName == ".gitignore"           ||
+      baseName == ".travis.yml"          ||
       baseName == "cabal.sandbox.config" ||
       baseName == "Makefile"
     )

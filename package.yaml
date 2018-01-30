@@ -234,14 +234,9 @@ tests:
 
 extra-source-files:
   - .hlint.yaml
-  - .travis.yml
   - README.md
   - changelog.md
-  - default.nix
-  - nix/*
-  - nix/*/*
   - package.yaml
-  - shell.nix
   - stack.yaml
   - stack-lts-2.yaml
   - stack-lts-3.yaml
