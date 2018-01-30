@@ -111,4 +111,4 @@ hpio.cabal: package.yaml
 clean:
 	cabal clean
 
-.PHONY: clean nix
+.PHONY: clean nix hpio.cabal
