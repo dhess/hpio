@@ -62,6 +62,11 @@ in
   haskellPackages = withHpioHlint super.haskellPackages;
 
 
+  ## Currently, armv7l-linux on Nixpkgs must use ghc802.
+
+  haskellPackagesArmv7l = withHpio self.haskell.packages.ghc802;
+
+
   ## Package sets equivalent to the latest(-ish) Stackage LTS sets.
   ## Only supported LTS versions are defined here.
 
