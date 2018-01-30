@@ -143,13 +143,18 @@ in
   haskellPackages = withOurHpioHlint super.haskellPackages;
 
 
+  ## Testing with upcoming GHC releases. Don't bother Haddock-ing
+  ## these as they're unlikely to be cached by upstream Hydra.
+
+  haskellPackages841 = dontHaddock (withOurHpioHlint super.haskell.packages.ghc841);
+
+
   ## Package sets equivalent to the latest(-ish) Stackage LTS sets.
   ## Only supported LTS versions are defined here.
 
   lts10Packages = withOurHpio self.haskell.packages.stackage.lts-100;
 
-
-  ## Don't waste time Haddock-ing these.
+  # Don't waste time Haddock-ing these.
 
   lts9Packages = dontHaddock (withOurHpio (withLts9Extras self.haskell.packages.stackage.lts-920));
   lts7Packages = dontHaddock (withOurHpio (withLts7Extras self.haskell.packages.stackage.lts-724));

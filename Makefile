@@ -21,6 +21,9 @@ lts-%:	nix
 release: nix
 	 $(call nix-build)
 
+next:	nix
+	nix-build --no-out-link nix/jobsets/next.nix -I nixpkgs=$(NIXPKGS)
+
 doc:	test
 	@echo "*** Generating docs"
 	cabal haddock --hyperlink-source
@@ -46,6 +49,7 @@ help:
 	@echo "    lts-6     - build hpio against LTS 6 package set using nix-build"
 	@echo "    lts-2     - build hpio against LTS 2 package set using nix-build"
 	@echo "    release   - Run nix-build on all release.nix targets"
+	@echo "    next      - Run nix-build on all next.nix targets"
 	@echo
 	@echo "    test      - configure and build the package, then run the tests (cabal)"
 	@echo "    build     - configure and build the package (cabal)"
