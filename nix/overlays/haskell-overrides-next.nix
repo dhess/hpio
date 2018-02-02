@@ -2,7 +2,7 @@ self: super:
 
 let
 
-  inherit (self) haskell lib dontHaddock withOurHpio;
+  inherit (self) haskell withOurHpio;
 
   withHpio = withOurHpio ../pkgs/hpio-hlint.nix;
 
@@ -15,7 +15,7 @@ in
   ## that here; we just want things to build.
 
   haskellPackages841 =
-    dontHaddock (withHpio (self.haskell.packages.ghc841.extend (self: super:
+    haskell.lib.noHaddocks (withHpio (self.haskell.packages.ghc841.extend (self: super:
       with haskell.lib;
       rec {
 

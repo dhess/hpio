@@ -2,7 +2,8 @@ self: super:
 
 let
 
-  inherit (self) haskell lib withOurHpio dontHaddock;
+  inherit (self) haskell withOurHpio;
+  inherit (haskell.lib) dontCheck noHaddocks;
 
   withHpioHlint = withOurHpio ../pkgs/hpio-hlint.nix;
   withHpio = withOurHpio ../pkgs/hpio.nix;
@@ -14,7 +15,6 @@ let
   ## hpio adds a few extra-deps to the Stackage LTS sets.
 
   withLts9Extras = hp: (hp.extend (self: super: (
-    with haskell.lib;
     rec {
       protolude = self.callPackage ../pkgs/protolude-0.2.nix {};
       zlib = dontCheck super.zlib;
@@ -24,14 +24,12 @@ let
   withLts7Extras = withLts6Extras;
 
   withLts6Extras = hp: (hp.extend (self: super: (
-    with haskell.lib;
     rec {
       protolude = self.callPackage ../pkgs/protolude-0.2.nix {};
     }
   )));
 
   withLts3Extras = hp: (hp.extend (self: super: (
-    with haskell.lib;
     rec {
       fail = self.callPackage ../pkgs/fail-4.9.0.0.nix {};
       protolude = self.callPackage ../pkgs/protolude-0.2.nix {};
@@ -41,7 +39,6 @@ let
   )));
 
   withLts2Extras = hp: (hp.extend (self: super: (
-    with haskell.lib;
     rec {
       base-compat = self.callPackage ../pkgs/base-compat-0.9.3.nix {};
       fail = self.callPackage ../pkgs/fail-4.9.0.0.nix {};
@@ -74,10 +71,10 @@ in
 
   # Don't waste time Haddock-ing these.
 
-  lts9Packages = dontHaddock (withHpio (withLts9Extras self.haskell.packages.stackage.lts-920));
-  lts7Packages = dontHaddock (withHpio (withLts7Extras self.haskell.packages.stackage.lts-724));
-  lts6Packages = dontHaddock (withHpio7103 (withLts6Extras self.haskell.packages.stackage.lts-635));
-  lts3Packages = dontHaddock (withHpio7102 (withLts3Extras self.haskell.packages.stackage.lts-322));
-  lts2Packages = dontHaddock (withHpio784 (withLts2Extras self.haskell.packages.stackage.lts-222));
+  lts9Packages = noHaddocks (withHpio (withLts9Extras self.haskell.packages.stackage.lts-920));
+  lts7Packages = noHaddocks (withHpio (withLts7Extras self.haskell.packages.stackage.lts-724));
+  lts6Packages = noHaddocks (withHpio7103 (withLts6Extras self.haskell.packages.stackage.lts-635));
+  lts3Packages = noHaddocks (withHpio7102 (withLts3Extras self.haskell.packages.stackage.lts-322));
+  lts2Packages = noHaddocks (withHpio784 (withLts2Extras self.haskell.packages.stackage.lts-222));
 
 }
