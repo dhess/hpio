@@ -12,6 +12,18 @@ let
   withHpio784 = withOurHpio ../pkgs/hpio-ghc784.nix;
 
 
+  ## Testing against package versions that aren't yet in Nixpkgs.
+
+  # async-2.2.
+  withAsync22 = hp: (hp.extend (self: super: (
+    with haskell.lib;
+    rec {
+      async = self.callPackage ../pkgs/async-2.2.1.nix {};
+      protolude = doJailbreak super.protolude;
+    }
+  )));
+
+
   ## hpio adds a few extra-deps to the Stackage LTS sets.
 
   withLts9Extras = hp: (hp.extend (self: super: (
@@ -77,4 +89,8 @@ in
   lts3Packages = noHaddocks (withHpio7102 (withLts3Extras self.haskell.packages.stackage.lts-322));
   lts2Packages = noHaddocks (withHpio784 (withLts2Extras self.haskell.packages.stackage.lts-222));
 
+
+  ## Anything else that's special.
+
+  async22 = withHpio (withAsync22 super.haskellPackages);
 }

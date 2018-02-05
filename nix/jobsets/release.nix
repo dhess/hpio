@@ -99,6 +99,16 @@ let
     #   ];
     # };
 
+    nixpkgs-async22 = pkgs.releaseTools.aggregate {
+      name = "nixpkgs-async22";
+      meta.description = "hpio built against nixpkgs haskellPackages and async-2.2";
+      meta.maintainer = lib.maintainers.dhess;
+      constituents = with jobs; [
+        async22.hpio.x86_64-darwin
+        async22.hpio.x86_64-linux
+      ];
+    };
+
   } // (mapTestOn ({
 
     haskellPackages = packagePlatforms pkgs.haskellPackages;
@@ -111,10 +121,12 @@ let
     #lts7Packages = packagePlatforms pkgs.lts7Packages;
     #lts3Packages = packagePlatforms pkgs.lts3Packages;
 
+    async22 = packagePlatforms pkgs.async22;
   }));
 
 in
 {
   inherit (jobs) nixpkgs lts-10 lts-9 lts-6 lts-2;
   #inherit (jobs) lts-7 lts-3;
+  inherit (jobs) nixpkgs-async22;
 }

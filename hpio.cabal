@@ -2,10 +2,10 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 314c418ac4acf7409780c6803850e71c284df0bb0c42077cb1ad16aa8447a309
+-- hash: 3422bbfd1ca6b82633d357381204ee18fca873f39a41d5b97fb1bdcfe42e5919
 
 name:                   hpio
-version:                0.9.0.4
+version:                0.9.0.5
 synopsis:               Monads for GPIO in Haskell
 description:            This package provides an embedded DSL for writing cross-platform
                         GPIO programs in Haskell. Currently only Linux is supported (via the
@@ -137,7 +137,7 @@ executable hpio-example
     buildable: False
   else
     build-depends:
-        async >=2.0.2 && <2.2
+        async >=2.0.2 && <2.3
       , base
       , exceptions
       , hpio
@@ -165,7 +165,7 @@ executable hpio-reader-example
     buildable: False
   else
     build-depends:
-        async >=2.0.2 && <2.2
+        async >=2.0.2 && <2.3
       , base
       , exceptions
       , hpio
@@ -193,7 +193,7 @@ executable hpio-sysfs-example
     buildable: False
   else
     build-depends:
-        async >=2.0.2 && <2.2
+        async >=2.0.2 && <2.3
       , base
       , exceptions
       , hpio
