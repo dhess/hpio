@@ -16,10 +16,8 @@ let
   };
 
   ## nixpkgs-stackage wants a <nixpkgs> path so that it can import
-  ## Haskell stuff. Which we use doesn't particularly matter, as
-  ## it's only used for importing functions. Here we use a stable
-  ## one.
-  nixpkgs-src = builtins.fromJSON (builtins.readFile ../nixpkgs-stackage-nixpkgs-src.json);
+  ## Haskell functions that nixpkgs doesn't explicitly export.
+  nixpkgs-src = builtins.fromJSON (builtins.readFile ../nixpkgs-src.json);
   nixpkgs-spec = {
     url = "https://github.com/${nixpkgs-src.owner}/${nixpkgs-src.repo}.git";
     rev = "${nixpkgs-src.rev}";
