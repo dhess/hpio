@@ -1,9 +1,15 @@
-## 0.9.0.4 (2018-01-29)
+## 0.9.0.5 (2018-02-05)
 
 Note that this will be the last release in the `0.9` series, excepting
 critical bug fixes or security issues. The next release is expected to
 (slightly) break module export compatibility, but in a way that should
 not affect too many users.
+
+Changes:
+
+  - Support async-2.2.x.
+
+## 0.9.0.4 (2018-01-29)
 
 Changes:
   - The `test-hlint` cabal flag is now disabled by default.
