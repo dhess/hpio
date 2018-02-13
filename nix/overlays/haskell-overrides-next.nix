@@ -18,9 +18,8 @@ in
     haskell.lib.noHaddocks (withHpio (self.haskell.packages.ghc841.extend (self: super:
       with haskell.lib;
       rec {
-
         integer-logarithms = doJailbreak super.integer-logarithms;
-
+        protolude = doJailbreak super.protolude;
       }
     )));
 
