@@ -1,3 +1,7 @@
+Changes:
+
+  - Bump hlint upper bound.
+
 ## 0.9.0.5 (2018-02-05)
 
 Note that this will be the last release in the `0.9` series, excepting
