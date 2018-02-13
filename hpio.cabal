@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 3422bbfd1ca6b82633d357381204ee18fca873f39a41d5b97fb1bdcfe42e5919
+-- hash: ddaa641c8942199c4ca35184dbd8ec5620afe8d8e187a6b5c2ca8f47bb0f96b1
 
 name:                   hpio
 version:                0.9.0.5
@@ -243,7 +243,7 @@ test-suite hlint
   else
     build-depends:
         base
-      , hlint ==2.0.*
+      , hlint >=2.0 && <2.2
       , protolude
   default-language: Haskell2010
 
