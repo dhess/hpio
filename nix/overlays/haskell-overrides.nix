@@ -8,8 +8,6 @@ let
   withHpioHlint = withOurHpio ../pkgs/hpio-hlint.nix;
   withHpio = withOurHpio ../pkgs/hpio.nix;
   withHpio7103 = withOurHpio ../pkgs/hpio-ghc7103.nix;
-  withHpio7102 = withOurHpio ../pkgs/hpio-ghc7102.nix;
-  withHpio784 = withOurHpio ../pkgs/hpio-ghc784.nix;
 
 
   ## Testing against package versions that aren't yet in Nixpkgs.
@@ -33,32 +31,9 @@ let
     }
   )));
 
-  withLts7Extras = withLts6Extras;
-
   withLts6Extras = hp: (hp.extend (self: super: (
     rec {
       protolude = self.callPackage ../pkgs/protolude-0.2.nix {};
-    }
-  )));
-
-  withLts3Extras = hp: (hp.extend (self: super: (
-    rec {
-      fail = self.callPackage ../pkgs/fail-4.9.0.0.nix {};
-      protolude = self.callPackage ../pkgs/protolude-0.2.nix {};
-      semigroups = self.callPackage ../pkgs/semigroups-0.18.2.nix {};
-      unix-bytestring = self.callPackage ../pkgs/unix-bytestring-0.3.7.3.nix {};
-    }
-  )));
-
-  withLts2Extras = hp: (hp.extend (self: super: (
-    rec {
-      base-compat = self.callPackage ../pkgs/base-compat-0.9.3.nix {};
-      fail = self.callPackage ../pkgs/fail-4.9.0.0.nix {};
-      monad-logger = self.callPackage ../pkgs/monad-logger-0.3.16.nix {};
-      protolude = self.callPackage ../pkgs/protolude-0.2.nix {};
-      semigroups = self.callPackage ../pkgs/semigroups-0.18.2-ghc784.nix {};
-      unix-bytestring = self.callPackage ../pkgs/unix-bytestring-0.3.7.3.nix {};
-      void = self.callPackage ../pkgs/void-0.7.2.nix {};
     }
   )));
 
@@ -84,10 +59,7 @@ in
   # Don't waste time Haddock-ing these.
 
   lts9Packages = noHaddocks (withHpio (withLts9Extras self.haskell.packages.stackage.lts-921));
-  lts7Packages = noHaddocks (withHpio (withLts7Extras self.haskell.packages.stackage.lts-724));
   lts6Packages = noHaddocks (withHpio7103 (withLts6Extras self.haskell.packages.stackage.lts-635));
-  lts3Packages = noHaddocks (withHpio7102 (withLts3Extras self.haskell.packages.stackage.lts-322));
-  lts2Packages = noHaddocks (withHpio784 (withLts2Extras self.haskell.packages.stackage.lts-222));
 
 
   ## Anything else that's special.

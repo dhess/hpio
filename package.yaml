@@ -31,7 +31,7 @@ description: ! 'This package provides an embedded DSL for writing cross-platform
 
   module, which explains how to use the cross-platform DSL.'
 
-tested-with: GHC==7.8.4 GHC==7.10.2 GHC==7.10.3 GHC==8.0.1 GHC==8.0.2 GHC==8.2.1 GHC==8.2.2
+tested-with: GHC==7.8.4 GHC==7.10.3 GHC==8.0.2 GHC==8.2.2
 
 flags:
   test-hlint:
@@ -239,8 +239,6 @@ extra-source-files:
   - package.yaml
   - stack.yaml
   - stack-lts-2.yaml
-  - stack-lts-3.yaml
   - stack-lts-6.yaml
-  - stack-lts-7.yaml
   - stack-lts-9.yaml
   - stack-lts-10.yaml

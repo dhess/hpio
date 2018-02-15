@@ -52,7 +52,6 @@ help:
 	@echo "    lts-10    - build hpio against LTS 10 package set using nix-build"
 	@echo "    lts-9     - build hpio against LTS 9 package set using nix-build"
 	@echo "    lts-6     - build hpio against LTS 6 package set using nix-build"
-	@echo "    lts-2     - build hpio against LTS 2 package set using nix-build"
 	@echo "    release   - Run nix-build on all release.nix targets"
 	@echo "    next      - Run nix-build on all next.nix targets"
 	@echo

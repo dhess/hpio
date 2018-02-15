@@ -66,38 +66,6 @@ let
       ];
     };
 
-    lts-2 = pkgs.releaseTools.aggregate {
-      name = "lts-2";
-      meta.description = "hpio built against Stackage LTS 2 package set";
-      meta.maintainer = lib.maintainers.dhess;
-      constituents = with jobs; [
-        lts2Packages.hpio.x86_64-linux
-      ];
-    };
-
-
-    ## Unfortunately, nixpkgs no longer supports the compilers needed
-    ## for these LTS package sets, so we cannot test them. We leave
-    ## them commented out here in case a future release or overlay
-    ## restores them.
-
-    # lts-7 = pkgs.releaseTools.aggregate {
-    #   name = "lts-7";
-    #   meta.description = "hpio built against Stackage LTS 7 package set";
-    #   meta.maintainer = lib.maintainers.dhess;
-    #   constituents = with jobs; [
-    #     lts7Packages.hpio.x86_64-linux
-    #   ];
-    # };
-
-    # lts-3 = pkgs.releaseTools.aggregate {
-    #   name = "lts-3";
-    #   meta.description = "hpio built against Stackage LTS 3 package set";
-    #   meta.maintainer = lib.maintainers.dhess;
-    #   constituents = with jobs; [
-    #     lts3Packages.hpio.x86_64-linux
-    #   ];
-    # };
 
     nixpkgs-async22 = pkgs.releaseTools.aggregate {
       name = "nixpkgs-async22";
@@ -116,17 +84,12 @@ let
     lts10Packages = packagePlatforms pkgs.lts10Packages;
     lts9Packages = packagePlatforms pkgs.lts9Packages;
     lts6Packages = packagePlatforms pkgs.lts6Packages;
-    lts2Packages = packagePlatforms pkgs.lts2Packages;
-
-    #lts7Packages = packagePlatforms pkgs.lts7Packages;
-    #lts3Packages = packagePlatforms pkgs.lts3Packages;
 
     async22 = packagePlatforms pkgs.async22;
   }));
 
 in
 {
-  inherit (jobs) nixpkgs lts-10 lts-9 lts-6 lts-2;
-  #inherit (jobs) lts-7 lts-3;
+  inherit (jobs) nixpkgs lts-10 lts-9 lts-6;
   inherit (jobs) nixpkgs-async22;
 }
