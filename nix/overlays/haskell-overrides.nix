@@ -46,6 +46,18 @@ in
   haskellPackages = withHpioHlint super.haskellPackages;
 
 
+  ## GHC 8.4.1.
+
+  haskellPackages841 =
+    withHpioHlint (self.haskell.packages.ghc841.extend (self: super:
+      with haskell.lib;
+      rec {
+        integer-logarithms = doJailbreak super.integer-logarithms;
+        protolude = doJailbreak super.protolude;
+      }
+    ));
+
+
   ## Currently, armv7l-linux on Nixpkgs must use ghc802.
 
   haskellPackagesArmv7l = withHpio self.haskell.packages.ghc802;

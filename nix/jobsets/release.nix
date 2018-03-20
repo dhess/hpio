@@ -38,6 +38,15 @@ let
       ];
     };
 
+    ghc841 = pkgs.releaseTools.aggregate {
+      name = "ghc841";
+      meta.description = "hpio built against nixpkgs haskellPackages using GHC 8.4.1";
+      constituents = with jobs; [
+        haskellPackages841.hpio.x86_64-darwin
+        haskellPackages841.hpio.x86_64-linux
+      ];
+    };
+
     lts-10 = pkgs.releaseTools.aggregate {
       name = "lts-10";
       meta.description = "hpio built against Stackage LTS 10 package set";
@@ -80,6 +89,7 @@ let
   } // (mapTestOn ({
 
     haskellPackages = packagePlatforms pkgs.haskellPackages;
+    haskellPackages841 = packagePlatforms pkgs.haskellPackages841;
     haskellPackagesArmv7l = packagePlatforms pkgs.haskellPackagesArmv7l;
     lts10Packages = packagePlatforms pkgs.lts10Packages;
     lts9Packages = packagePlatforms pkgs.lts9Packages;
@@ -90,6 +100,6 @@ let
 
 in
 {
-  inherit (jobs) nixpkgs lts-10 lts-9 lts-6;
+  inherit (jobs) nixpkgs ghc841 lts-10 lts-9 lts-6;
   inherit (jobs) nixpkgs-async22;
 }
