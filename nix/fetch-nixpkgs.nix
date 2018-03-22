@@ -1,6 +1,6 @@
 let
 
   lib = import ./lib.nix;
-  nixpkgs = lib.fetchNixPkgs;
+  nixpkgs = import lib.fetchNixPkgs { config = {}; };
 
 in nixpkgs
