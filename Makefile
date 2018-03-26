@@ -15,6 +15,9 @@ hpio:	nix
 nixpkgs:	nix
 		$(call nix-build-attr,nixpkgs)
 
+ghc841:		nix
+		$(call nix-build-attr,ghc841)
+
 async22:	nix
 		$(call nix-build-attr,nixpkgs-async22)
 
@@ -48,6 +51,7 @@ help:
 	@echo
 	@echo "    hpio      - build hpio against nixpkgs using nix-build (quick)"
 	@echo "    nixpkgs   - build hpio against nixpkgs using nix-build"
+	@echo "    ghc841    - build hpio against nixpkgs with GHC 8.4.1 using nix-build"
 	@echo "    async22   - build hpio against nixpkgs plus async-2.2 using nix-build"
 	@echo "    lts-10    - build hpio against LTS 10 package set using nix-build"
 	@echo "    lts-9     - build hpio against LTS 9 package set using nix-build"
