@@ -2,13 +2,9 @@ Changes:
 
   - Bump hlint upper bound.
 
-  - Drop support for Stackage LTS-3 and LTS-7.
+  - Drop support for all Stackage LTS pre-9.
 
-  - Drop support for GHC 8.2.1, 8.0.1, 7.10.2; we still support the
-    latest releases for each of these versions.
-
-  - Drop support for Nix LTS-2 (upstream dropped the `ghc784` package
-    set).
+  - Drop support for GHC pre-8.
 
 ## 0.9.0.5 (2018-02-05)
 

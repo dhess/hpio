@@ -238,7 +238,5 @@ extra-source-files:
   - changelog.md
   - package.yaml
   - stack.yaml
-  - stack-lts-2.yaml
-  - stack-lts-6.yaml
   - stack-lts-9.yaml
   - stack-lts-10.yaml

@@ -55,7 +55,6 @@ help:
 	@echo "    async22   - build hpio against nixpkgs plus async-2.2 using nix-build"
 	@echo "    lts-10    - build hpio against LTS 10 package set using nix-build"
 	@echo "    lts-9     - build hpio against LTS 9 package set using nix-build"
-	@echo "    lts-6     - build hpio against LTS 6 package set using nix-build"
 	@echo "    release   - Run nix-build on all release.nix targets"
 	@echo "    next      - Run nix-build on all next.nix targets"
 	@echo
@@ -71,10 +70,6 @@ help:
 	@echo "    stack-lts    [build all supported LTS targets]"
 	@echo "    stack-lts-10"
 	@echo "    stack-lts-9"
-	@echo "    stack-lts-7"
-	@echo "    stack-lts-6"
-	@echo "    stack-lts-3"
-	@echo "    stack-lts-2  [Note: does not work on macOS]"
 	@echo
 	@echo "General:"
 	@echo
@@ -87,7 +82,7 @@ build:	configure
 
 nix-stack = nix-shell -p stack-env zlib libiconv ncurses --run 'stack test --stack-yaml $(1)'
 
-stack-lts:	stack-lts-10 stack-lts-9 stack-lts-7 stack-lts-6 stack-lts-3 stack-lts-2
+stack-lts:	stack-lts-10 stack-lts-9
 
 stack-lts-%:	nix
 		$(call nix-stack, stack-lts-$*.yaml)

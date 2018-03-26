@@ -3,6 +3,7 @@ self: super:
 let
 
   inherit (self) haskell withOurHpio;
+  inherit (self.lib) remove;
   inherit (haskell.lib) dontCheck noHaddocks;
 
   withHpioHlint = withOurHpio ../pkgs/hpio-hlint.nix;
@@ -31,13 +32,6 @@ let
     }
   )));
 
-  withLts6Extras = hp: (hp.extend (self: super: (
-    rec {
-      protolude = self.callPackage ../pkgs/protolude-0.2.nix {};
-    }
-  )));
-
-
 in
 {
 
@@ -60,7 +54,12 @@ in
 
   ## Currently, armv7l-linux on Nixpkgs must use ghc802.
 
-  haskellPackagesArmv7l = withHpio self.haskell.packages.ghc802;
+  haskellPackagesArmv7l = withHpio (self.haskell.packages.ghc802.extend (self: super:
+    with haskell.lib;
+    rec {
+      monad-logger = doJailbreak super.monad-logger;
+    }
+  ));
 
 
   ## Package sets equivalent to the latest(-ish) Stackage LTS sets.
@@ -71,7 +70,6 @@ in
   # Don't waste time Haddock-ing these.
 
   lts9Packages = noHaddocks (withHpio (withLts9Extras self.haskell.packages.stackage.lts-921));
-  lts6Packages = noHaddocks (withHpio7103 (withLts6Extras self.haskell.packages.stackage.lts-635));
 
 
   ## Anything else that's special.

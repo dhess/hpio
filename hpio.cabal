@@ -38,8 +38,6 @@ extra-source-files:
     package.yaml
     README.md
     stack-lts-10.yaml
-    stack-lts-2.yaml
-    stack-lts-6.yaml
     stack-lts-9.yaml
     stack.yaml
 
