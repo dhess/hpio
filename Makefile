@@ -53,7 +53,6 @@ help:
 	@echo "    nixpkgs   - build hpio against nixpkgs using nix-build"
 	@echo "    ghc841    - build hpio against nixpkgs with GHC 8.4.1 using nix-build"
 	@echo "    async22   - build hpio against nixpkgs plus async-2.2 using nix-build"
-	@echo "    lts-10    - build hpio against LTS 10 package set using nix-build"
 	@echo "    lts-9     - build hpio against LTS 9 package set using nix-build"
 	@echo "    release   - Run nix-build on all release.nix targets"
 	@echo "    next      - Run nix-build on all next.nix targets"
@@ -68,7 +67,7 @@ help:
 	@echo "given version of Stackage LTS as configured by the file stack-<target>.yaml."
 	@echo
 	@echo "    stack-lts    [build all supported LTS targets]"
-	@echo "    stack-lts-10"
+	@echo "    stack-lts-11"
 	@echo "    stack-lts-9"
 	@echo
 	@echo "General:"
@@ -82,7 +81,7 @@ build:	configure
 
 nix-stack = nix-shell -p stack-env zlib libiconv ncurses --run 'stack test --stack-yaml $(1)'
 
-stack-lts:	stack-lts-10 stack-lts-9
+stack-lts:	stack-lts-11 stack-lts-9
 
 stack-lts-%:	nix
 		$(call nix-stack, stack-lts-$*.yaml)
@@ -103,9 +102,6 @@ nix: 	hpio.cabal
 	@echo "*** Generating hpio Nix files"
 	cd nix/pkgs && cabal2nix ../../. > hpio.nix
 	cd nix/pkgs && cabal2nix --flag test-hlint ../../. > hpio-hlint.nix
-	cd nix/pkgs && cabal2nix --compiler=ghc-7.10.3 ../../. > hpio-ghc7103.nix
-	cd nix/pkgs && cabal2nix --compiler=ghc-7.10.2 ../../. > hpio-ghc7102.nix
-	cd nix/pkgs && cabal2nix --compiler=ghc-7.8.4 ../../. > hpio-ghc784.nix
 
 hpio.cabal: package.yaml
 	@echo "*** Running hpack"

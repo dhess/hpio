@@ -8,7 +8,6 @@ let
 
   withHpioHlint = withOurHpio ../pkgs/hpio-hlint.nix;
   withHpio = withOurHpio ../pkgs/hpio.nix;
-  withHpio7103 = withOurHpio ../pkgs/hpio-ghc7103.nix;
 
 
   ## Testing against package versions that aren't yet in Nixpkgs.
@@ -64,8 +63,6 @@ in
 
   ## Package sets equivalent to the latest(-ish) Stackage LTS sets.
   ## Only supported LTS versions are defined here.
-
-  lts10Packages = withHpio self.haskell.packages.stackage.lts-104;
 
   # Don't waste time Haddock-ing these.
 

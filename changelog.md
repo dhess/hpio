@@ -1,5 +1,7 @@
 Changes:
 
+  - Support for GHC 8.4.1.
+
   - Bump hlint upper bound.
 
   - Drop support for all Stackage LTS pre-9.
