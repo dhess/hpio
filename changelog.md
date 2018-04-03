@@ -1,3 +1,10 @@
+## 0.9.0.6 (2018-04-03)
+
+Note that this will be the last release in the `0.9` series, excepting
+critical bug fixes or security issues. The next release is expected to
+(slightly) break module export compatibility, but in a way that should
+not affect too many users.
+
 Changes:
 
   - Support for GHC 8.4.1.
@@ -9,11 +16,6 @@ Changes:
   - Drop support for GHC pre-8.
 
 ## 0.9.0.5 (2018-02-05)
-
-Note that this will be the last release in the `0.9` series, excepting
-critical bug fixes or security issues. The next release is expected to
-(slightly) break module export compatibility, but in a way that should
-not affect too many users.
 
 Changes:
 
