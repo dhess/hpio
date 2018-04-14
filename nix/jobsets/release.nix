@@ -56,6 +56,15 @@ let
       ];
     };
 
+    lts-11 = pkgs.releaseTools.aggregate {
+      name = "lts-11";
+      meta.description = "hpio built against Stackage LTS 11 package set";
+      meta.maintainer = lib.maintainers.dhess;
+      constituents = with jobs; [
+        lts11Packages.hpio.x86_64-linux
+      ];
+    };
+
     nixpkgs-async22 = pkgs.releaseTools.aggregate {
       name = "nixpkgs-async22";
       meta.description = "hpio built against nixpkgs haskellPackages and async-2.2";
@@ -72,11 +81,12 @@ let
     haskellPackages841 = packagePlatforms pkgs.haskellPackages841;
     haskellPackagesArmv7l = packagePlatforms pkgs.haskellPackagesArmv7l;
     lts9Packages = packagePlatforms pkgs.lts9Packages;
+    lts11Packages = packagePlatforms pkgs.lts11Packages;
     async22 = packagePlatforms pkgs.async22;
   }));
 
 in
 {
-  inherit (jobs) nixpkgs ghc841 lts-9;
+  inherit (jobs) nixpkgs ghc841 lts-9 lts-11;
   inherit (jobs) nixpkgs-async22;
 }

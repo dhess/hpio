@@ -54,6 +54,7 @@ help:
 	@echo "    ghc841    - build hpio against nixpkgs with GHC 8.4.1 using nix-build"
 	@echo "    async22   - build hpio against nixpkgs plus async-2.2 using nix-build"
 	@echo "    lts-9     - build hpio against LTS 9 package set using nix-build"
+	@echo "    lts-11    - build hpio against LTS 11 package set using nix-build"
 	@echo "    release   - Run nix-build on all release.nix targets"
 	@echo "    next      - Run nix-build on all next.nix targets"
 	@echo

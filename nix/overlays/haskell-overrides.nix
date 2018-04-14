@@ -24,6 +24,11 @@ let
 
   ## hpio adds a few extra-deps to the Stackage LTS sets.
 
+  withLts11Extras = hp: (hp.extend (self: super: (
+    rec {
+    }
+  )));
+
   withLts9Extras = hp: (hp.extend (self: super: (
     rec {
       protolude = self.callPackage ../pkgs/protolude-0.2.nix {};
@@ -63,6 +68,8 @@ in
 
   ## Package sets equivalent to the latest(-ish) Stackage LTS sets.
   ## Only supported LTS versions are defined here.
+
+  lts11Packages = noHaddocks (withHpio (withLts11Extras self.haskell.packages.stackage.lts-113));
 
   # Don't waste time Haddock-ing these.
 
