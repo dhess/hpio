@@ -11,7 +11,7 @@ let
 
 in
 
-{ supportedSystems ? [ "x86_64-darwin" "x86_64-linux" "armv7l-linux" ]
+{ supportedSystems ? [ "x86_64-darwin" "x86_64-linux" ]
 , scrubJobs ? true
 , nixpkgsArgs ? {
     config = { allowUnfree = true; allowBroken = true; inHydra = true; };
@@ -34,7 +34,6 @@ let
       constituents = with jobs; [
         haskellPackages.hpio.x86_64-darwin
         haskellPackages.hpio.x86_64-linux
-        haskellPackagesArmv7l.hpio.armv7l-linux
       ];
     };
 
@@ -79,7 +78,6 @@ let
 
     haskellPackages = packagePlatforms pkgs.haskellPackages;
     haskellPackages841 = packagePlatforms pkgs.haskellPackages841;
-    haskellPackagesArmv7l = packagePlatforms pkgs.haskellPackagesArmv7l;
     lts9Packages = packagePlatforms pkgs.lts9Packages;
     lts11Packages = packagePlatforms pkgs.lts11Packages;
     async22 = packagePlatforms pkgs.async22;

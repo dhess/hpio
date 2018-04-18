@@ -56,16 +56,6 @@ in
     ));
 
 
-  ## Currently, armv7l-linux on Nixpkgs must use ghc802.
-
-  haskellPackagesArmv7l = withHpio (self.haskell.packages.ghc802.extend (self: super:
-    with haskell.lib;
-    rec {
-      monad-logger = doJailbreak super.monad-logger;
-    }
-  ));
-
-
   ## Package sets equivalent to the latest(-ish) Stackage LTS sets.
   ## Only supported LTS versions are defined here.
 
