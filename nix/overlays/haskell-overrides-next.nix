@@ -11,6 +11,13 @@ in
 
   ## Testing with upcoming GHC releases.
 
-  # None at this time.
+  ## GHC 8.4.2.
+
+  haskellPackages842 =
+    withHpio (self.haskell.packages.ghc842.extend (self: super:
+      with haskell.lib;
+      rec {
+      }
+    ));
 
 }

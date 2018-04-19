@@ -24,12 +24,23 @@ let
 
   jobs = {
 
+    ghc842 = pkgs.releaseTools.aggregate {
+      name = "ghc842";
+      meta.description = "hpio built against nixpkgs haskellPackages using GHC 8.4.2";
+      constituents = with jobs; [
+        haskellPackages842.hpio.x86_64-darwin
+        haskellPackages842.hpio.x86_64-linux
+      ];
+    };
+
   } // (mapTestOn ({
+
+    haskellPackages842 = packagePlatforms pkgs.haskellPackages842;
 
   }));
 
 in
 {
-  # None at this time.
+  inherit (jobs) ghc842;
 }
-#// pkgs.lib.testing.enumerateConstituents jobs.ghc841
+// pkgs.lib.testing.enumerateConstituents jobs.ghc842
