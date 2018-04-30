@@ -16,7 +16,7 @@ let
   withAsync22 = hp: (hp.extend (self: super: (
     with haskell.lib;
     rec {
-      async = self.callPackage ../pkgs/async-2.2.1.nix {};
+      async = super.async_2_2_1;
       protolude = doJailbreak super.protolude;
     }
   )));
