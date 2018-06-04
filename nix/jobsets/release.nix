@@ -37,12 +37,12 @@ let
       ];
     };
 
-    ghc841 = pkgs.releaseTools.aggregate {
-      name = "ghc841";
-      meta.description = "hpio built against nixpkgs haskellPackages using GHC 8.4.1";
+    ghc843 = pkgs.releaseTools.aggregate {
+      name = "ghc843";
+      meta.description = "hpio built against nixpkgs haskellPackages using GHC 8.4.3";
       constituents = with jobs; [
-        haskellPackages841.hpio.x86_64-darwin
-        haskellPackages841.hpio.x86_64-linux
+        haskellPackages843.hpio.x86_64-darwin
+        haskellPackages843.hpio.x86_64-linux
       ];
     };
 
@@ -77,7 +77,7 @@ let
   } // (mapTestOn ({
 
     haskellPackages = packagePlatforms pkgs.haskellPackages;
-    haskellPackages841 = packagePlatforms pkgs.haskellPackages841;
+    haskellPackages843 = packagePlatforms pkgs.haskellPackages843;
     lts9Packages = packagePlatforms pkgs.lts9Packages;
     lts11Packages = packagePlatforms pkgs.lts11Packages;
     async22 = packagePlatforms pkgs.async22;
@@ -85,6 +85,6 @@ let
 
 in
 {
-  inherit (jobs) nixpkgs ghc841 lts-9 lts-11;
+  inherit (jobs) nixpkgs ghc843 lts-9 lts-11;
   inherit (jobs) nixpkgs-async22;
 }

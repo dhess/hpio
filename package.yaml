@@ -31,7 +31,7 @@ description: ! 'This package provides an embedded DSL for writing cross-platform
 
   module, which explains how to use the cross-platform DSL.'
 
-tested-with: GHC==8.0.2 GHC==8.2.2 GHC==8.4.1
+tested-with: GHC==8.0.2 GHC==8.2.2 GHC==8.4.3
 
 flags:
   test-hlint:

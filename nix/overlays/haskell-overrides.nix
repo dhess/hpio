@@ -44,10 +44,10 @@ in
   haskellPackages = withHpioHlint super.haskellPackages;
 
 
-  ## GHC 8.4.1.
+  ## GHC 8.4.3.
 
-  haskellPackages841 =
-    withHpioHlint (self.haskell.packages.ghc841.extend (self: super:
+  haskellPackages843 =
+    withHpioHlint (self.haskell.packages.ghc843.extend (self: super:
       with haskell.lib;
       rec {
         integer-logarithms = doJailbreak super.integer-logarithms;

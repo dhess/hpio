@@ -1,3 +1,7 @@
+Changes:
+
+  - Support for GHC 8.4.3.
+
 ## 0.9.0.6 (2018-04-03)
 
 Note that this will be the last release in the `0.9` series, excepting
