@@ -1,6 +1,6 @@
 {
     "owner":  "typeable"
 ,   "repo":   "nixpkgs-stackage"
-,   "rev":    "da0354d121a37983c794db6e3c3dfb478238d063"
-,   "sha256": "088xynmnyc2znmqb17xy5b2lprmy51n9dh884lgd8chr642nnssg"
+,   "rev":    "cc747c6eea330a8655dace7b3123b2df2172a8a2"
+,   "sha256": "14ilvphw6wjwakj57mi9m7x8z5v4famk80la2dpzjkd0i8mflv7h"
 }
