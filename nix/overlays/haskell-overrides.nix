@@ -59,7 +59,7 @@ in
   ## Package sets equivalent to the latest(-ish) Stackage LTS sets.
   ## Only supported LTS versions are defined here.
 
-  lts11Packages = noHaddocks (withHpio (withLts11Extras self.haskell.packages.stackage.lts-1112));
+  lts11Packages = noHaddocks (withHpio (withLts11Extras self.haskell.packages.stackage.lts-1114));
 
   # Don't waste time Haddock-ing these.
 
