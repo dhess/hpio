@@ -11,13 +11,11 @@ in
 
   ## Testing with upcoming GHC releases.
 
-  ## None for now.
-
-  # haskellPackages843 =
-  #   withHpio (self.haskell.packages.ghc843.extend (self: super:
-  #     with haskell.lib;
-  #     rec {
-  #     }
-  #   ));
+  haskellPackages861 =
+    withHpio (self.haskell.packages.ghc861.extend (self: super:
+      with haskell.lib;
+      rec {
+      }
+    ));
 
 }
