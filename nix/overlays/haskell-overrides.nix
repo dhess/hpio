@@ -10,19 +10,12 @@ let
   withHpio = withOurHpio ../pkgs/hpio.nix;
 
 
-  ## Testing against package versions that aren't yet in Nixpkgs.
+  ## hpio adds a few extra-deps to the Stackage LTS sets.
 
-  # async-2.2.
-  withAsync22 = hp: (hp.extend (self: super: (
-    with haskell.lib;
+  withLts12Extras = hp: (hp.extend (self: super: (
     rec {
-      async = super.async_2_2_1;
-      protolude = doJailbreak super.protolude;
     }
   )));
-
-
-  ## hpio adds a few extra-deps to the Stackage LTS sets.
 
   withLts11Extras = hp: (hp.extend (self: super: (
     rec {
@@ -44,29 +37,12 @@ in
   haskellPackages = withHpioHlint super.haskellPackages;
 
 
-  ## GHC 8.4.3.
-
-  haskellPackages843 =
-    withHpioHlint (self.haskell.packages.ghc843.extend (self: super:
-      with haskell.lib;
-      rec {
-        integer-logarithms = doJailbreak super.integer-logarithms;
-        protolude = doJailbreak super.protolude;
-      }
-    ));
-
-
   ## Package sets equivalent to the latest(-ish) Stackage LTS sets.
   ## Only supported LTS versions are defined here.
-
-  lts11Packages = noHaddocks (withHpio (withLts11Extras self.haskell.packages.stackage.lts-1114));
+  lts12Packages = withHpio (withLts12Extras self.haskell.packages.stackage.lts-122);
 
   # Don't waste time Haddock-ing these.
 
+  lts11Packages = noHaddocks (withHpio (withLts11Extras self.haskell.packages.stackage.lts-1118));
   lts9Packages = noHaddocks (withHpio (withLts9Extras self.haskell.packages.stackage.lts-921));
-
-
-  ## Anything else that's special.
-
-  async22 = withHpio (withAsync22 super.haskellPackages);
 }

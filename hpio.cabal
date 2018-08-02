@@ -1,8 +1,8 @@
--- This file has been generated from package.yaml by hpack version 0.27.0.
+-- This file has been generated from package.yaml by hpack version 0.28.2.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: b763d0b88009278fd42114eb8e4ffefe4c28caa66bb18b66445cd30f19be4bb1
+-- hash: 17fec7396b0bdb291377011203ed2f7c3c4f19f622445af802c163311bd35bfc
 
 name:                   hpio
 version:                0.9.0.6
@@ -31,13 +31,13 @@ license-file:           LICENSE
 tested-with:            GHC==8.0.2 GHC==8.2.2 GHC==8.4.3
 build-type:             Simple
 cabal-version:          >= 1.10
-
 extra-source-files:
     .hlint.yaml
     changelog.md
     package.yaml
     README.md
     stack-lts-11.yaml
+    stack-lts-12.yaml
     stack-lts-9.yaml
     stack.yaml
 

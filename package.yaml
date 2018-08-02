@@ -240,3 +240,4 @@ extra-source-files:
   - stack.yaml
   - stack-lts-9.yaml
   - stack-lts-11.yaml
+  - stack-lts-12.yaml

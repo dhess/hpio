@@ -15,12 +15,6 @@ hpio:	nix
 nixpkgs:	nix
 		$(call nix-build-attr,nixpkgs)
 
-ghc843:		nix
-		$(call nix-build-attr,ghc843)
-
-async22:	nix
-		$(call nix-build-attr,nixpkgs-async22)
-
 lts-%:	nix
 	$(call nix-build-attr,lts-$*)
 
@@ -51,10 +45,9 @@ help:
 	@echo
 	@echo "    hpio      - build hpio against nixpkgs using nix-build (quick)"
 	@echo "    nixpkgs   - build hpio against nixpkgs using nix-build"
-	@echo "    ghc843    - build hpio against nixpkgs with GHC 8.4.3 using nix-build"
-	@echo "    async22   - build hpio against nixpkgs plus async-2.2 using nix-build"
 	@echo "    lts-9     - build hpio against LTS 9 package set using nix-build"
 	@echo "    lts-11    - build hpio against LTS 11 package set using nix-build"
+	@echo "    lts-12    - build hpio against LTS 12 package set using nix-build"
 	@echo "    release   - Run nix-build on all release.nix targets"
 	@echo "    next      - Run nix-build on all next.nix targets"
 	@echo
@@ -68,6 +61,7 @@ help:
 	@echo "given version of Stackage LTS as configured by the file stack-<target>.yaml."
 	@echo
 	@echo "    stack-lts    [build all supported LTS targets]"
+	@echo "    stack-lts-12"
 	@echo "    stack-lts-11"
 	@echo "    stack-lts-9"
 	@echo
@@ -82,7 +76,7 @@ build:	configure
 
 nix-stack = nix-shell -p stack-env zlib libiconv ncurses --run 'stack test --stack-yaml $(1)'
 
-stack-lts:	stack-lts-11 stack-lts-9
+stack-lts:	stack-lts-12 stack-lts-11 stack-lts-9
 
 stack-lts-%:	nix
 		$(call nix-stack, stack-lts-$*.yaml)

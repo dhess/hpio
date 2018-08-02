@@ -1,7 +1,5 @@
 require-stack-version: ">= 1.1.0"
 pvp-bounds: both
-resolver: lts-9.21
-extra-deps:
-- protolude-0.2
+resolver: lts-12.4
 packages:
 - .
