@@ -69,7 +69,7 @@ let
     haskellPackages = packagePlatforms pkgs.haskellPackages;
     lts9Packages = packagePlatforms pkgs.lts9Packages;
     lts11Packages = packagePlatforms pkgs.lts11Packages;
-    lts12Packages = packagePlatforms pkgs.lts11Packages;
+    lts12Packages = packagePlatforms pkgs.lts12Packages;
   }));
 
 in
