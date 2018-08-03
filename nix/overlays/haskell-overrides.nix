@@ -24,7 +24,7 @@ let
 
   withLts9Extras = hp: (hp.extend (self: super: (
     rec {
-      protolude = self.callPackage ../pkgs/protolude-0.2.nix {};
+      protolude = self.callHackage "protolude" "0.2" {};
       zlib = dontCheck super.zlib;
     }
   )));
