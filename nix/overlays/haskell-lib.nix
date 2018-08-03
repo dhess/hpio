@@ -32,7 +32,7 @@ let
 
   withOurHpioHlint = hp: (hp.extend (self: super: (
     {
-      hpio = lib.cleanPackage myCleanSource (super.callCabal2nix "hpio" ../../. { extraCabal2nixOptions = "--flag test-hlint"; });
+      hpio = lib.cleanPackage myCleanSource (super.callCabal2nixWithOptions "hpio" ../../. "--flag test-hlint" {});
     }
   )));
 
