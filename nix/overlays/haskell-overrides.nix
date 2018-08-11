@@ -39,10 +39,10 @@ in
 
   ## Package sets equivalent to the latest(-ish) Stackage LTS sets.
   ## Only supported LTS versions are defined here.
-  lts12Packages = withHpio (withLts12Extras self.haskell.packages.stackage.lts-122);
+  lts12Packages = withHpio (withLts12Extras self.haskell.packages.stackage.lts-124);
 
   # Don't waste time Haddock-ing these.
 
-  lts11Packages = noHaddocks (withHpio (withLts11Extras self.haskell.packages.stackage.lts-1118));
+  lts11Packages = noHaddocks (withHpio (withLts11Extras self.haskell.packages.stackage.lts-1119));
   lts9Packages = noHaddocks (withHpio (withLts9Extras self.haskell.packages.stackage.lts-921));
 }
