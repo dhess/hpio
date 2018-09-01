@@ -1,5 +1,5 @@
 { mkDerivation, async, base, bytestring, containers, directory
-, doctest, exceptions, filepath, hlint, hspec, monad-control
+, doctest, exceptions, filepath, hlint, hpack, hspec, monad-control
 , monad-logger, mtl, optparse-applicative, protolude, QuickCheck
 , stdenv, text, transformers, transformers-base, unix
 , unix-bytestring
@@ -16,6 +16,7 @@ mkDerivation {
     monad-control monad-logger mtl protolude QuickCheck text
     transformers transformers-base unix unix-bytestring
   ];
+  libraryToolDepends = [ hpack ];
   executableHaskellDepends = [
     async base exceptions mtl optparse-applicative protolude text
     transformers
@@ -24,6 +25,7 @@ mkDerivation {
     base containers directory doctest exceptions filepath hlint hspec
     protolude QuickCheck
   ];
+  preConfigure = "hpack";
   homepage = "https://github.com/quixoftic/hpio#readme";
   description = "Monads for GPIO in Haskell";
   license = stdenv.lib.licenses.bsd3;

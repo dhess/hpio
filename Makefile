@@ -89,20 +89,16 @@ check:
 	@echo "*** Checking the package for errors"
 	cabal check
 
-configure: nix hpio.cabal
+configure: nix
 	@echo "*** Configuring the package"
 	cabal configure -f test-hlint
 
-nix: 	hpio.cabal
+nix:
 	@echo "*** Generating hpio Nix files"
 	cd nix/pkgs && cabal2nix ../../. > hpio.nix
 	cd nix/pkgs && cabal2nix --flag test-hlint ../../. > hpio-hlint.nix
 
-hpio.cabal: package.yaml
-	@echo "*** Running hpack"
-	hpack
-
 clean:
 	cabal clean
 
-.PHONY: clean nix hpio.cabal
+.PHONY: clean nix
