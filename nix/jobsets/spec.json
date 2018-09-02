@@ -4,7 +4,7 @@
     "description": "hpio jobsets",
     "nixexprinput": "src",
     "nixexprpath": "nix/jobsets/default.nix",
-    "checkinterval": 60,
+    "checkinterval": 300,
     "schedulingshares": 100,
     "enableemail": false,
     "emailoverride": "",
