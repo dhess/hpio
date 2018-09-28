@@ -2,7 +2,7 @@ self: super:
 
 let
 
-  inherit (self) lib;
+  inherit (self) haskell lib;
 
 
   ## Ignore local files that shouldn't contribute to the Nix hash.
@@ -24,13 +24,19 @@ let
 
   ## Haskell package combinators.
 
-  withOurHpio = hpioPkgPath: hp: (hp.extend (self: super: (
+  withOurHpio = hp: (hp.extend (self: super: (
     {
-      hpio = lib.cleanPackage myCleanSource (super.callPackage hpioPkgPath {});
+      hpio = lib.cleanPackage myCleanSource (super.callCabal2nix "hpio" ../../. {});
+    }
+  )));
+
+  withOurHpioHlint = hp: (hp.extend (self: super: (
+    {
+      hpio = lib.cleanPackage myCleanSource (super.callCabal2nixWithOptions "hpio" ../../. "--flag test-hlint" {});
     }
   )));
 
 in
 {
-  inherit withOurHpio;
+  inherit withOurHpio withOurHpioHlint;
 }
