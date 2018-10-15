@@ -11,7 +11,7 @@ let
 
 in
 
-{ supportedSystems ? [ "x86_64-darwin" "x86_64-linux" ]
+{ supportedSystems ? [ "x86_64-darwin" "x86_64-linux" "aarch64-linux" ]
 , scrubJobs ? true
 , nixpkgsArgs ? {
     config = { allowUnfree = true; allowBroken = true; inHydra = true; };
@@ -34,6 +34,7 @@ let
       constituents = with jobs; [
         haskellPackages.hpio.x86_64-darwin
         haskellPackages.hpio.x86_64-linux
+        haskellPackages.hpio.aarch64-linux
       ];
     };
 

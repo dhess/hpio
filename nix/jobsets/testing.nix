@@ -7,7 +7,7 @@ let
 
 in
 
-{ supportedSystems ? [ "x86_64-darwin" "x86_64-linux" ]
+{ supportedSystems ? [ "x86_64-darwin" "x86_64-linux" "aarch64-linux" ]
 , scrubJobs ? true
 , nixpkgsArgs ? {
     config = { allowUnfree = true; allowBroken = true; inHydra = true; };
