@@ -1,6 +1,6 @@
 {
     "owner":  "NixOS"
-,   "repo":   "nixpkgs-channels"
-,   "rev":    "2255fce780782e5de640665f4d5f151a3594b699"
-,   "sha256": "1ym959dvwqj4ra6ss76arc78rbhc06pj2dfcxvqv4415442vks5r"
+,   "repo":   "nixpkgs"
+,   "rev":    "ac7bf94f6df33cb0b6c77d44e981246ab0da312c"
+,   "sha256": "0qd9alwam69pd8s6c7pz5abpl7prxm9bbd6yrmimcp7xyab70sy7"
 }
