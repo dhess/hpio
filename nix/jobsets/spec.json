@@ -11,6 +11,6 @@
     "keepnr": 5,
     "inputs": {
          "src": { "type": "git", "value": "https://github.com/quixoftic/hpio.git master", "emailresponsible": false }
-         ,"nixpkgs": { "type": "git", "value": "https://github.com/NixOS/nixpkgs-channels.git nixos-18.03-small", "emailresponsible": false }
+         ,"nixpkgs": { "type": "git", "value": "https://github.com/NixOS/nixpkgs-channels.git nixos-unstable", "emailresponsible": false }
      }
 }
