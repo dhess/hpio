@@ -23,9 +23,9 @@ category:               System
 stability:              experimental
 homepage:               https://github.com/quixoftic/hpio#readme
 bug-reports:            https://github.com/quixoftic/hpio/issues
-author:                 Drew Hess <dhess-src@quixoftic.com>
-maintainer:             Drew Hess <dhess-src@quixoftic.com>
-copyright:              Copyright (c) 2018, Quixoftic, LLC
+author:                 Drew Hess <src@drewhess.com>
+maintainer:             Drew Hess <src@drewhess.com>
+copyright:              Copyright (c) 2018, Drew Hess
 license:                BSD3
 license-file:           LICENSE
 tested-with:            GHC==8.0.2 GHC==8.2.2 GHC==8.4.3

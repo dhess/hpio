@@ -3,9 +3,9 @@ version:     0.9.0.6
 synopsis:    Monads for GPIO in Haskell
 category:    System
 stability:   experimental
-author:      Drew Hess <dhess-src@quixoftic.com>
-maintainer:  Drew Hess <dhess-src@quixoftic.com>
-copyright:   Copyright (c) 2018, Quixoftic, LLC
+author:      Drew Hess <src@drewhess.com>
+maintainer:  Drew Hess <src@drewhess.com>
+copyright:   Copyright (c) 2018, Drew Hess
 license:     BSD3
 github:      quixoftic/hpio
 
