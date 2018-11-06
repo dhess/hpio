@@ -7,7 +7,7 @@
 
 let
 
-  hpioUri = "https://github.com/quixoftic/hpio.git";
+  hpioUri = "https://github.com/dhess/hpio.git";
 
   mkFetchGithub = value: {
     inherit value;

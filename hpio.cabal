@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 17fec7396b0bdb291377011203ed2f7c3c4f19f622445af802c163311bd35bfc
+-- hash: 01e1d1088ccb4c2ed9c1b46ea5c2966aca06a1f93adb54cb25546711813bb7cc
 
 name:                   hpio
 version:                0.9.0.6
@@ -21,8 +21,8 @@ description:            This package provides an embedded DSL for writing cross-
                         module, which explains how to use the cross-platform DSL.
 category:               System
 stability:              experimental
-homepage:               https://github.com/quixoftic/hpio#readme
-bug-reports:            https://github.com/quixoftic/hpio/issues
+homepage:               https://github.com/dhess/hpio#readme
+bug-reports:            https://github.com/dhess/hpio/issues
 author:                 Drew Hess <src@drewhess.com>
 maintainer:             Drew Hess <src@drewhess.com>
 copyright:              Copyright (c) 2018, Drew Hess
@@ -43,7 +43,7 @@ extra-source-files:
 
 source-repository head
   type: git
-  location: https://github.com/quixoftic/hpio
+  location: https://github.com/dhess/hpio
 
 flag examples
   description: Build the example programs

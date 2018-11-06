@@ -7,7 +7,7 @@ author:      Drew Hess <src@drewhess.com>
 maintainer:  Drew Hess <src@drewhess.com>
 copyright:   Copyright (c) 2018, Drew Hess
 license:     BSD3
-github:      quixoftic/hpio
+github:      dhess/hpio
 
 description: ! 'This package provides an embedded DSL for writing cross-platform
 

@@ -769,7 +769,7 @@ The current implementation of the mock @sysfs@ GPIO interpreter does
 not support interrupts, so we do not provide a runnable example in
 this tutorial. However, here is an example from an actual Linux system
 which demonstrates the use of 'pollPinTimeout' (a
-<https://github.com/quixoftic/gpio/blob/master/examples/Gpio.hs similar program>
+<https://github.com/dhess/gpio/blob/master/examples/Gpio.hs similar program>
 is included in @hpio@'s source distribution):
 
 > -- interrupt.hs
@@ -1113,7 +1113,7 @@ of these monads manually.
 
 Here's an example of using a 'MonadGpio' program with the reader
 monad and the mock @sysfs@ GPIO interpreter. (A
-<https://github.com/quixoftic/gpio/blob/master/examples/GpioReader.hs more sophisticated example>
+<https://github.com/dhess/gpio/blob/master/examples/GpioReader.hs more sophisticated example>
 of using 'MonadGpio' with a reader transformer
 stack and a real (as opposed to mock) GPIO platform is provided in the
 @hpio@ source distribution.)
@@ -1176,7 +1176,7 @@ GPIO system would look something like this:
 > runTutorialReaderGpioIO program config = runSysfsIOT $ runSysfsGpioT $ runReaderT program config
 
 (The earlier cited
-<https://github.com/quixoftic/gpio/blob/master/examples/GpioReader.hs example program>
+<https://github.com/dhess/gpio/blob/master/examples/GpioReader.hs example program>
 uses this very stack, albeit with a different reader environment.)
 
 The part that's the same in both the mock transformer stack and the
