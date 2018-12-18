@@ -15,3 +15,5 @@ cabal.sandbox.config
 .stack-work/*
 result*
 .dir-locals.el
+.envrc
+.direnv/*
