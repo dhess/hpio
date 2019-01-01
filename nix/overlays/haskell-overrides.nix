@@ -4,7 +4,7 @@ let
 
   inherit (self) haskell withOurHpio;
   inherit (self.lib) remove;
-  inherit (haskell.lib) dontCheck noHaddocks;
+  inherit (self.haskell.lib) dontCheck noHaddocks properExtend;
 
   withHpioHlint = withOurHpio ../pkgs/hpio-hlint.nix;
   withHpio = withOurHpio ../pkgs/hpio.nix;
@@ -12,17 +12,17 @@ let
 
   ## hpio adds a few extra-deps to the Stackage LTS sets.
 
-  withLts12Extras = hp: (hp.extend (self: super: (
+  withLts12Extras = hp: (properExtend hp (self: super: (
     rec {
     }
   )));
 
-  withLts11Extras = hp: (hp.extend (self: super: (
+  withLts11Extras = hp: (properExtend hp (self: super: (
     rec {
     }
   )));
 
-  withLts9Extras = hp: (hp.extend (self: super: (
+  withLts9Extras = hp: (properExtend hp (self: super: (
     rec {
       protolude = self.callHackage "protolude" "0.2" {};
       zlib = dontCheck super.zlib;

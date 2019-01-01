@@ -3,6 +3,7 @@ self: super:
 let
 
   inherit (self) lib;
+  inherit (self.haskell.lib) properExtend;
 
 
   ## Ignore local files that shouldn't contribute to the Nix hash.
@@ -24,7 +25,7 @@ let
 
   ## Haskell package combinators.
 
-  withOurHpio = hpioPkgPath: hp: (hp.extend (self: super: (
+  withOurHpio = hpioPkgPath: hp: (properExtend hp (self: super: (
     {
       hpio = lib.cleanPackage myCleanSource (super.callPackage hpioPkgPath {});
     }
