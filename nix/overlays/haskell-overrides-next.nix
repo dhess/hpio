@@ -2,7 +2,9 @@ self: super:
 
 let
 
-  inherit (self) haskell withOurHpio withOurHpioHlint;
+  inherit (self) haskell withOurHpio;
+
+  withHpio = withOurHpio ../pkgs/hpio-hlint.nix;
 
 in
 {
@@ -17,7 +19,7 @@ in
     ));
 
   haskellPackages861 =
-    withOurHpioHlint (self.haskell.packages.ghc861.extend (self: super:
+    withHpio (self.haskell.packages.ghc861.extend (self: super:
       with haskell.lib;
       rec {
       }

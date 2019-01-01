@@ -9,20 +9,20 @@ nix-build-attr = nix-build --no-out-link nix/jobsets/release.nix -I nixpkgs=$(NI
 
 nix-build = nix-build --no-out-link nix/jobsets/release.nix -I nixpkgs=$(NIXPKGS)
 
-hpio:	hpio.cabal
+hpio:	nix
 	nix-build --no-out-link nix/jobsets/testing.nix -I nixpkgs=$(NIXPKGS) -A hpio
 
-nixpkgs:	hpio.cabal
+nixpkgs:	nix
 		$(call nix-build-attr,nixpkgs)
 
-lts-%:	hpio.cabal
+lts-%:	nix
 	$(call nix-build-attr,lts-$*)
 
-release: hpio.cabal
+release: nix
 	 $(call nix-build)
 
 # Note: does not depend on nixpkgs.
-next:	hpio.cabal
+next:	nix
 	nix-build --no-out-link nix/jobsets/next.nix
 
 doc:	test
@@ -78,7 +78,7 @@ nix-stack = nix-shell -p stack-env zlib libiconv ncurses --run 'stack test --sta
 
 stack-lts:	stack-lts-12 stack-lts-11 stack-lts-9
 
-stack-lts-%:	hpio.cabal
+stack-lts-%:	nix
 		$(call nix-stack, stack-lts-$*.yaml)
 
 sdist:	check
@@ -89,9 +89,14 @@ check:
 	@echo "*** Checking the package for errors"
 	cabal check
 
-configure: hpio.cabal
+configure: nix hpio.cabal
 	@echo "*** Configuring the package"
 	cabal configure -f test-hlint
+
+nix: 	hpio.cabal
+	@echo "*** Generating hpio Nix files"
+	cd nix/pkgs && cabal2nix ../../. > hpio.nix
+	cd nix/pkgs && cabal2nix --flag test-hlint ../../. > hpio-hlint.nix
 
 hpio.cabal: package.yaml
 	@echo "*** Running hpack"
@@ -100,4 +105,4 @@ hpio.cabal: package.yaml
 clean:
 	cabal clean
 
-.PHONY: clean hpio.cabal
+.PHONY: clean nix hpio.cabal
