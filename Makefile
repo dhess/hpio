@@ -15,9 +15,6 @@ hpio:	nix
 nixpkgs:	nix
 		$(call nix-build-attr,nixpkgs)
 
-lts-%:	nix
-	$(call nix-build-attr,lts-$*)
-
 release: nix
 	 $(call nix-build)
 
@@ -45,9 +42,6 @@ help:
 	@echo
 	@echo "    hpio      - build hpio against nixpkgs using nix-build (quick)"
 	@echo "    nixpkgs   - build hpio against nixpkgs using nix-build"
-	@echo "    lts-9     - build hpio against LTS 9 package set using nix-build"
-	@echo "    lts-11    - build hpio against LTS 11 package set using nix-build"
-	@echo "    lts-12    - build hpio against LTS 12 package set using nix-build"
 	@echo "    release   - Run nix-build on all release.nix targets"
 	@echo "    next      - Run nix-build on all next.nix targets"
 	@echo

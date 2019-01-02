@@ -4,6 +4,8 @@ Changes:
   - Support for GHC 8.4.3.
   - Copyright for the project has been re-assigned to Drew Hess, its
     original author.
+  - Drop support for nixpkgs-stackage overlays, no longer maintained
+    upstream.
 
 ## 0.9.0.6 (2018-04-03)
 
