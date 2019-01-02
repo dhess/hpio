@@ -1,7 +1,7 @@
 Changes:
 
   - Support for Stackage LTS 12.
-  - Support for GHC 8.4.3.
+  - Support for GHC 8.4.4, 8.6.3.
   - Copyright for the project has been re-assigned to Drew Hess, its
     original author.
   - Drop support for nixpkgs-stackage overlays, no longer maintained
