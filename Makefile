@@ -55,6 +55,7 @@ help:
 	@echo "given version of Stackage LTS as configured by the file stack-<target>.yaml."
 	@echo
 	@echo "    stack-lts    [build all supported LTS targets]"
+	@echo "    stack-lts-13"
 	@echo "    stack-lts-12"
 	@echo "    stack-lts-11"
 	@echo "    stack-lts-9"
@@ -70,7 +71,7 @@ build:	configure
 
 nix-stack = nix-shell -p stack-env zlib libiconv ncurses --run 'stack test --stack-yaml $(1)'
 
-stack-lts:	stack-lts-12 stack-lts-11 stack-lts-9
+stack-lts:	stack-lts-13 stack-lts-12 stack-lts-11 stack-lts-9
 
 stack-lts-%:	nix
 		$(call nix-stack, stack-lts-$*.yaml)
