@@ -6,7 +6,7 @@
 }:
 mkDerivation {
   pname = "hpio";
-  version = "0.9.0.6";
+  version = "0.9.0.7";
   src = ../../.;
   configureFlags = [ "-ftest-hlint" ];
   isLibrary = true;
