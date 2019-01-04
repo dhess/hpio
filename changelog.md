@@ -1,6 +1,13 @@
+## 0.9.0.7 (2019-01-04)
+
+Note that this will be the last release in the `0.9` series, excepting
+critical bug fixes or security issues. The next release is expected to
+(slightly) break module export compatibility, but in a way that should
+not affect too many users.
+
 Changes:
 
-  - Support for Stackage LTS 12.
+  - Support for Stackage LTS 12, LTS 13.
   - Support for GHC 8.4.4, 8.6.3.
   - Copyright for the project has been re-assigned to Drew Hess, its
     original author.
@@ -8,11 +15,6 @@ Changes:
     upstream.
 
 ## 0.9.0.6 (2018-04-03)
-
-Note that this will be the last release in the `0.9` series, excepting
-critical bug fixes or security issues. The next release is expected to
-(slightly) break module export compatibility, but in a way that should
-not affect too many users.
 
 Changes:
 
