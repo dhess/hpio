@@ -27,9 +27,9 @@ let
     #   name = "ghc861";
     #   meta.description = "hpio built against nixpkgs haskellPackages using GHC 8.6.1";
     #   constituents = with jobs; [
-    #     haskellPackages861.hpio.x86_64-darwin
-    #     haskellPackages861.hpio.x86_64-linux
-    #     haskellPackages861.hpio.aarch64-linux
+    #     haskellPackages861.hpioHlint.x86_64-darwin
+    #     haskellPackages861.hpioHlint.x86_64-linux
+    #     haskellPackages861.hpioHlint.aarch64-linux
     #   ];
     # };
   } // (mapTestOn ({

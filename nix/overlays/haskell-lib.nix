@@ -25,9 +25,10 @@ let
 
   ## Haskell package combinators.
 
-  withOurHpio = hpioPkgPath: hp: (properExtend hp (self: super: (
+  withOurHpio = hp: (properExtend hp (self: super: (
     {
-      hpio = lib.cleanPackage myCleanSource (super.callPackage hpioPkgPath {});
+      hpio = lib.cleanPackage myCleanSource (super.callPackage ../pkgs/hpio.nix {});
+      hpioHlint = lib.cleanPackage myCleanSource (super.callPackage ../pkgs/hpio-hlint.nix {});
     }
   )));
 

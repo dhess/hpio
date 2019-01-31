@@ -27,5 +27,5 @@ let
 
 in
 {
-  hpio = jobs.haskellPackages.hpio.${builtins.currentSystem};
+  hpio = jobs.haskellPackages.hpioHlint.${builtins.currentSystem};
 }

@@ -29,9 +29,9 @@ let
       meta.description = "hpio built against nixpkgs haskellPackages";
       meta.maintainer = lib.maintainers.dhess;
       constituents = with jobs; [
-        haskellPackages.hpio.x86_64-darwin
-        haskellPackages.hpio.x86_64-linux
-        haskellPackages.hpio.aarch64-linux
+        haskellPackages.hpioHlint.x86_64-darwin
+        haskellPackages.hpioHlint.x86_64-linux
+        haskellPackages.hpioHlint.aarch64-linux
       ];
     };
   } // (mapTestOn ({
