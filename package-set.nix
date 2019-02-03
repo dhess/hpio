@@ -16,4 +16,5 @@ let
 in
 {
   inherit (self) haskellPackages;
+  overlays.haskellPackages = import ./.;
 }
