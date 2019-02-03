@@ -22,22 +22,8 @@ with import (fixedNixPkgs + "/pkgs/top-level/release-lib.nix") {
 
 let
 
-  jobs = {
-    # ghc861 = pkgs.releaseTools.aggregate {
-    #   name = "ghc861";
-    #   meta.description = "hpio built against nixpkgs haskellPackages using GHC 8.6.1";
-    #   constituents = with jobs; [
-    #     haskellPackages861.hpioHlint.x86_64-darwin
-    #     haskellPackages861.hpioHlint.x86_64-linux
-    #     haskellPackages861.hpioHlint.aarch64-linux
-    #   ];
-    # };
-  } // (mapTestOn ({
-    # haskellPackages861 = packagePlatforms pkgs.haskellPackages861;
-  }));
+  jobs = {};
 
 in
 {
-  # inherit (jobs) ghc861;
 }
-#// pkgs.lib.testing.enumerateConstituents jobs.ghc861

@@ -23,15 +23,15 @@ with import (fixedNixPkgs + "/pkgs/top-level/release-lib.nix") {
 
 let
 
+  all = pkg: pkgs.lib.testing.enumerateSystems pkg supportedSystems;
+
   jobs = {
     nixpkgs = pkgs.releaseTools.aggregate {
       name = "nixpkgs";
       meta.description = "hpio built against nixpkgs haskellPackages";
       meta.maintainer = lib.maintainers.dhess-pers;
       constituents = with jobs; [
-        haskellPackages.hpioHlint.x86_64-darwin
-        haskellPackages.hpioHlint.x86_64-linux
-        haskellPackages.hpioHlint.aarch64-linux
+        (all haskellPackages.hpioHlint)
       ];
     };
   } // (mapTestOn ({
@@ -41,4 +41,5 @@ let
 in
 {
   inherit (jobs) nixpkgs;
+  inherit (jobs.haskellPackages) hpioHlint;
 }
