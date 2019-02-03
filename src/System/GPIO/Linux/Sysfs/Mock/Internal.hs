@@ -1,7 +1,7 @@
 {-|
 Module      : System.GPIO.Linux.Sysfs.Mock.Internal
 Description : Functions used by the mock MonadSysfs instance.
-Copyright   : (c) 2018, Drew Hess
+Copyright   : (c) 2019, Drew Hess
 License     : BSD3
 Maintainer  : Drew Hess <src@drewhess.com>
 Stability   : experimental

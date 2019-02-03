@@ -1,7 +1,7 @@
 {-|
 Module      : System.GPIO.Linux.Sysfs.IO
 Description : Linux @sysfs@ GPIO operations in IO
-Copyright   : (c) 2018, Drew Hess
+Copyright   : (c) 2019, Drew Hess
 License     : BSD3
 Maintainer  : Drew Hess <src@drewhess.com>
 Stability   : experimental

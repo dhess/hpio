@@ -1,8 +1,10 @@
--- This file has been generated from package.yaml by hpack version 0.28.2.
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.31.1.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: d9e47c1a8a22910155bb15659be0573511d19efd753eeebab5fc00d5a651192f
+-- hash: af6ac216aa96f90c601059659fe0cfe4f9fe682284a48197f4fc82f5959451fb
 
 name:                   hpio
 version:                0.9.0.7
@@ -25,22 +27,21 @@ homepage:               https://github.com/dhess/hpio#readme
 bug-reports:            https://github.com/dhess/hpio/issues
 author:                 Drew Hess <src@drewhess.com>
 maintainer:             Drew Hess <src@drewhess.com>
-copyright:              Copyright (c) 2018, Drew Hess
+copyright:              Copyright (c) 2019, Drew Hess
 license:                BSD3
 license-file:           LICENSE
 tested-with:            GHC==8.0.2 GHC==8.2.2 GHC==8.4.4 GHC==8.6.3
 build-type:             Simple
-cabal-version:          >= 1.10
 extra-source-files:
     .hlint.yaml
+    README.md
     changelog.md
     package.yaml
-    README.md
+    stack.yaml
+    stack-lts-9.yaml
     stack-lts-11.yaml
     stack-lts-12.yaml
     stack-lts-13.yaml
-    stack-lts-9.yaml
-    stack.yaml
 
 source-repository head
   type: git

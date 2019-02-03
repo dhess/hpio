@@ -1,9 +1,15 @@
-## 0.9.0.7 (2019-01-04)
+## 0.9.0.8
 
 Note that this will be the last release in the `0.9` series, excepting
 critical bug fixes or security issues. The next release is expected to
 (slightly) break module export compatibility, but in a way that should
 not affect too many users.
+
+Changes:
+
+  - Update copyright date.
+
+## 0.9.0.7 (2019-01-04)
 
 Changes:
 
