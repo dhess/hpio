@@ -27,7 +27,7 @@ let
     nixpkgs = pkgs.releaseTools.aggregate {
       name = "nixpkgs";
       meta.description = "hpio built against nixpkgs haskellPackages";
-      meta.maintainer = lib.maintainers.dhess;
+      meta.maintainer = lib.maintainers.dhess-pers;
       constituents = with jobs; [
         haskellPackages.hpioHlint.x86_64-darwin
         haskellPackages.hpioHlint.x86_64-linux

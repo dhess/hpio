@@ -12,7 +12,6 @@ with super.lib;
 
 (foldl' (flip extends) (_: super) [
   (import localLib.fetchNixPkgsLibQuixoftic)
-  (import ./nix/overlays/lib.nix)
   (import ./nix/overlays/haskell-lib.nix)
   (import ./nix/overlays/haskell-overrides.nix)
 ]) self
