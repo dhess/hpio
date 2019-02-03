@@ -15,7 +15,6 @@ A monadic context for GPIO computations.
 {-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE PackageImports #-}
 {-# LANGUAGE Safe #-}
 {-# LANGUAGE TypeFamilies #-}
