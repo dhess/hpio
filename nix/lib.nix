@@ -19,13 +19,14 @@ let
       else (import ./fetch-github.nix) { jsonSpec = builtins.readFile ./nixpkgs-lib-quixoftic-src.json; };
 
 
+  nixpkgs-lib-quixoftic = import fetchNixPkgsLibQuixoftic;
   nixpkgs = import fetchNixPkgs;
   pkgs = nixpkgs {};
   lib = pkgs.lib;
 
 in lib // (rec {
 
-  inherit fetchNixPkgs;
-  inherit fetchNixPkgsLibQuixoftic;
+  inherit fetchNixPkgs nixpkgs;
+  inherit fetchNixPkgsLibQuixoftic nixpkgs-lib-quixoftic;
 
 })
