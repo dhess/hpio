@@ -18,17 +18,17 @@ let
       baseName == "Makefile"
     )
   );
-  cleanSourceLocal = src: lib.cleanSourceWith { filter = filterSourceLocal; inherit src; };
+  cleanSourceLocal = src: lib.sources.cleanSourceWith { filter = filterSourceLocal; inherit src; };
 
-  myCleanSource = src: cleanSourceLocal (lib.cleanSourceAllExtraneous src);
+  myCleanSource = src: cleanSourceLocal (lib.sources.cleanSourceAllExtraneous src);
 
 
   ## Haskell package combinators.
 
   withOurHpio = hp: (properExtend hp (self: super: (
     {
-      hpio = lib.cleanPackage myCleanSource (super.callPackage ../pkgs/hpio.nix {});
-      hpioHlint = lib.cleanPackage myCleanSource (super.callPackage ../pkgs/hpio-hlint.nix {});
+      hpio = lib.sources.cleanPackage myCleanSource (super.callPackage ../pkgs/hpio.nix {});
+      hpioHlint = lib.sources.cleanPackage myCleanSource (super.callPackage ../pkgs/hpio-hlint.nix {});
     }
   )));
 

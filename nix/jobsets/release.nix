@@ -5,7 +5,9 @@
 
 let
 
-  fixedNixPkgs = (import ../lib.nix).fetchNixPkgs;
+  localLib = import ../lib.nix;
+  fixedNixpkgs = localLib.fixedNixpkgs;
+  dhessLibNixOverlays = localLib.dhess-lib-nix.overlays.all;
 
 in
 
@@ -13,11 +15,14 @@ in
 , scrubJobs ? true
 , nixpkgsArgs ? {
     config = { allowUnfree = true; allowBroken = true; inHydra = true; };
-    overlays = [ (import ../../.) ];
+    overlays = [
+      (import ../../.)
+      dhessLibNixOverlays
+    ];
   }
 }:
 
-with import (fixedNixPkgs + "/pkgs/top-level/release-lib.nix") {
+with import (fixedNixpkgs + "/pkgs/top-level/release-lib.nix") {
   inherit supportedSystems scrubJobs nixpkgsArgs;
 };
 

@@ -3,7 +3,7 @@
 
 let
 
-  fixedNixPkgs = (import ../lib.nix).fetchNixPkgs;
+  fixedNixpkgs = (import ../lib.nix).nixpkgs;
 
 in
 
@@ -15,7 +15,7 @@ in
   }
 }:
 
-with import (fixedNixPkgs + "/pkgs/top-level/release-lib.nix") {
+with import (fixedNixpkgs + "/pkgs/top-level/release-lib.nix") {
   inherit supportedSystems scrubJobs nixpkgsArgs;
 };
 
