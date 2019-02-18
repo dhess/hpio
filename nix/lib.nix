@@ -12,11 +12,10 @@ let
 
   dhess-lib-nix = (import fixedDhessLibNix) {};
   inherit (dhess-lib-nix.lib.fetchers) fixedNixpkgs;
-  inherit (dhess-lib-nix.lib.dhess-lib-nix) pkgs nixpkgs;
-  lib = pkgs.lib;
+  inherit (dhess-lib-nix.lib.dhess-lib-nix) nixpkgs;
 
 in
-lib // {
+{
   inherit fixedNixpkgs;
   inherit dhess-lib-nix;
   inherit nixpkgs;
