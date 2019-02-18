@@ -7,7 +7,7 @@ let
 
   localLib = import ../lib.nix;
   fixedNixpkgs = localLib.fixedNixpkgs;
-  dhessLibNixOverlays = localLib.dhess-lib-nix.overlays.all;
+  localPkgs = (import ../..) {};
 
 in
 
@@ -15,10 +15,7 @@ in
 , scrubJobs ? true
 , nixpkgsArgs ? {
     config = { allowUnfree = true; allowBroken = true; inHydra = true; };
-    overlays = [
-      (import ../../.)
-      dhessLibNixOverlays
-    ];
+    overlays = [ localPkgs.overlays.all ];
   }
 }:
 

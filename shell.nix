@@ -3,8 +3,7 @@ let
   localLib = import nix/lib.nix;
 
   overlays = [
-    (import ./.)
-    localLib.dhess-lib-nix.overlays.all
+    (import nix/overlays.nix)
   ];
 
   nixpkgs = localLib.nixpkgs;
