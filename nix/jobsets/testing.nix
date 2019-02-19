@@ -3,7 +3,7 @@
 
 let
 
-  fixedNixpkgs = (import ../lib.nix).nixpkgs;
+  fixedNixpkgs = (import ../lib).nixpkgs;
 
 in
 

@@ -2,12 +2,10 @@ self: super:
 
 let
 
-  inherit (self) haskell withOurHpio;
-  inherit (self.lib) remove;
-  inherit (self.haskell.lib) dontCheck noHaddocks properExtend;
+  localLib = (import ./lib) { pkgs = super; };
+  inherit (localLib) withOurHpio;
 
 in
 {
-  ## The default Nixpkgs package set.
   haskellPackages = withOurHpio super.haskellPackages;
 }

@@ -2,17 +2,14 @@ self: super:
 
 let
 
-  localLib = import ./lib.nix;
+  localLib = import ./lib;
   inherit (localLib) dhess-lib-nix;
   inherit (dhess-lib-nix) lib;
 
-  overlays =
-    (lib.singleton dhess-lib-nix.overlays.all)
-    ++
-    (map import [
-      ./overlays/haskell-lib.nix
-      ./overlays/haskell-overrides.nix
-    ]);
+  overlays = [
+    dhess-lib-nix.overlays.all
+    (import overlays/haskell-overrides.nix)
+    ];
 
 in
 lib.customisation.composeOverlays overlays super

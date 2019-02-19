@@ -1,9 +1,9 @@
-self: super:
+{ pkgs }:
 
 let
 
-  inherit (self) lib;
-  inherit (self.haskell.lib) properExtend;
+  inherit (pkgs) lib;
+  inherit (pkgs.haskell.lib) properExtend;
 
 
   ## Ignore local files that shouldn't contribute to the Nix hash.
@@ -27,8 +27,8 @@ let
 
   withOurHpio = hp: (properExtend hp (self: super: (
     {
-      hpio = lib.sources.cleanPackage myCleanSource (super.callPackage ../pkgs/hpio.nix {});
-      hpioHlint = lib.sources.cleanPackage myCleanSource (super.callPackage ../pkgs/hpio-hlint.nix {});
+      hpio = lib.sources.cleanPackage myCleanSource (super.callPackage ../../pkgs/hpio.nix {});
+      hpioHlint = lib.sources.cleanPackage myCleanSource (super.callPackage ../../pkgs/hpio-hlint.nix {});
     }
   )));
 

@@ -42,25 +42,9 @@ let
   };
 
 
-  ## "next" builds; these are expected to fail from time to time and
-  ## don't run as often. They also build from nixpkgs and not
-  ## nixpkgs-channels as we always want to be testing the latest,
-  ## greatest GHC pre-releases.
-
-  mkNext = hpioBranch: nixpkgsRev: {
-    nixexprpath = "nix/jobsets/next.nix";
-    checkinterval = 60 * 60 * 24;
-    inputs = {
-      nixpkgs_override = mkFetchGithub "https://github.com/NixOS/nixpkgs.git ${nixpkgsRev}";
-      hpio = mkFetchGithub "${hpioUri} ${hpioBranch}";
-
-    };
-  };
-
   mainJobsets = with pkgs.lib; mapAttrs (name: settings: defaultSettings // settings) (rec {
     master = {};
     nixpkgs-unstable = mkChannelAlt "master" "nixpkgs-unstable";
-    next-ghc = mkNext "master" "master";
   });
 
   jobsetsAttrs = mainJobsets;

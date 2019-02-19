@@ -5,7 +5,7 @@
 
 let
 
-  localLib = import ../lib.nix;
+  localLib = import ../lib;
   fixedNixpkgs = localLib.fixedNixpkgs;
   localPkgs = (import ../..) {};
 
@@ -15,7 +15,7 @@ in
 , scrubJobs ? true
 , nixpkgsArgs ? {
     config = { allowUnfree = true; allowBroken = true; inHydra = true; };
-    overlays = [ localPkgs.overlays.all ];
+    overlays = [ localPkgs.overlays.hpio ];
   }
 }:
 
