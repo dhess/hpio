@@ -25,8 +25,7 @@ in
   # package set builds hpio *without* maintainer tests.
   inherit (hpioPkgs) haskellPackages;
 
-  # The path to the local hpio.nix (and hpio-maintainer.nix, with
-  # maintainer tests enabled), in case you want to make your own.
+  # The path to the local hpio.nix, in case you want to make your own.
   inherit hpioNix hpioNixMaintainer;
 
   # Same as the above, except with the hpio package in maintainer
