@@ -1,4 +1,4 @@
-## This builds just hpio (plus hlint tests) for the current system.
+## This builds just hpio (in maintainer mode) for the current system.
 ## It's useful for development and interactive testing.
 
 let
@@ -12,7 +12,7 @@ in
 , scrubJobs ? true
 , nixpkgsArgs ? {
     config = { allowUnfree = true; allowBroken = true; inHydra = true; };
-    overlays = [ localPkgs.overlays.hpio ];
+    overlays = [ localPkgs.overlays.hpioMaintainer ];
   }
 }:
 
@@ -28,5 +28,5 @@ let
 
 in
 {
-  hpio = jobs.haskellPackages.hpioHlint.${builtins.currentSystem};
+  hpio = jobs.haskellPackages.hpio.${builtins.currentSystem};
 }

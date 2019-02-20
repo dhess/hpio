@@ -25,14 +25,19 @@ let
 
   ## Haskell package combinators.
 
-  withOurHpio = hp: (properExtend hp (self: super: (
+  withLocalHpio = hp: (properExtend hp (self: super: (
     {
       hpio = lib.sources.cleanPackage myCleanSource (super.callPackage ../../pkgs/hpio.nix {});
-      hpioHlint = lib.sources.cleanPackage myCleanSource (super.callPackage ../../pkgs/hpio-hlint.nix {});
+    }
+  )));
+
+  withLocalHpioMaintainer = hp: (properExtend hp (self: super: (
+    {
+      hpio = lib.sources.cleanPackage myCleanSource (super.callPackage ../../pkgs/hpio-maintainer.nix {});
     }
   )));
 
 in
 {
-  inherit withOurHpio;
+  inherit withLocalHpio withLocalHpioMaintainer;
 }

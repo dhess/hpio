@@ -20,9 +20,14 @@ let
     (import ../overlays/haskell-overrides.nix)
   ];
 
+  maintainerOverlays = [
+    dhess-lib-nix.overlays.all
+    (import ../overlays/haskell-overrides-maintainer.nix)
+  ];
+
 in lib //
 {
   inherit fixedNixpkgs;
   inherit nixpkgs;
-  inherit overlays;
+  inherit overlays maintainerOverlays;
 }

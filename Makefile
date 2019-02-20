@@ -86,7 +86,7 @@ configure: nix hpio.cabal
 nix: 	hpio.cabal
 	@echo "*** Generating hpio Nix files"
 	cd nix/pkgs && cabal2nix ../../. > hpio.nix
-	cd nix/pkgs && cabal2nix --flag test-hlint ../../. > hpio-hlint.nix
+	cd nix/pkgs && cabal2nix --flag test-hlint ../../. > hpio-maintainer.nix
 
 hpio.cabal: package.yaml
 	@echo "*** Running hpack"

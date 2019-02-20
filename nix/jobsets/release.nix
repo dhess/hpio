@@ -15,7 +15,7 @@ in
 , scrubJobs ? true
 , nixpkgsArgs ? {
     config = { allowUnfree = true; allowBroken = true; inHydra = true; };
-    overlays = [ localPkgs.overlays.hpio ];
+    overlays = [ localPkgs.overlays.hpioMaintainer ];
   }
 }:
 
@@ -33,7 +33,7 @@ let
       meta.description = "hpio built against nixpkgs haskellPackages";
       meta.maintainer = lib.maintainers.dhess-pers;
       constituents = with jobs; [
-        (all haskellPackages.hpioHlint)
+        (all haskellPackages.hpio)
       ];
     };
   } // (mapTestOn ({
@@ -43,5 +43,5 @@ let
 in
 {
   inherit (jobs) nixpkgs;
-  inherit (jobs.haskellPackages) hpioHlint;
+  inherit (jobs.haskellPackages) hpio;
 }
