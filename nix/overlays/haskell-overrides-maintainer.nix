@@ -4,10 +4,9 @@ self: super:
 
 let
 
-  localLib = (import ./lib) { pkgs = super; };
-  inherit (localLib) withLocalHpioMaintainer;
+  lib = (import ../lib);
 
 in
 {
-  haskellPackages = withLocalHpioMaintainer super.haskellPackages;
+  haskellPackages = lib.withLocalHpioMaintainer super.haskellPackages;
 }

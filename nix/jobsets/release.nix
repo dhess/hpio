@@ -5,8 +5,8 @@
 
 let
 
-  localLib = import ../lib;
-  fixedNixpkgs = localLib.fixedNixpkgs;
+  lib = import ../lib;
+  fixedNixpkgs = lib.fixedNixpkgs;
   localPkgs = (import ../..) {};
 
 in
@@ -25,7 +25,7 @@ with import (fixedNixpkgs + "/pkgs/top-level/release-lib.nix") {
 
 let
 
-  all = pkg: pkgs.lib.testing.enumerateSystems pkg supportedSystems;
+  all = pkg: lib.testing.enumerateSystems pkg supportedSystems;
 
   jobs = {
     nixpkgs = pkgs.releaseTools.aggregate {
