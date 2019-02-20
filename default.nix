@@ -9,7 +9,8 @@ in
 
 let
 
-  hpioOverlays = import nix/overlays.nix;
+  hpioOverlays = self: super:
+    lib.customisation.composeOverlays lib.overlays super;
   hpioNix = nix/pkgs/hpio.nix;
   hpioPkgs = lib.customisation.composeOverlays (lib.singleton hpioOverlays) pkgs;
 

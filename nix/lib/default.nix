@@ -15,11 +15,14 @@ let
   inherit (lib.fetchers) fixedNixpkgs;
   inherit (lib.dhess-lib-nix) nixpkgs;
 
-  inputOverlays = dhess-lib-nix.overlays.all;
+  overlays = [
+    dhess-lib-nix.overlays.all
+    (import ../overlays/haskell-overrides.nix)
+  ];
 
 in lib //
 {
   inherit fixedNixpkgs;
   inherit nixpkgs;
-  inherit inputOverlays;
+  inherit overlays;
 }
