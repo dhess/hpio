@@ -3,7 +3,8 @@
 
 let
 
-  fixedNixpkgs = (import ../lib).nixpkgs;
+  fixedNixpkgs = (import ../lib).fixedNixpkgs;
+  localPkgs = (import ../..) {};
 
 in
 
@@ -11,7 +12,7 @@ in
 , scrubJobs ? true
 , nixpkgsArgs ? {
     config = { allowUnfree = true; allowBroken = true; inHydra = true; };
-    overlays = [ (import ../../.) ];
+    overlays = [ localPkgs.overlays.hpio ];
   }
 }:
 
