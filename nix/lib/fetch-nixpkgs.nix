@@ -1,6 +1,6 @@
 let
 
   lib = import ./.;
-  pkgs = import lib.nixpkgs { config = {}; };
+  pkgs = lib.nixpkgs { config = {}; };
 
 in pkgs

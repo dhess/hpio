@@ -3,7 +3,7 @@
 # This Makefile is very much tailored to the maintainer's environment.
 # It might work for you, but don't expect much.
 
-NIXPKGS := $(shell nix eval -f nix/fetch-nixpkgs.nix pkgs.path)
+NIXPKGS := $(shell nix eval -f nix/lib/fetch-nixpkgs.nix pkgs.path)
 
 nix-build-attr = nix-build --no-out-link nix/jobsets/release.nix -I nixpkgs=$(NIXPKGS) -A $(1)
 
