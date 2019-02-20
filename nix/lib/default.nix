@@ -11,12 +11,15 @@ let
       else (import ./fetch-github.nix) { jsonSpec = builtins.readFile ./dhess-lib-nix-src.json; };
 
   dhess-lib-nix = (import fixedDhessLibNix) {};
-  inherit (dhess-lib-nix.lib.fetchers) fixedNixpkgs;
-  inherit (dhess-lib-nix.lib.dhess-lib-nix) nixpkgs;
+  inherit (dhess-lib-nix) lib;
+  inherit (lib.fetchers) fixedNixpkgs;
+  inherit (lib.dhess-lib-nix) nixpkgs;
 
-in
+  inputOverlays = dhess-lib-nix.overlays.all;
+
+in lib //
 {
   inherit fixedNixpkgs;
-  inherit dhess-lib-nix;
   inherit nixpkgs;
+  inherit inputOverlays;
 }

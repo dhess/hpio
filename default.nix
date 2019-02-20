@@ -1,7 +1,7 @@
 let
 
-  localLib = (import ./nix/lib);
-  defaultPkgs = localLib.nixpkgs {};
+  lib = (import nix/lib);
+  defaultPkgs = lib.nixpkgs {};
 
 in
 
@@ -9,9 +9,7 @@ in
 
 let
 
-  inherit (localLib.dhess-lib-nix) lib;
-
-  hpioOverlays = import ./nix/overlays.nix;
+  hpioOverlays = import nix/overlays.nix;
   hpioNix = nix/pkgs/hpio.nix;
   hpioPkgs = lib.customisation.composeOverlays (lib.singleton hpioOverlays) pkgs;
 
