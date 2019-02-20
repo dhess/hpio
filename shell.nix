@@ -1,1 +1,1 @@
-(import ./default.nix {}).haskellPackagesMaintainer.hpio.env
+(import ./default.nix {}).maintainer.haskellPackages.hpio.env

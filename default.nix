@@ -17,6 +17,7 @@ let
   hpioNixMaintainer = nix/pkgs/hpio-maintainer.nix;
 
   hpioPkgs = lib.customisation.composeOverlays (lib.singleton hpioOverlays) pkgs;
+  hpioPkgsMaintainer = lib.customisation.composeOverlays (lib.singleton hpioOverlaysMaintainer) pkgs;
 
 in
 {
@@ -28,6 +29,14 @@ in
   # maintainer tests enabled), in case you want to make your own.
   inherit hpioNix hpioNixMaintainer;
 
+  # Same as the above, except with the hpio package in maintainer
+  # mode.
+  maintainer = {
+    inherit (hpioPkgsMaintainer) haskellPackages;
+    hpioNix = hpioNixMaintainer;
+  };
+
+  # Overlays for the hpio package in both modes.
   overlays.hpio = hpioOverlays;
   overlays.hpioMaintainer = hpioOverlaysMaintainer;
 }
