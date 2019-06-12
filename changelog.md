@@ -8,6 +8,7 @@ not affect too many users.
 Changes:
 
   - Update copyright date.
+  - The `examples` cabal flag is now disabled by default.
 
 ## 0.9.0.7 (2019-01-04)
 

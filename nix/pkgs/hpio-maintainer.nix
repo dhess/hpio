@@ -8,7 +8,7 @@ mkDerivation {
   pname = "hpio";
   version = "0.9.0.7";
   src = ../../.;
-  configureFlags = [ "-ftest-hlint" ];
+  configureFlags = [ "-fexamples" "-ftest-hlint" ];
   isLibrary = true;
   isExecutable = true;
   libraryHaskellDepends = [

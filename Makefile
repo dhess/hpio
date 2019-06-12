@@ -81,12 +81,12 @@ check:
 
 configure: nix hpio.cabal
 	@echo "*** Configuring the package"
-	cabal configure -f test-hlint
+	cabal configure -f test-hlint -f examples
 
 nix: 	hpio.cabal
 	@echo "*** Generating hpio Nix files"
 	cd nix/pkgs && cabal2nix ../../. > hpio.nix
-	cd nix/pkgs && cabal2nix --flag test-hlint ../../. > hpio-maintainer.nix
+	cd nix/pkgs && cabal2nix --flag test-hlint --flag examples ../../. > hpio-maintainer.nix
 
 hpio.cabal: package.yaml
 	@echo "*** Running hpack"

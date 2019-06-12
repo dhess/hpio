@@ -52,7 +52,7 @@ flags:
   examples:
     description: Build the example programs
     manual: true
-    default: true
+    default: false
 
 when:
   - condition: impl(ghc >= 8.0)

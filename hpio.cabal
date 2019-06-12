@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: af6ac216aa96f90c601059659fe0cfe4f9fe682284a48197f4fc82f5959451fb
+-- hash: fa781e822996de0d25ad952af0cdf0f3d3b4af05da6549401f23086ab54534ee
 
 name:                   hpio
 version:                0.9.0.7
@@ -50,7 +50,7 @@ source-repository head
 flag examples
   description: Build the example programs
   manual: True
-  default: True
+  default: False
 
 flag linux-bbone-tests
   description: Enable Linux BeagleBone-specific tests. Disabled by default. See test/System/GPIO/Linux/Sysfs/BeagleBoneSpec.hs for requirements. Run with "cabal test -flinux-bbone-tests".
