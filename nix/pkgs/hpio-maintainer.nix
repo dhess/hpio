@@ -25,7 +25,7 @@ mkDerivation {
     base containers directory doctest exceptions filepath hlint hspec
     protolude QuickCheck
   ];
-  preConfigure = "hpack";
+  prePatch = "hpack";
   homepage = "https://github.com/dhess/hpio#readme";
   description = "Monads for GPIO in Haskell";
   license = stdenv.lib.licenses.bsd3;

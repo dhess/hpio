@@ -31,7 +31,7 @@ description: ! 'This package provides an embedded DSL for writing cross-platform
 
   module, which explains how to use the cross-platform DSL.'
 
-tested-with: GHC==8.0.2 GHC==8.2.2 GHC==8.4.4 GHC==8.6.3
+tested-with: GHC==8.0.2 GHC==8.2.2 GHC==8.4.4 GHC==8.6.3 GHC==8.6.4 GHC==8.6.5
 
 flags:
   test-hlint:
@@ -113,7 +113,7 @@ library:
     - TypeSynonymInstances
     - UndecidableInstances
   dependencies:
-    - QuickCheck          >=2.7.6  && <2.13
+    - QuickCheck          >=2.7.6  && <2.14
     - base                >=4.7.0  && <5
     - bytestring          >=0.10.4 && <0.11
     - containers          >=0.5.5  && <0.7
@@ -193,7 +193,7 @@ tests:
       else:
         dependencies:
           - base
-          - hlint     >=2.0 && <2.2
+          - hlint     >=2.0 && <2.3
           - protolude
   doctest:
     main: doctest.hs
@@ -211,6 +211,7 @@ tests:
           - doctest   >=0.9.13
           - filepath
           - protolude
+          - QuickCheck
   spec:
     main: Spec.hs
     source-dirs:

@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.31.1.
+-- This file has been generated from package.yaml by hpack version 0.31.2.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: fa781e822996de0d25ad952af0cdf0f3d3b4af05da6549401f23086ab54534ee
+-- hash: de635f91d3eef42462140092464a39e85a48bd7af64a33fc2c8c06f4888e4147
 
 name:                   hpio
 version:                0.9.0.7
@@ -30,7 +30,7 @@ maintainer:             Drew Hess <src@drewhess.com>
 copyright:              Copyright (c) 2019, Drew Hess
 license:                BSD3
 license-file:           LICENSE
-tested-with:            GHC==8.0.2 GHC==8.2.2 GHC==8.4.4 GHC==8.6.3
+tested-with:            GHC==8.0.2 GHC==8.2.2 GHC==8.4.4 GHC==8.6.3 GHC==8.6.4 GHC==8.6.5
 build-type:             Simple
 extra-source-files:
     .hlint.yaml
@@ -77,7 +77,7 @@ library
   c-sources:
       src/System/GPIO/Linux/Sysfs/pollSysfs.c
   build-depends:
-      QuickCheck >=2.7.6 && <2.13
+      QuickCheck >=2.7.6 && <2.14
     , base >=4.7.0 && <5
     , bytestring >=0.10.4 && <0.11
     , containers >=0.5.5 && <0.7
@@ -219,7 +219,8 @@ test-suite doctest
     buildable: False
   else
     build-depends:
-        base
+        QuickCheck
+      , base
       , doctest >=0.9.13
       , filepath
       , protolude
@@ -241,7 +242,7 @@ test-suite hlint
   else
     build-depends:
         base
-      , hlint >=2.0 && <2.2
+      , hlint >=2.0 && <2.3
       , protolude
   default-language: Haskell2010
 
